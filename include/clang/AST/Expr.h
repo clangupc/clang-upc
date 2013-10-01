@@ -1614,7 +1614,7 @@ class UPCMyThreadExpr : public Expr {
 
 public:
   UPCMyThreadExpr(SourceLocation L, QualType Type)
-    : Expr(UPCThreadExprClass, Type, VK_RValue, OK_Ordinary,
+    : Expr(UPCMyThreadExprClass, Type, VK_RValue, OK_Ordinary,
            false, false, false,
            /*ContainsUnexpandedParameterPack=*/false),
       Loc(L) { }
@@ -1630,7 +1630,7 @@ public:
   static bool classof(const Stmt *T) {
     return T->getStmtClass() == UPCMyThreadExprClass;
   }
-  static bool classof(const UPCThreadExpr *) { return true; }
+  static bool classof(const UPCMyThreadExpr *) { return true; }
 
   // Iterators
   child_range children() { return child_range(); }
