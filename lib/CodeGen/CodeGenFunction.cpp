@@ -31,25 +31,23 @@ using namespace clang;
 using namespace CodeGen;
 
 CodeGenFunction::CodeGenFunction(CodeGenModule &cgm, bool suppressNewContext)
-  : CodeGenTypeCache(cgm), CGM(cgm), Target(cgm.getTarget()),
-    Builder(cgm.getModule().getContext()),
-    SanitizePerformTypeCheck(CGM.getSanOpts().Null |
-                             CGM.getSanOpts().Alignment |
-                             CGM.getSanOpts().ObjectSize |
-                             CGM.getSanOpts().Vptr),
-    SanOpts(&CGM.getSanOpts()),
-    AutoreleaseResult(false), BlockInfo(0), BlockPointer(0),
-    LambdaThisCaptureField(0), NormalCleanupDest(0), NextCleanupDestIndex(1),
-    FirstBlockInfo(0), EHResumeBlock(0), ExceptionSlot(0), EHSelectorSlot(0),
-    DebugInfo(0), DisableDebugInfo(false), CalleeWithThisReturn(0),
-    DidCallStackSave(false),
-    IndirectBranch(0), SwitchInsn(0), CaseRangeBlock(0), UnreachableBlock(0),
-    NumReturnExprs(0), NumSimpleReturnExprs(0),
-    CXXABIThisDecl(0), CXXABIThisValue(0), CXXThisValue(0),
-    CXXDefaultInitExprThis(0),
-    CXXStructorImplicitParamDecl(0), CXXStructorImplicitParamValue(0),
-    OutermostConditional(0), CurLexicalScope(0), TerminateLandingPad(0),
-    TerminateHandler(0), TrapBB(0) {
+    : CodeGenTypeCache(cgm), CGM(cgm), Target(cgm.getTarget()),
+      Builder(cgm.getModule().getContext()), CapturedStmtInfo(0),
+      SanitizePerformTypeCheck(CGM.getSanOpts().Null |
+                               CGM.getSanOpts().Alignment |
+                               CGM.getSanOpts().ObjectSize |
+                               CGM.getSanOpts().Vptr),
+      SanOpts(&CGM.getSanOpts()), AutoreleaseResult(false), BlockInfo(0),
+      BlockPointer(0), LambdaThisCaptureField(0), NormalCleanupDest(0),
+      NextCleanupDestIndex(1), FirstBlockInfo(0), EHResumeBlock(0),
+      ExceptionSlot(0), EHSelectorSlot(0), DebugInfo(CGM.getModuleDebugInfo()),
+      DisableDebugInfo(false), DidCallStackSave(false), IndirectBranch(0),
+      SwitchInsn(0), CaseRangeBlock(0), UnreachableBlock(0), NumReturnExprs(0),
+      NumSimpleReturnExprs(0), CXXABIThisDecl(0), CXXABIThisValue(0),
+      CXXThisValue(0), CXXDefaultInitExprThis(0),
+      CXXStructorImplicitParamDecl(0), CXXStructorImplicitParamValue(0),
+      OutermostConditional(0), CurLexicalScope(0), TerminateLandingPad(0),
+      TerminateHandler(0), TrapBB(0) {
   if (!suppressNewContext)
     CGM.getCXXABI().getMangleContext().startNewFunction();
 
@@ -64,6 +62,8 @@ CodeGenFunction::CodeGenFunction(CodeGenModule &cgm, bool suppressNewContext)
 }
 
 CodeGenFunction::~CodeGenFunction() {
+  assert(LifetimeExtendedCleanupStack.empty() && "failed to emit a cleanup");
+
   // If there are any unclaimed block infos, go ahead and destroy them
   // now.  This can happen if IR-gen gets clever and skips evaluating
   // something.
@@ -190,15 +190,23 @@ void CodeGenFunction::FinishFunction(SourceLocation EndLoc) {
          "mismatched push/pop in break/continue stack!");
 
   bool OnlySimpleReturnStmts = NumSimpleReturnExprs > 0
-    && NumSimpleReturnExprs == NumReturnExprs;
-  // If the function contains only a simple return statement, the
-  // cleanup code may become the first breakpoint in the function. To
-  // be safe, set the debug location for it to the location of the
-  // return statement.  Otherwise point it to end of the function's
-  // lexical scope.
+    && NumSimpleReturnExprs == NumReturnExprs
+    && ReturnBlock.getBlock()->use_empty();
+  // Usually the return expression is evaluated before the cleanup
+  // code.  If the function contains only a simple return statement,
+  // such as a constant, the location before the cleanup code becomes
+  // the last useful breakpoint in the function, because the simple
+  // return expression will be evaluated after the cleanup code. To be
+  // safe, set the debug location for cleanup code to the location of
+  // the return statement.  Otherwise the cleanup code should be at the
+  // end of the function's lexical scope.
+  //
+  // If there are multiple branches to the return block, the branch
+  // instructions will get the location of the return statements and
+  // all will be fine.
   if (CGDebugInfo *DI = getDebugInfo()) {
     if (OnlySimpleReturnStmts)
-       DI->EmitLocation(Builder, LastStopPoint);
+      DI->EmitLocation(Builder, LastStopPoint);
     else
       DI->EmitLocation(Builder, EndLoc);
   }
@@ -209,7 +217,7 @@ void CodeGenFunction::FinishFunction(SourceLocation EndLoc) {
   // edges will be *really* confused.
   bool EmitRetDbgLoc = true;
   if (EHStack.stable_begin() != PrologueCleanupDepth) {
-    PopCleanupBlocks(PrologueCleanupDepth, EndLoc);
+    PopCleanupBlocks(PrologueCleanupDepth);
 
     // Make sure the line table doesn't jump back into the body for
     // the ret after it's been at EndLoc.
@@ -651,25 +659,26 @@ void CodeGenFunction::GenerateCode(GlobalDecl GD, llvm::Function *Fn,
   const FunctionDecl *FD = cast<FunctionDecl>(GD.getDecl());
 
   // Check if we should generate debug info for this function.
-  if (!FD->hasAttr<NoDebugAttr>())
-    maybeInitializeDebugInfo();
+  if (FD->hasAttr<NoDebugAttr>())
+    DebugInfo = NULL; // disable debug info indefinitely for this function
 
   FunctionArgList Args;
   QualType ResTy = FD->getResultType();
 
   CurGD = GD;
-  if (isa<CXXMethodDecl>(FD) && cast<CXXMethodDecl>(FD)->isInstance())
+  const CXXMethodDecl *MD;
+  if ((MD = dyn_cast<CXXMethodDecl>(FD)) && MD->isInstance()) {
+    if (CGM.getCXXABI().HasThisReturn(GD))
+      ResTy = MD->getThisType(getContext());
     CGM.getCXXABI().BuildInstanceFunctionParams(*this, ResTy, Args);
+  }
 
   for (unsigned i = 0, e = FD->getNumParams(); i != e; ++i)
     Args.push_back(FD->getParamDecl(i));
 
   SourceRange BodyRange;
   if (Stmt *Body = FD->getBody()) BodyRange = Body->getSourceRange();
-
-  // CalleeWithThisReturn keeps track of the last callee inside this function
-  // that returns 'this'. Before starting the function, we set it to null.
-  CalleeWithThisReturn = 0;
+  CurEHLocation = BodyRange.getEnd();
 
   // Emit the standard function prologue.
   StartFunction(GD, ResTy, Fn, FnInfo, Args, BodyRange.getBegin());
@@ -694,7 +703,8 @@ void CodeGenFunction::GenerateCode(GlobalDecl GD, llvm::Function *Fn,
     // clones the body of the function call operator (but is actually static).
     EmitLambdaStaticInvokeFunction(cast<CXXMethodDecl>(FD));
   } else if (FD->isDefaulted() && isa<CXXMethodDecl>(FD) &&
-             cast<CXXMethodDecl>(FD)->isCopyAssignmentOperator()) {
+             (cast<CXXMethodDecl>(FD)->isCopyAssignmentOperator() ||
+              cast<CXXMethodDecl>(FD)->isMoveAssignmentOperator())) {
     // Implicit copy-assignment gets the same special treatment as implicit
     // copy-constructors.
     emitImplicitAssignmentOperatorBody(Args);
@@ -722,9 +732,6 @@ void CodeGenFunction::GenerateCode(GlobalDecl GD, llvm::Function *Fn,
 
   // Emit the standard function epilogue.
   FinishFunction(BodyRange.getEnd());
-  // CalleeWithThisReturn keeps track of the last callee inside this function
-  // that returns 'this'. After finishing the function, we set it to null.
-  CalleeWithThisReturn = 0;
 
   // If we haven't marked the function nothrow through other means, do
   // a quick pass now to see if we can.
@@ -946,9 +953,8 @@ void CodeGenFunction::EmitBranchOnBoolExpr(const Expr *Cond,
 
 /// ErrorUnsupported - Print out an error that codegen doesn't support the
 /// specified stmt yet.
-void CodeGenFunction::ErrorUnsupported(const Stmt *S, const char *Type,
-                                       bool OmitOnError) {
-  CGM.ErrorUnsupported(S, Type, OmitOnError);
+void CodeGenFunction::ErrorUnsupported(const Stmt *S, const char *Type) {
+  CGM.ErrorUnsupported(S, Type);
 }
 
 /// emitNonZeroVLAInit - Emit the "zero" initialization of a
@@ -1280,6 +1286,10 @@ void CodeGenFunction::EmitVariablyModifiedType(QualType type) {
     case Type::ObjCObjectPointer:
       llvm_unreachable("type class is never variably-modified!");
 
+    case Type::Decayed:
+      type = cast<DecayedType>(ty)->getPointeeType();
+      break;
+
     case Type::Pointer:
       type = cast<PointerType>(ty)->getPointeeType();
       break;
@@ -1352,6 +1362,7 @@ void CodeGenFunction::EmitVariablyModifiedType(QualType type) {
     case Type::UnaryTransform:
     case Type::Attributed:
     case Type::SubstTemplateTypeParm:
+    case Type::PackExpansion:
       // Keep walking after single level desugaring.
       type = type.getSingleStepDesugaredType(getContext());
       break;
@@ -1461,3 +1472,5 @@ llvm::Value *CodeGenFunction::EmitFieldAnnotations(const FieldDecl *D,
 
   return V;
 }
+
+CodeGenFunction::CGCapturedStmtInfo::~CGCapturedStmtInfo() { }

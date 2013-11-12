@@ -118,9 +118,9 @@ static void EmitDeclDestroy(CodeGenFunction &CGF, const VarDecl &D,
 
   // Otherwise, the standard logic requires a helper function.
   } else {
-    function = CodeGenFunction(CGM).generateDestroyHelper(addr, type,
-                                                  CGF.getDestroyer(dtorKind),
-                                                  CGF.needsEHCleanup(dtorKind));
+    function = CodeGenFunction(CGM)
+        .generateDestroyHelper(addr, type, CGF.getDestroyer(dtorKind),
+                               CGF.needsEHCleanup(dtorKind), &D);
     argument = llvm::Constant::getNullValue(CGF.Int8PtrTy);
   }
 
@@ -167,7 +167,7 @@ void CodeGenFunction::EmitCXXGlobalVarDeclInit(const VarDecl &D,
   assert(PerformInit && "cannot have constant initializer which needs "
          "destruction for reference");
   unsigned Alignment = getContext().getDeclAlign(&D).getQuantity();
-  RValue RV = EmitReferenceBindingToExpr(Init, &D);
+  RValue RV = EmitReferenceBindingToExpr(Init);
   EmitStoreOfScalar(RV.getScalarVal(), DeclPtr, false, Alignment, T);
 }
 
@@ -179,23 +179,24 @@ CreateGlobalInitOrDestructFunction(CodeGenModule &CGM,
 
 /// Create a stub function, suitable for being passed to atexit,
 /// which passes the given address to the given destructor function.
-static llvm::Constant *createAtExitStub(CodeGenModule &CGM,
+static llvm::Constant *createAtExitStub(CodeGenModule &CGM, const VarDecl &VD,
                                         llvm::Constant *dtor,
                                         llvm::Constant *addr) {
   // Get the destructor function type, void(*)(void).
   llvm::FunctionType *ty = llvm::FunctionType::get(CGM.VoidTy, false);
+  SmallString<256> FnName;
+  {
+    llvm::raw_svector_ostream Out(FnName);
+    CGM.getCXXABI().getMangleContext().mangleDynamicAtExitDestructor(&VD, Out);
+  }
   llvm::Function *fn =
-    CreateGlobalInitOrDestructFunction(CGM, ty,
-                                       Twine("__dtor_", addr->getName()));
+      CreateGlobalInitOrDestructFunction(CGM, ty, FnName.str());
 
   CodeGenFunction CGF(CGM);
 
-  // Initialize debug info if needed.
-  CGF.maybeInitializeDebugInfo();
-
-  CGF.StartFunction(GlobalDecl(), CGM.getContext().VoidTy, fn,
-                    CGM.getTypes().arrangeNullaryFunction(),
-                    FunctionArgList(), SourceLocation());
+  CGF.StartFunction(&VD, CGM.getContext().VoidTy, fn,
+                    CGM.getTypes().arrangeNullaryFunction(), FunctionArgList(),
+                    SourceLocation());
 
   llvm::CallInst *call = CGF.Builder.CreateCall(dtor, addr);
  
@@ -210,10 +211,11 @@ static llvm::Constant *createAtExitStub(CodeGenModule &CGM,
 }
 
 /// Register a global destructor using the C atexit runtime function.
-void CodeGenFunction::registerGlobalDtorWithAtExit(llvm::Constant *dtor,
+void CodeGenFunction::registerGlobalDtorWithAtExit(const VarDecl &VD,
+                                                   llvm::Constant *dtor,
                                                    llvm::Constant *addr) {
   // Create a function which calls the destructor.
-  llvm::Constant *dtorStub = createAtExitStub(CGM, dtor, addr);
+  llvm::Constant *dtorStub = createAtExitStub(CGM, VD, dtor, addr);
 
   // extern "C" int atexit(void (*f)(void));
   llvm::FunctionType *atexitTy =
@@ -275,13 +277,17 @@ CodeGenModule::EmitCXXGlobalVarDeclInitFunc(const VarDecl *D,
                                             llvm::GlobalVariable *Addr,
                                             bool PerformInit) {
   llvm::FunctionType *FTy = llvm::FunctionType::get(VoidTy, false);
+  SmallString<256> FnName;
+  {
+    llvm::raw_svector_ostream Out(FnName);
+    getCXXABI().getMangleContext().mangleDynamicInitializer(D, Out);
+  }
 
-  // Create a variable initialization function.
-  const char *InitFunctionName = getContext().getLangOpts().UPC ?
-    "__upc_global_var_init" : "__cxx_global_var_init";
-
-  llvm::Function *Fn =
-    CreateGlobalInitOrDestructFunction(*this, FTy, InitFunctionName);
+  llvm::Function *Fn;
+  if (getContext().getLangOpts().UPC)
+    Fn = CreateGlobalInitOrDestructFunction(*this, FTy, "__upc_global_var_init");
+  else
+    Fn = CreateGlobalInitOrDestructFunction(*this, FTy, FnName.str());
 
   CodeGenFunction(*this).GenerateCXXGlobalVarDeclInitFunc(Fn, D, Addr,
                                                           PerformInit);
@@ -298,6 +304,20 @@ CodeGenModule::EmitCXXGlobalVarDeclInitFunc(const VarDecl *D,
     unsigned int order = D->getAttr<InitPriorityAttr>()->getPriority();
     OrderGlobalInits Key(order, PrioritizedCXXGlobalInits.size());
     PrioritizedCXXGlobalInits.push_back(std::make_pair(Key, Fn));
+    DelayedCXXInitPosition.erase(D);
+  } else if (D->getTemplateSpecializationKind() != TSK_ExplicitSpecialization &&
+             D->getTemplateSpecializationKind() != TSK_Undeclared) {
+    // C++ [basic.start.init]p2:
+    //   Definitions of explicitly specialized class template static data
+    //   members have ordered initialization. Other class template static data
+    //   members (i.e., implicitly or explicitly instantiated specializations)
+    //   have unordered initialization.
+    //
+    // As a consequence, we can put them into their own llvm.global_ctors entry.
+    // This should allow GlobalOpt to fire more often, and allow us to implement
+    // the Microsoft C++ ABI, which uses COMDAT elimination to avoid double
+    // initializaiton.
+    AddGlobalCtor(Fn);
     DelayedCXXInitPosition.erase(D);
   } else {
     llvm::DenseMap<const Decl *, unsigned>::iterator I =
@@ -410,8 +430,8 @@ void CodeGenFunction::GenerateCXXGlobalVarDeclInitFunc(llvm::Function *Fn,
                                                  llvm::GlobalVariable *Addr,
                                                        bool PerformInit) {
   // Check if we need to emit debug info for variable initializer.
-  if (!D->hasAttr<NoDebugAttr>())
-    maybeInitializeDebugInfo();
+  if (D->hasAttr<NoDebugAttr>())
+    DebugInfo = NULL; // disable debug info indefinitely for this function
 
   StartFunction(GlobalDecl(D), getContext().VoidTy, Fn,
                 getTypes().arrangeNullaryFunction(),
@@ -434,9 +454,6 @@ void
 CodeGenFunction::GenerateCXXGlobalInitFunc(llvm::Function *Fn,
                                            ArrayRef<llvm::Constant *> Decls,
                                            llvm::GlobalVariable *Guard) {
-  // Initialize debug info if needed.
-  maybeInitializeDebugInfo();
-
   StartFunction(GlobalDecl(), getContext().VoidTy, Fn,
                 getTypes().arrangeNullaryFunction(),
                 FunctionArgList(), SourceLocation());
@@ -483,9 +500,6 @@ CodeGenFunction::GenerateCXXGlobalInitFunc(llvm::Function *Fn,
 void CodeGenFunction::GenerateCXXGlobalDtorsFunc(llvm::Function *Fn,
                   const std::vector<std::pair<llvm::WeakVH, llvm::Constant*> >
                                                 &DtorsAndObjects) {
-  // Initialize debug info if needed.
-  maybeInitializeDebugInfo();
-
   StartFunction(GlobalDecl(), getContext().VoidTy, Fn,
                 getTypes().arrangeNullaryFunction(),
                 FunctionArgList(), SourceLocation());
@@ -505,11 +519,9 @@ void CodeGenFunction::GenerateCXXGlobalDtorsFunc(llvm::Function *Fn,
 
 /// generateDestroyHelper - Generates a helper function which, when
 /// invoked, destroys the given object.
-llvm::Function * 
-CodeGenFunction::generateDestroyHelper(llvm::Constant *addr,
-                                       QualType type,
-                                       Destroyer *destroyer,
-                                       bool useEHCleanupForArray) {
+llvm::Function *CodeGenFunction::generateDestroyHelper(
+    llvm::Constant *addr, QualType type, Destroyer *destroyer,
+    bool useEHCleanupForArray, const VarDecl *VD) {
   FunctionArgList args;
   ImplicitParamDecl dst(0, SourceLocation(), 0, getContext().VoidPtrTy);
   args.push_back(&dst);
@@ -522,11 +534,7 @@ CodeGenFunction::generateDestroyHelper(llvm::Constant *addr,
   llvm::Function *fn = 
     CreateGlobalInitOrDestructFunction(CGM, FTy, "__cxx_global_array_dtor");
 
-  // Initialize debug info if needed.
-  maybeInitializeDebugInfo();
-
-  StartFunction(GlobalDecl(), getContext().VoidTy, fn, FI, args,
-                SourceLocation());
+  StartFunction(VD, getContext().VoidTy, fn, FI, args, SourceLocation());
 
   emitDestroy(addr, type, destroyer, useEHCleanupForArray);
   

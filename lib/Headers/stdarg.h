@@ -26,9 +26,10 @@
 #ifndef __STDARG_H
 #define __STDARG_H
 
-#ifndef _VA_LIST
+#if !defined(_VA_LIST) && !defined(_VA_LIST_DEFINED)
 typedef __builtin_va_list va_list;
 #define _VA_LIST
+#define _VA_LIST_DEFINED
 #endif
 #define va_start(ap, param) __builtin_va_start(ap, param)
 #define va_end(ap)          __builtin_va_end(ap)

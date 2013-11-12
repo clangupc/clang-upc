@@ -327,12 +327,13 @@ Retry:
     return StmtEmpty();
 
   case tok::annot_pragma_captured:
+    ProhibitAttributes(Attrs);
     return HandlePragmaCaptured();
 
   case tok::annot_pragma_openmp:
-    SourceLocation DeclStart = Tok.getLocation();
-    DeclGroupPtrTy Res = ParseOpenMPDeclarativeDirective();
-    return Actions.ActOnDeclStmt(Res, DeclStart, Tok.getLocation());
+    ProhibitAttributes(Attrs);
+    return ParseOpenMPDeclarativeOrExecutableDirective();
+
   }
 
   // If we reached this code, the statement must end in a semicolon.
@@ -830,7 +831,6 @@ StmtResult Parser::ParseCompoundStatementBody(bool isStmtExpr) {
   // only allowed at the start of a compound stmt regardless of the language.
   while (Tok.is(tok::kw___label__)) {
     SourceLocation LabelLoc = ConsumeToken();
-    Diag(LabelLoc, diag::ext_gnu_local_label);
 
     SmallVector<Decl *, 8> DeclsInGroup;
     while (1) {
@@ -849,8 +849,8 @@ StmtResult Parser::ParseCompoundStatementBody(bool isStmtExpr) {
     }
 
     DeclSpec DS(AttrFactory);
-    DeclGroupPtrTy Res = Actions.FinalizeDeclaratorGroup(getCurScope(), DS,
-                                      DeclsInGroup.data(), DeclsInGroup.size());
+    DeclGroupPtrTy Res =
+        Actions.FinalizeDeclaratorGroup(getCurScope(), DS, DeclsInGroup);
     StmtResult R = Actions.ActOnDeclStmt(Res, LabelLoc, Tok.getLocation());
 
     ExpectAndConsumeSemi(diag::err_expected_semi_declaration);
@@ -2385,14 +2385,16 @@ StmtResult Parser::ParseMicrosoftAsmStatement(SourceLocation AsmLoc) {
   const std::string &TT = TheTriple.getTriple();
   const llvm::Target *TheTarget = llvm::TargetRegistry::lookupTarget(TT, Error);
 
-  OwningPtr<llvm::MCAsmInfo> MAI(TheTarget->createMCAsmInfo(TT));
   OwningPtr<llvm::MCRegisterInfo> MRI(TheTarget->createMCRegInfo(TT));
+  OwningPtr<llvm::MCAsmInfo> MAI(TheTarget->createMCAsmInfo(*MRI, TT));
+  // Get the instruction descriptor.
+  const llvm::MCInstrInfo *MII = TheTarget->createMCInstrInfo(); 
   OwningPtr<llvm::MCObjectFileInfo> MOFI(new llvm::MCObjectFileInfo());
   OwningPtr<llvm::MCSubtargetInfo>
     STI(TheTarget->createMCSubtargetInfo(TT, "", ""));
 
   llvm::SourceMgr TempSrcMgr;
-  llvm::MCContext Ctx(*MAI, *MRI, MOFI.get(), &TempSrcMgr);
+  llvm::MCContext Ctx(MAI.get(), MRI.get(), MOFI.get(), &TempSrcMgr);
   llvm::MemoryBuffer *Buffer =
     llvm::MemoryBuffer::getMemBuffer(AsmString, "<MS inline asm>");
 
@@ -2403,10 +2405,8 @@ StmtResult Parser::ParseMicrosoftAsmStatement(SourceLocation AsmLoc) {
   OwningPtr<llvm::MCAsmParser>
     Parser(createMCAsmParser(TempSrcMgr, Ctx, *Str.get(), *MAI));
   OwningPtr<llvm::MCTargetAsmParser>
-    TargetParser(TheTarget->createMCAsmParser(*STI, *Parser));
+    TargetParser(TheTarget->createMCAsmParser(*STI, *Parser, *MII));
 
-  // Get the instruction descriptor.
-  const llvm::MCInstrInfo *MII = TheTarget->createMCInstrInfo(); 
   llvm::MCInstPrinter *IP =
     TheTarget->createMCInstPrinter(1, *MAI, *MII, *MRI, *STI);
 
@@ -2689,8 +2689,7 @@ Decl *Parser::ParseFunctionStatementBody(Decl *Decl, ParseScope &BodyScope) {
   // If the function body could not be parsed, make a bogus compoundstmt.
   if (FnBody.isInvalid()) {
     Sema::CompoundScopeRAII CompoundScope(Actions);
-    FnBody = Actions.ActOnCompoundStmt(LBraceLoc, LBraceLoc,
-                                       MultiStmtArg(), false);
+    FnBody = Actions.ActOnCompoundStmt(LBraceLoc, LBraceLoc, None, false);
   }
 
   BodyScope.Exit();
@@ -2727,8 +2726,7 @@ Decl *Parser::ParseFunctionTryBlock(Decl *Decl, ParseScope &BodyScope) {
   // compound statement as the body.
   if (FnBody.isInvalid()) {
     Sema::CompoundScopeRAII CompoundScope(Actions);
-    FnBody = Actions.ActOnCompoundStmt(LBraceLoc, LBraceLoc,
-                                       MultiStmtArg(), false);
+    FnBody = Actions.ActOnCompoundStmt(LBraceLoc, LBraceLoc, None, false);
   }
 
   BodyScope.Exit();
@@ -2840,7 +2838,7 @@ StmtResult Parser::ParseCXXTryBlockCommon(SourceLocation TryLoc, bool FnTry) {
     if (Handlers.empty())
       return StmtError();
 
-    return Actions.ActOnCXXTryBlock(TryLoc, TryBlock.take(),Handlers);
+    return Actions.ActOnCXXTryBlock(TryLoc, TryBlock.take(), Handlers);
   }
 }
 

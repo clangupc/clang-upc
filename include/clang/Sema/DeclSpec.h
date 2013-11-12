@@ -640,6 +640,8 @@ public:
                        const char *&PrevSpec, unsigned &DiagID);
   bool SetTypeAltiVecPixel(bool isAltiVecPixel, SourceLocation Loc,
                        const char *&PrevSpec, unsigned &DiagID);
+  bool SetTypeAltiVecBool(bool isAltiVecBool, SourceLocation Loc,
+                       const char *&PrevSpec, unsigned &DiagID);
   bool SetTypeSpecError();
   void UpdateDeclRep(Decl *Rep) {
     assert(isDeclRep((TST) TypeSpecType));
@@ -1768,6 +1770,38 @@ public:
     llvm_unreachable("unknown context kind!");
   }
 
+  /// diagnoseIdentifier - Return true if the identifier is prohibited and
+  /// should be diagnosed (because it cannot be anything else).
+  bool diagnoseIdentifier() const {
+    switch (Context) {
+    case FileContext:
+    case KNRTypeListContext:
+    case MemberContext:
+    case BlockContext:
+    case ForContext:
+    case ConditionContext:
+    case PrototypeContext:
+    case TemplateParamContext:
+    case CXXCatchContext:
+    case ObjCCatchContext:
+    case TypeNameContext:
+    case ConversionIdContext:
+    case ObjCParameterContext:
+    case ObjCResultContext:
+    case BlockLiteralContext:
+    case CXXNewContext:
+    case LambdaExprContext:
+      return false;
+
+    case AliasDeclContext:
+    case AliasTemplateContext:
+    case TemplateTypeArgContext:
+    case TrailingReturnContext:
+      return true;
+    }
+    llvm_unreachable("unknown context kind!");
+  }
+
   /// mayBeFollowedByCXXDirectInit - Return true if the declarator can be
   /// followed by a C++ direct initializer, e.g. "int x(1);".
   bool mayBeFollowedByCXXDirectInit() const {
@@ -2046,7 +2080,7 @@ public:
 
   /// \brief Return a source range list of C++11 attributes associated
   /// with the declarator.
-  void getCXX11AttributeRanges(SmallVector<SourceRange, 4> &Ranges) {
+  void getCXX11AttributeRanges(SmallVectorImpl<SourceRange> &Ranges) {
     AttributeList *AttrList = Attrs.getList();
     while (AttrList) {
       if (AttrList->isCXX11Attribute())
@@ -2139,13 +2173,15 @@ private:
 struct LambdaCapture {
   LambdaCaptureKind Kind;
   SourceLocation Loc;
-  IdentifierInfo* Id;
+  IdentifierInfo *Id;
   SourceLocation EllipsisLoc;
-  
+  ExprResult Init;
+
   LambdaCapture(LambdaCaptureKind Kind, SourceLocation Loc,
                 IdentifierInfo* Id = 0,
-                SourceLocation EllipsisLoc = SourceLocation())
-    : Kind(Kind), Loc(Loc), Id(Id), EllipsisLoc(EllipsisLoc)
+                SourceLocation EllipsisLoc = SourceLocation(),
+                ExprResult Init = ExprResult())
+    : Kind(Kind), Loc(Loc), Id(Id), EllipsisLoc(EllipsisLoc), Init(Init)
   {}
 };
 
@@ -2162,11 +2198,11 @@ struct LambdaIntroducer {
   /// \brief Append a capture in a lambda introducer.
   void addCapture(LambdaCaptureKind Kind,
                   SourceLocation Loc,
-                  IdentifierInfo* Id = 0, 
-                  SourceLocation EllipsisLoc = SourceLocation()) {
-    Captures.push_back(LambdaCapture(Kind, Loc, Id, EllipsisLoc));
+                  IdentifierInfo* Id = 0,
+                  SourceLocation EllipsisLoc = SourceLocation(),
+                  ExprResult Init = ExprResult()) {
+    Captures.push_back(LambdaCapture(Kind, Loc, Id, EllipsisLoc, Init));
   }
-
 };
 
 } // end namespace clang

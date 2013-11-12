@@ -11,8 +11,10 @@
 #define PT_GUARDED_VAR      __attribute__ ((pt_guarded_var))
 #define ACQUIRED_AFTER(...) __attribute__ ((acquired_after(__VA_ARGS__)))
 #define ACQUIRED_BEFORE(...) __attribute__ ((acquired_before(__VA_ARGS__)))
-#define EXCLUSIVE_LOCK_FUNCTION(...)   __attribute__ ((exclusive_lock_function(__VA_ARGS__)))
-#define SHARED_LOCK_FUNCTION(...)      __attribute__ ((shared_lock_function(__VA_ARGS__)))
+#define EXCLUSIVE_LOCK_FUNCTION(...)    __attribute__ ((exclusive_lock_function(__VA_ARGS__)))
+#define SHARED_LOCK_FUNCTION(...)       __attribute__ ((shared_lock_function(__VA_ARGS__)))
+#define ASSERT_EXCLUSIVE_LOCK(...)      __attribute__ ((assert_exclusive_lock(__VA_ARGS__)))
+#define ASSERT_SHARED_LOCK(...)         __attribute__ ((assert_shared_lock(__VA_ARGS__)))
 #define EXCLUSIVE_TRYLOCK_FUNCTION(...) __attribute__ ((exclusive_trylock_function(__VA_ARGS__)))
 #define SHARED_TRYLOCK_FUNCTION(...)    __attribute__ ((shared_trylock_function(__VA_ARGS__)))
 #define UNLOCK_FUNCTION(...)            __attribute__ ((unlock_function(__VA_ARGS__)))
@@ -33,6 +35,9 @@ class  __attribute__((lockable)) Mutex {
   bool TryLock() __attribute__((exclusive_trylock_function(true)));
   bool ReaderTryLock() __attribute__((shared_trylock_function(true)));
   void LockWhen(const int &cond) __attribute__((exclusive_lock_function));
+
+  void AssertHeld()       ASSERT_EXCLUSIVE_LOCK();
+  void AssertReaderHeld() ASSERT_SHARED_LOCK();
 };
 
 class __attribute__((scoped_lockable)) MutexLock {
@@ -102,14 +107,14 @@ class MutexWrapper {
 public:
    Mutex mu;
    int x __attribute__((guarded_by(mu)));
-   void MyLock() __attribute__((exclusive_lock_function(mu))); 
+   void MyLock() __attribute__((exclusive_lock_function(mu)));
 };
 
 MutexWrapper sls_mw;
 
 void sls_fun_0() {
   sls_mw.mu.Lock();
-  sls_mw.x = 5; 
+  sls_mw.x = 5;
   sls_mw.mu.Unlock();
 }
 
@@ -3069,44 +3074,6 @@ void Foo::test1() {
 #endif
 }
 
-
-void Foo::test2() {
-/* FIXME: these tests depend on changes to the CFG.
- *
-  if (mu_.TryLock() && c) {
-    a = 0;
-    unlock();
-  }
-  else return;
-
-  if (c && mu_.TryLock()) {
-    a = 0;
-    unlock();
-  }
-  else return;
-
-  if (!(mu_.TryLock() && c))
-    return;
-  a = 0;
-  unlock();
-
-  if (!(c && mu_.TryLock()))
-    return;
-  a = 0;
-  unlock();
-
-  if (!(mu_.TryLock() == 0) && c) {
-    a = 0;
-    unlock();
-  }
-
-  if (!mu_.TryLock() || c)
-    return;
-  a = 0;
-  unlock();
-*/
-}
-
 } // end namespace TryLockEqTest
 
 
@@ -3984,4 +3951,194 @@ private:
 };
 
 }  // end namespace LockUnlockFunctionTest
+
+
+namespace AssertHeldTest {
+
+class Foo {
+public:
+  int c;
+  int a GUARDED_BY(mu_);
+  Mutex mu_;
+
+  void test1() {
+    mu_.AssertHeld();
+    int b = a;
+    a = 0;
+  }
+
+  void test2() {
+    mu_.AssertReaderHeld();
+    int b = a;
+    a = 0;   // expected-warning {{writing variable 'a' requires locking 'mu_' exclusively}}
+  }
+
+  void test3() {
+    if (c) {
+      mu_.AssertHeld();
+    }
+    else {
+      mu_.AssertHeld();
+    }
+    int b = a;
+    a = 0;
+  }
+
+  void test4() EXCLUSIVE_LOCKS_REQUIRED(mu_) {
+    mu_.AssertHeld();
+    int b = a;
+    a = 0;
+  }
+
+  void test5() UNLOCK_FUNCTION(mu_) {
+    mu_.AssertHeld();
+    mu_.Unlock();
+  }
+
+  void test6() {
+    mu_.AssertHeld();
+    mu_.Unlock();
+  }  // should this be a warning?
+
+  void test7() {
+    if (c) {
+      mu_.AssertHeld();
+    }
+    else {
+      mu_.Lock();
+    }
+    int b = a;
+    a = 0;
+    mu_.Unlock();
+  }
+
+  void test8() {
+    if (c) {
+      mu_.Lock();
+    }
+    else {
+      mu_.AssertHeld();
+    }
+    int b = a;
+    a = 0;
+    mu_.Unlock();
+  }
+
+  void test9() {
+    if (c) {
+      mu_.AssertHeld();
+    }
+    else {
+      mu_.Lock();  // expected-note {{mutex acquired here}}
+    }
+  }  // expected-warning {{mutex 'mu_' is still locked at the end of function}}
+
+  void test10() {
+    if (c) {
+      mu_.Lock();  // expected-note {{mutex acquired here}}
+    }
+    else {
+      mu_.AssertHeld();
+    }
+  }  // expected-warning {{mutex 'mu_' is still locked at the end of function}}
+
+  void assertMu() ASSERT_EXCLUSIVE_LOCK(mu_);
+
+  void test11() {
+    assertMu();
+    int b = a;
+    a = 0;
+  }
+};
+
+}  // end namespace AssertHeldTest
+
+
+namespace LogicalConditionalTryLock {
+
+class Foo {
+public:
+  Mutex mu;
+  int a GUARDED_BY(mu);
+  bool c;
+
+  bool newc();
+
+  void test1() {
+    if (c && mu.TryLock()) {
+      a = 0;
+      mu.Unlock();
+    }
+  }
+
+  void test2() {
+    bool b = mu.TryLock();
+    if (c && b) {
+      a = 0;
+      mu.Unlock();
+    }
+  }
+
+  void test3() {
+    if (c || !mu.TryLock())
+      return;
+    a = 0;
+    mu.Unlock();
+  }
+
+  void test4() {
+    while (c && mu.TryLock()) {
+      a = 0;
+      c = newc();
+      mu.Unlock();
+    }
+  }
+
+  void test5() {
+    while (c) {
+      if (newc() || !mu.TryLock())
+        break;
+      a = 0;
+      mu.Unlock();
+    }
+  }
+
+  void test6() {
+    mu.Lock();
+    do {
+      a = 0;
+      mu.Unlock();
+    } while (newc() && mu.TryLock());
+  }
+
+  void test7() {
+    for (bool b = mu.TryLock(); c && b;) {
+      a = 0;
+      mu.Unlock();
+    }
+  }
+
+  void test8() {
+    if (c && newc() && mu.TryLock()) {
+      a = 0;
+      mu.Unlock();
+    }
+  }
+
+  void test9() {
+    if (!(c && newc() && mu.TryLock()))
+      return;
+    a = 0;
+    mu.Unlock();
+  }
+
+  void test10() {
+    if (!(c || !mu.TryLock())) {
+      a = 0;
+      mu.Unlock();
+    }
+  }
+};
+
+}  // end namespace LogicalConditionalTryLock
 

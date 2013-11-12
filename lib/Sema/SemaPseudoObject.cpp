@@ -101,6 +101,25 @@ namespace {
                                                     resultIndex);
       }
 
+      if (ChooseExpr *ce = dyn_cast<ChooseExpr>(e)) {
+        assert(!ce->isConditionDependent());
+
+        Expr *LHS = ce->getLHS(), *RHS = ce->getRHS();
+        Expr *&rebuiltExpr = ce->isConditionTrue() ? LHS : RHS;
+        rebuiltExpr = rebuild(rebuiltExpr);
+
+        return new (S.Context) ChooseExpr(ce->getBuiltinLoc(),
+                                          ce->getCond(),
+                                          LHS, RHS,
+                                          rebuiltExpr->getType(),
+                                          rebuiltExpr->getValueKind(),
+                                          rebuiltExpr->getObjectKind(),
+                                          ce->getRParenLoc(),
+                                          ce->isConditionTrue(),
+                                          rebuiltExpr->isTypeDependent(),
+                                          rebuiltExpr->isValueDependent());
+      }
+
       llvm_unreachable("bad expression to rebuild!");
     }
   };
@@ -575,9 +594,9 @@ bool ObjCPropertyOpBuilder::findSetter(bool warn) {
         RefExpr->getImplicitPropertyGetter()->getSelector()
           .getIdentifierInfoForSlot(0);
       SetterSelector =
-        SelectorTable::constructSetterName(S.PP.getIdentifierTable(),
-                                           S.PP.getSelectorTable(),
-                                           getterName);
+        SelectorTable::constructSetterSelector(S.PP.getIdentifierTable(),
+                                               S.PP.getSelectorTable(),
+                                               getterName);
       return false;
     }
   }
@@ -882,8 +901,8 @@ ExprResult ObjCPropertyOpBuilder::complete(Expr *SyntacticForm) {
       S.Diags.getDiagnosticLevel(diag::warn_arc_repeated_use_of_weak,
                                  SyntacticForm->getLocStart());
     if (Level != DiagnosticsEngine::Ignored)
-      S.getCurFunction()->recordUseOfWeak(SyntacticRefExpr,
-                                         SyntacticRefExpr->isMessagingGetter());
+      S.recordUseOfEvaluatedWeak(SyntacticRefExpr,
+                                 SyntacticRefExpr->isMessagingGetter());
   }
 
   return PseudoOpBuilder::complete(SyntacticForm);

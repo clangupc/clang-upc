@@ -533,7 +533,7 @@ public:
   bool operator==(Qualifiers Other) const { return Mask == Other.Mask; }
   bool operator!=(Qualifiers Other) const { return Mask != Other.Mask; }
 
-  operator bool() const { return hasQualifiers(); }
+  LLVM_EXPLICIT operator bool() const { return hasQualifiers(); }
 
   Qualifiers &operator+=(Qualifiers R) {
     addQualifiers(R);
@@ -914,7 +914,7 @@ public:
   /// an lvalue. It removes a top-level reference (since there are no
   /// expressions of reference type) and deletes top-level cvr-qualifiers
   /// from non-class types (in C++) or all types (in C).
-  QualType getNonLValueExprType(ASTContext &Context) const;
+  QualType getNonLValueExprType(const ASTContext &Context) const;
 
   /// getDesugaredType - Return the specified type with any "sugar" removed from
   /// the type.  This takes off typedefs, typeof's etc.  If the outer level of
@@ -1290,7 +1290,7 @@ private:
     mutable unsigned CacheValid : 1;
 
     /// \brief Linkage of this type.
-    mutable unsigned CachedLinkage : 2;
+    mutable unsigned CachedLinkage : 3;
 
     /// \brief Whether this type involves and local or unnamed types.
     mutable unsigned CachedLocalOrUnnamed : 1;
@@ -1411,6 +1411,8 @@ protected:
 
     /// NumElements - The number of elements in the vector.
     unsigned NumElements : 29 - NumTypeBits;
+
+    enum { MaxNumElements = (1 << (29 - NumTypeBits)) - 1 };
   };
 
   class AttributedTypeBitfields {
@@ -1550,7 +1552,7 @@ public:
 
   /// isLiteralType - Return true if this is a literal type
   /// (C++11 [basic.types]p10)
-  bool isLiteralType(ASTContext &Ctx) const;
+  bool isLiteralType(const ASTContext &Ctx) const;
 
   /// \brief Test if this type is a standard-layout type.
   /// (C++0x [basic.type]p9)
@@ -1608,7 +1610,6 @@ public:
   bool isRealType() const;         // C99 6.2.5p17 (real floating + integer)
   bool isArithmeticType() const;   // C99 6.2.5p18 (integer + floating)
   bool isVoidType() const;         // C99 6.2.5p19
-  bool isDerivedType() const;      // C99 6.2.5p20
   bool isScalarType() const;       // C99 6.2.5p21 (arithmetic + pointers)
   bool isAggregateType() const;
   bool isFundamentalType() const;
@@ -1914,6 +1915,10 @@ template <> const TypedefType *Type::getAs() const;
 /// non-sugared type.
 template <> const TemplateSpecializationType *Type::getAs() const;
 
+/// \brief This will check for an AttributedType by removing any existing sugar
+/// until it reaches an AttributedType or a non-sugared type.
+template <> const AttributedType *Type::getAs() const;
+
 // We can do canonical leaf types faster, because we don't have to
 // worry about preserving child type decoration.
 #define TYPE(Class, Base)
@@ -2092,6 +2097,44 @@ public:
   }
 
   static bool classof(const Type *T) { return T->getTypeClass() == Pointer; }
+};
+
+/// \brief Represents a pointer type decayed from an array or function type.
+class DecayedType : public Type, public llvm::FoldingSetNode {
+  QualType OriginalType;
+  QualType DecayedPointer;
+
+  DecayedType(QualType OriginalType, QualType DecayedPointer,
+              QualType CanonicalPtr)
+      : Type(Decayed, CanonicalPtr, OriginalType->isDependentType(),
+             OriginalType->isInstantiationDependentType(),
+             OriginalType->isVariablyModifiedType(),
+             OriginalType->containsUnexpandedParameterPack()),
+        OriginalType(OriginalType), DecayedPointer(DecayedPointer) {
+    assert(isa<PointerType>(DecayedPointer));
+  }
+
+  friend class ASTContext;  // ASTContext creates these.
+
+public:
+  QualType getDecayedType() const { return DecayedPointer; }
+  QualType getOriginalType() const { return OriginalType; }
+
+  QualType getPointeeType() const {
+    return cast<PointerType>(DecayedPointer)->getPointeeType();
+  }
+
+  bool isSugared() const { return true; }
+  QualType desugar() const { return DecayedPointer; }
+
+  void Profile(llvm::FoldingSetNodeID &ID) {
+    Profile(ID, OriginalType);
+  }
+  static void Profile(llvm::FoldingSetNodeID &ID, QualType OriginalType) {
+    ID.AddPointer(OriginalType.getAsOpaquePtr());
+  }
+
+  static bool classof(const Type *T) { return T->getTypeClass() == Decayed; }
 };
 
 /// BlockPointerType - pointer to a block type.
@@ -2643,6 +2686,9 @@ public:
 
   QualType getElementType() const { return ElementType; }
   unsigned getNumElements() const { return VectorTypeBits.NumElements; }
+  static bool isVectorSizeTooLarge(unsigned NumElements) {
+    return NumElements > VectorTypeBitfields::MaxNumElements;
+  }
 
   bool isSugared() const { return false; }
   QualType desugar() const { return QualType(this, 0); }
@@ -2797,7 +2843,11 @@ class FunctionType : public Type {
 
     // Constructor with all defaults. Use when for example creating a
     // function know to use defaults.
-    ExtInfo() : Bits(0) {}
+    ExtInfo() : Bits(CC_C) { }
+
+    // Constructor with just the calling convention, which is an important part
+    // of the canonical type.
+    ExtInfo(CallingConv CC) : Bits(CC) { }
 
     bool getNoReturn() const { return Bits & NoReturnMask; }
     bool getProducesResult() const { return Bits & ProducesResultMask; }
@@ -2939,6 +2989,12 @@ public:
       NumExceptions(0), Exceptions(0), NoexceptExpr(0),
       ExceptionSpecDecl(0), ExceptionSpecTemplate(0),
       ConsumedArguments(0) {}
+
+    ExtProtoInfo(CallingConv CC)
+        : ExtInfo(CC), Variadic(false), HasTrailingReturn(false), TypeQuals(0),
+          ExceptionSpecType(EST_None), RefQualifier(RQ_None), NumExceptions(0),
+          Exceptions(0), NoexceptExpr(0), ExceptionSpecDecl(0),
+          ExceptionSpecTemplate(0), ConsumedArguments(0) {}
 
     FunctionType::ExtInfo ExtInfo;
     bool Variadic : 1;
@@ -3084,7 +3140,7 @@ public:
     NR_Nothrow      ///< The noexcept specifier evaluates to true.
   };
   /// \brief Get the meaning of the noexcept spec on this function, if any.
-  NoexceptResult getNoexceptSpec(ASTContext &Ctx) const;
+  NoexceptResult getNoexceptSpec(const ASTContext &Ctx) const;
   unsigned getNumExceptions() const { return NumExceptions; }
   QualType getExceptionType(unsigned i) const {
     assert(i < NumExceptions && "Invalid exception number!");
@@ -3115,7 +3171,7 @@ public:
       return 0;
     return reinterpret_cast<FunctionDecl * const *>(arg_type_end())[1];
   }
-  bool isNothrow(ASTContext &Ctx) const {
+  bool isNothrow(const ASTContext &Ctx) const {
     ExceptionSpecificationType EST = getExceptionSpecType();
     assert(EST != EST_Unevaluated && EST != EST_Uninstantiated);
     if (EST == EST_DynamicNone || EST == EST_BasicNoexcept)
@@ -3479,9 +3535,10 @@ public:
     attr_objc_gc,
     attr_objc_ownership,
     attr_pcs,
+    attr_pcs_vfp,
 
     FirstEnumOperandKind = attr_objc_gc,
-    LastEnumOperandKind = attr_pcs,
+    LastEnumOperandKind = attr_pcs_vfp,
 
     // No operand.
     attr_noreturn,
@@ -3491,7 +3548,13 @@ public:
     attr_thiscall,
     attr_pascal,
     attr_pnaclcall,
-    attr_inteloclbicc
+    attr_inteloclbicc,
+    attr_ms_abi,
+    attr_sysv_abi,
+    attr_ptr32,
+    attr_ptr64,
+    attr_sptr,
+    attr_uptr
   };
 
 private:
@@ -3520,6 +3583,10 @@ public:
 
   bool isSugared() const { return true; }
   QualType desugar() const { return getEquivalentType(); }
+
+  bool isMSTypeSpec() const;
+
+  bool isCallingConv() const;
 
   void Profile(llvm::FoldingSetNodeID &ID) {
     Profile(ID, getAttrKind(), ModifiedType, EquivalentType);
@@ -3810,10 +3877,6 @@ class TemplateSpecializationType
 public:
   /// \brief Determine whether any of the given template arguments are
   /// dependent.
-  static bool anyDependentTemplateArguments(const TemplateArgument *Args,
-                                            unsigned NumArgs,
-                                            bool &InstantiationDependent);
-
   static bool anyDependentTemplateArguments(const TemplateArgumentLoc *Args,
                                             unsigned NumArgs,
                                             bool &InstantiationDependent);
@@ -4310,8 +4373,8 @@ public:
     return None;
   }
 
-  bool isSugared() const { return false; }
-  QualType desugar() const { return QualType(this, 0); }
+  bool isSugared() const { return !Pattern->isDependentType(); }
+  QualType desugar() const { return isSugared() ? Pattern : QualType(this, 0); }
 
   void Profile(llvm::FoldingSetNodeID &ID) {
     Profile(ID, getPattern(), getNumExpansions());
@@ -4345,11 +4408,11 @@ public:
 ///
 /// 'C<P>' is an ObjCObjectType with base C and protocol list [P].
 ///
-/// 'id' is a TypedefType which is sugar for an ObjCPointerType whose
+/// 'id' is a TypedefType which is sugar for an ObjCObjectPointerType whose
 /// pointee is an ObjCObjectType with base BuiltinType::ObjCIdType
 /// and no protocols.
 ///
-/// 'id<P>' is an ObjCPointerType whose pointee is an ObjCObjecType
+/// 'id<P>' is an ObjCObjectPointerType whose pointee is an ObjCObjectType
 /// with base BuiltinType::ObjCIdType and protocol list [P].  Eventually
 /// this should get its own sugar class to better represent the source.
 class ObjCObjectType : public Type {
@@ -4387,7 +4450,7 @@ public:
   /// getBaseType - Gets the base type of this object type.  This is
   /// always (possibly sugar for) one of:
   ///  - the 'id' builtin type (as opposed to the 'id' type visible to the
-  ///    user, which is a typedef for an ObjCPointerType)
+  ///    user, which is a typedef for an ObjCObjectPointerType)
   ///  - the 'Class' builtin type (same caveat)
   ///  - an ObjCObjectType (currently always an ObjCInterfaceType)
   QualType getBaseType() const { return BaseType; }

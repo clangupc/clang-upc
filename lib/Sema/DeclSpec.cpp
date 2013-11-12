@@ -656,7 +656,7 @@ bool DeclSpec::SetTypeSpecType(TST T, SourceLocation TagKwLoc,
   DeclRep = Rep;
   TSTLoc = TagKwLoc;
   TSTNameLoc = TagNameLoc;
-  TypeSpecOwned = Owned;
+  TypeSpecOwned = Owned && Rep != 0;
   return false;
 }
 
@@ -707,6 +707,20 @@ bool DeclSpec::SetTypeAltiVecPixel(bool isAltiVecPixel, SourceLocation Loc,
     return true;
   }
   TypeAltiVecPixel = isAltiVecPixel;
+  TSTLoc = Loc;
+  TSTNameLoc = Loc;
+  return false;
+}
+
+bool DeclSpec::SetTypeAltiVecBool(bool isAltiVecBool, SourceLocation Loc,
+                          const char *&PrevSpec, unsigned &DiagID) {
+  if (!TypeAltiVecVector || TypeAltiVecBool ||
+      (TypeSpecType != TST_unspecified)) {
+    PrevSpec = DeclSpec::getSpecifierName((TST) TypeSpecType);
+    DiagID = diag::err_invalid_vector_bool_decl_spec;
+    return true;
+  }
+  TypeAltiVecBool = isAltiVecBool;
   TSTLoc = Loc;
   TSTNameLoc = Loc;
   return false;
