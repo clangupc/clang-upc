@@ -208,11 +208,11 @@ public:
   }
 
   Value *VisitUPCMyThreadExpr(UPCMyThreadExpr *E) {
-    return CGF.EmitUPCThreads();
+    return CGF.EmitUPCMyThread();
   }
 
   Value *VisitUPCThreadExpr(UPCThreadExpr *E) {
-    return CGF.EmitUPCMyThread();
+    return CGF.EmitUPCThreads();
   }
 
   Value *VisitSizeOfPackExpr(SizeOfPackExpr *E) {
