@@ -206,6 +206,8 @@ set(CMAKE_C_COMPILER ${LLVM_TOOLS_BINARY_DIR}/clang)
 # Setup Compiler Flags
 #===============================================================================
 
+set(LIBUPC_WARNING_FLAGS "-Wno-gnu -Wno-language-extension-token")
+
 # Get required flags.
 
 macro(append_if list condition var)
