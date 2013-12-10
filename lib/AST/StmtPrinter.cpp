@@ -783,6 +783,10 @@ void StmtPrinter::VisitCharacterLiteral(CharacterLiteral *Node) {
     OS << "'\\v'";
     break;
   default:
+    // A character literal might be sign-extended, which
+    // would result in an invalid \U escape sequence.
+    if ((value & 0xFFFFFF00u) == 0xFFFFFF00u && Node->getKind() == CharacterLiteral::Ascii)
+      value = value & 0xFFu;
     if (value < 256 && isPrintable((unsigned char)value))
       OS << "'" << (char)value << "'";
     else if (value < 256)
