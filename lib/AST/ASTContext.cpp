@@ -3842,6 +3842,11 @@ QualType ASTContext::getUnqualifiedArrayType(QualType type,
                                 CAT->getSizeModifier(), 0);
   }
 
+  if (const UPCThreadArrayType *TAT = dyn_cast<UPCThreadArrayType>(AT)) {
+    return getUPCThreadArrayType(unqualElementType, TAT->getSize(),
+				 TAT->getThread(), TAT->getSizeModifier(), 0);
+  }
+
   if (const IncompleteArrayType *IAT = dyn_cast<IncompleteArrayType>(AT)) {
     return getIncompleteArrayType(unqualElementType, IAT->getSizeModifier(), 0);
   }
