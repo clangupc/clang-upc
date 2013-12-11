@@ -366,9 +366,11 @@ void PragmaPackHandler::HandlePragma(Preprocessor &PP,
                       /*OwnsTokens=*/false);
 }
 
-// #pragma upc comes in two variants:
+// #pragma upc comes in few variants:
 //   'strict'
 //   'relaxed'
+//   'c_code'
+//   'upc_code'
 void PragmaUPCHandler::HandlePragma(Preprocessor &PP, 
                                     PragmaIntroducerKind Introducer,
                                     Token &UPCTok) {
@@ -377,7 +379,7 @@ void PragmaUPCHandler::HandlePragma(Preprocessor &PP,
   Token Tok;
   PP.LexUnexpandedToken(Tok);
 
-  const IdentifierInfo *StrictRelaxed = Tok.getIdentifierInfo();
+  const IdentifierInfo *UpcPragma = Tok.getIdentifierInfo();
 
   Sema::PragmaUPCKind Kind;
 
@@ -387,10 +389,14 @@ void PragmaUPCHandler::HandlePragma(Preprocessor &PP,
     return;
   }
 
-  if (StrictRelaxed && StrictRelaxed->isStr("strict")) {
+  if (UpcPragma && UpcPragma->isStr("strict")) {
     Kind = Sema::PUPCK_Strict;
-  } else if (StrictRelaxed && StrictRelaxed->isStr("relaxed")) {
+  } else if (UpcPragma && UpcPragma->isStr("relaxed")) {
     Kind = Sema::PUPCK_Relaxed;
+  } else if (UpcPragma && UpcPragma->isStr("upc_code")) {
+    Kind = Sema::PUPCK_UPC_Code;
+  } else if (UpcPragma && UpcPragma->isStr("c_code")) {
+    Kind = Sema::PUPCK_C_Code;
   } else {
     PP.Diag(Tok.getLocation(), diag::warn_pragma_upc_invalid);
     return;

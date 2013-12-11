@@ -6601,7 +6601,9 @@ public:
 
   enum PragmaUPCKind {
     PUPCK_Relaxed,
-    PUPCK_Strict
+    PUPCK_Strict,
+    PUPCK_UPC_Code,
+    PUPCK_C_Code
   };
 
   enum PragmaMSStructKind {
