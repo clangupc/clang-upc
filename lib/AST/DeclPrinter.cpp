@@ -147,20 +147,18 @@ void Decl::printGroup(Decl** Begin, unsigned NumDecls,
     ++Begin;
 
   PrintingPolicy SubPolicy(Policy);
-  if (TD && TD->isCompleteDefinition()) {
-    TD->print(Out, Policy, Indentation);
-    Out << " ";
-    SubPolicy.SuppressTag = true;
-  }
 
   bool isFirst = true;
   for ( ; Begin != End; ++Begin) {
     if (isFirst) {
+      if(TD)
+	SubPolicy.IncludeTagDefinition = true;
       SubPolicy.SuppressSpecifiers = false;
       isFirst = false;
     } else {
       if (!isFirst) Out << ", ";
       SubPolicy.SuppressSpecifiers = true;
+      SubPolicy.IncludeTagDefinition = false;
     }
 
     (*Begin)->print(Out, SubPolicy, Indentation);

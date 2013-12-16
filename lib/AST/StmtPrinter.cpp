@@ -41,7 +41,9 @@ namespace  {
     StmtPrinter(raw_ostream &os, PrinterHelper* helper,
                 const PrintingPolicy &Policy,
                 unsigned Indentation = 0)
-      : OS(os), IndentLevel(Indentation), Helper(helper), Policy(Policy) {}
+      : OS(os), IndentLevel(Indentation), Helper(helper), Policy(Policy) {
+      this->Policy.IncludeTagDefinition = false;
+    }
 
     void PrintStmt(Stmt *S) {
       PrintStmt(S, Policy.Indentation);

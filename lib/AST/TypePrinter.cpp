@@ -862,6 +862,15 @@ void TypePrinter::printTag(TagDecl *D, raw_ostream &OS) {
   if (Policy.SuppressTag)
     return;
 
+  if (Policy.IncludeTagDefinition) {
+    // FIXME: use RAII
+    Policy.IncludeTagDefinition = false;
+    D->print(OS, Policy);
+    Policy.IncludeTagDefinition = true;
+    spaceBeforePlaceHolder(OS);
+    return;
+  }
+
   bool HasKindDecoration = false;
 
   // bool SuppressTagKeyword
@@ -1014,12 +1023,16 @@ void TypePrinter::printInjectedClassNameAfter(const InjectedClassNameType *T,
 
 void TypePrinter::printElaboratedBefore(const ElaboratedType *T,
                                         raw_ostream &OS) {
+  if (!Policy.IncludeTagDefinition) {
+
   OS << TypeWithKeyword::getKeywordName(T->getKeyword());
   if (T->getKeyword() != ETK_None)
     OS << " ";
   NestedNameSpecifier* Qualifier = T->getQualifier();
   if (Qualifier)
     Qualifier->print(OS, Policy);
+
+  }
   
   ElaboratedTypePolicyRAII PolicyRAII(Policy);
   printBefore(T->getNamedType(), OS);
