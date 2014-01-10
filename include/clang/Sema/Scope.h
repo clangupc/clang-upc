@@ -93,8 +93,11 @@ public:
     /// \brief This is the scope for a function-level C++ try or catch scope.
     FnTryCatchScope = 0x4000,
 
+    /// \brief This is the scope of OpenMP executable directive
+    OpenMPDirectiveScope = 0x8000,
+
     /// UPCForAllScope - This is the scope of a upc_forall statement.
-    UPCForAllScope = 0x8000
+    UPCForAllScope = 0x10000
   };
 private:
   /// The parent scope for this scope.  This is null for the translation-unit
@@ -107,7 +110,7 @@ private:
 
   /// Flags - This contains a set of ScopeFlags, which indicates how the scope
   /// interrelates with other control flow statements.
-  unsigned short Flags;
+  unsigned int Flags;
 
   /// PrototypeDepth - This is the number of function prototype scopes
   /// enclosing this scope, including this scope.
@@ -146,11 +149,10 @@ private:
   typedef llvm::SmallPtrSet<Decl *, 32> DeclSetTy;
   DeclSetTy DeclsInScope;
 
-  /// Entity - The entity with which this scope is associated. For
+  /// The DeclContext with which this scope is associated. For
   /// example, the entity of a class scope is the class itself, the
-  /// entity of a function scope is a function, etc. This field is
-  /// maintained by the Action implementation.
-  void *Entity;
+  /// entity of a function scope is a function, etc.
+  DeclContext *Entity;
 
   typedef SmallVector<UsingDirectiveDecl *, 2> UsingDirectivesTy;
   UsingDirectivesTy UsingDirectives;
@@ -239,8 +241,8 @@ public:
     return DeclsInScope.count(D) != 0;
   }
 
-  void* getEntity() const { return Entity; }
-  void setEntity(void *E) { Entity = E; }
+  DeclContext *getEntity() const { return Entity; }
+  void setEntity(DeclContext *E) { Entity = E; }
 
   bool hasErrorOccurred() const { return ErrorTrap.hasErrorOccurred(); }
 
@@ -304,7 +306,12 @@ public:
     }
     return false;
   }
-  
+
+  /// \brief Determines whether this scope is the OpenMP directive scope
+  bool isOpenMPDirectiveScope() const {
+    return (getFlags() & Scope::OpenMPDirectiveScope);
+  }
+
   /// \brief Determine whether this scope is a C++ 'try' block.
   bool isTryScope() const { return getFlags() & Scope::TryScope; }
 

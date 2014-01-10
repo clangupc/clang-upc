@@ -346,6 +346,7 @@ private:
 
   // function-specifier
   unsigned FS_inline_specified : 1;
+  unsigned FS_forceinline_specified: 1;
   unsigned FS_virtual_specified : 1;
   unsigned FS_explicit_specified : 1;
   unsigned FS_noreturn_specified : 1;
@@ -393,6 +394,7 @@ private:
   SourceLocation TQ_constLoc, TQ_restrictLoc, TQ_volatileLoc, TQ_atomicLoc;
   SourceLocation UPC_sharedLoc, UPC_relaxedLoc, UPC_strictLoc;
   SourceLocation FS_inlineLoc, FS_virtualLoc, FS_explicitLoc, FS_noreturnLoc;
+  SourceLocation FS_forceinlineLoc;
   SourceLocation FriendLoc, ModulePrivateLoc, ConstexprLoc;
 
   WrittenBuiltinSpecs writtenBS;
@@ -431,6 +433,7 @@ public:
       TypeSpecOwned(false),
       TypeQualifiers(TQ_unspecified),
       FS_inline_specified(false),
+      FS_forceinline_specified(false),
       FS_virtual_specified(false),
       FS_explicit_specified(false),
       FS_noreturn_specified(false),
@@ -469,6 +472,12 @@ public:
     SCS_extern_in_linkage_spec = false;
     StorageClassSpecLoc        = SourceLocation();
     ThreadStorageClassSpecLoc  = SourceLocation();
+  }
+
+  void ClearTypeSpecType() {
+    TypeSpecType = DeclSpec::TST_unspecified;
+    TypeSpecOwned = false;
+    TSTLoc = SourceLocation();
   }
 
   // type-specifier
@@ -517,6 +526,8 @@ public:
     return TypeSpecType == TST_auto || TypeSpecType == TST_decltype_auto;
   }
 
+  bool hasTagDefinition() const;
+
   /// \brief Turn a type-specifier-type into a string like "_Bool" or "union".
   static const char *getSpecifierName(DeclSpec::TST T);
   static const char *getSpecifierName(DeclSpec::TQ Q);
@@ -557,8 +568,12 @@ public:
   }
 
   // function-specifier
-  bool isInlineSpecified() const { return FS_inline_specified; }
-  SourceLocation getInlineSpecLoc() const { return FS_inlineLoc; }
+  bool isInlineSpecified() const {
+    return FS_inline_specified | FS_forceinline_specified;
+  }
+  SourceLocation getInlineSpecLoc() const {
+    return FS_inline_specified ? FS_inlineLoc : FS_forceinlineLoc;
+  }
 
   bool isVirtualSpecified() const { return FS_virtual_specified; }
   SourceLocation getVirtualSpecLoc() const { return FS_virtualLoc; }
@@ -572,6 +587,8 @@ public:
   void ClearFunctionSpecs() {
     FS_inline_specified = false;
     FS_inlineLoc = SourceLocation();
+    FS_forceinline_specified = false;
+    FS_forceinlineLoc = SourceLocation();
     FS_virtual_specified = false;
     FS_virtualLoc = SourceLocation();
     FS_explicit_specified = false;
@@ -640,6 +657,8 @@ public:
                        const char *&PrevSpec, unsigned &DiagID);
   bool SetTypeAltiVecPixel(bool isAltiVecPixel, SourceLocation Loc,
                        const char *&PrevSpec, unsigned &DiagID);
+  bool SetTypeAltiVecBool(bool isAltiVecBool, SourceLocation Loc,
+                       const char *&PrevSpec, unsigned &DiagID);
   bool SetTypeSpecError();
   void UpdateDeclRep(Decl *Rep) {
     assert(isDeclRep((TST) TypeSpecType));
@@ -663,10 +682,16 @@ public:
   bool SetTypeQualStrict(SourceLocation Loc, const char *&PrevSpec,
                          unsigned &DiagID);
 
-  bool setFunctionSpecInline(SourceLocation Loc);
-  bool setFunctionSpecVirtual(SourceLocation Loc);
-  bool setFunctionSpecExplicit(SourceLocation Loc);
-  bool setFunctionSpecNoreturn(SourceLocation Loc);
+  bool setFunctionSpecInline(SourceLocation Loc, const char *&PrevSpec,
+                             unsigned &DiagID);
+  bool setFunctionSpecForceInline(SourceLocation Loc, const char *&PrevSpec,
+                                  unsigned &DiagID);
+  bool setFunctionSpecVirtual(SourceLocation Loc, const char *&PrevSpec,
+                              unsigned &DiagID);
+  bool setFunctionSpecExplicit(SourceLocation Loc, const char *&PrevSpec,
+                               unsigned &DiagID);
+  bool setFunctionSpecNoreturn(SourceLocation Loc, const char *&PrevSpec,
+                               unsigned &DiagID);
 
   bool SetFriendSpec(SourceLocation Loc, const char *&PrevSpec,
                      unsigned &DiagID);
@@ -1551,6 +1576,7 @@ public:
     ObjCCatchContext,    // Objective-C catch exception-declaration
     BlockLiteralContext, // Block literal declarator.
     LambdaExprContext,   // Lambda-expression declarator.
+    LambdaExprParameterContext, // Lambda-expression parameter declarator.
     ConversionIdContext, // C++ conversion-type-id.
     TrailingReturnContext, // C++11 trailing-type-specifier.
     TemplateTypeArgContext, // Template type argument.
@@ -1626,7 +1652,6 @@ public:
   ~Declarator() {
     clear();
   }
-
   /// getDeclSpec - Return the declaration-specifier that this declarator was
   /// declared with.
   const DeclSpec &getDeclSpec() const { return DS; }
@@ -1655,7 +1680,8 @@ public:
   bool isPrototypeContext() const {
     return (Context == PrototypeContext ||
             Context == ObjCParameterContext ||
-            Context == ObjCResultContext);
+            Context == ObjCResultContext ||
+            Context == LambdaExprParameterContext);
   }
 
   /// \brief Get the source range that spans this declarator.
@@ -1719,6 +1745,7 @@ public:
     case AliasDeclContext:
     case AliasTemplateContext:
     case PrototypeContext:
+    case LambdaExprParameterContext:
     case ObjCParameterContext:
     case ObjCResultContext:
     case TemplateParamContext:
@@ -1747,6 +1774,7 @@ public:
     case ForContext:
     case ConditionContext:
     case PrototypeContext:
+    case LambdaExprParameterContext:
     case TemplateParamContext:
     case CXXCatchContext:
     case ObjCCatchContext:
@@ -1764,6 +1792,39 @@ public:
     case TemplateTypeArgContext:
     case TrailingReturnContext:
       return false;
+    }
+    llvm_unreachable("unknown context kind!");
+  }
+
+  /// diagnoseIdentifier - Return true if the identifier is prohibited and
+  /// should be diagnosed (because it cannot be anything else).
+  bool diagnoseIdentifier() const {
+    switch (Context) {
+    case FileContext:
+    case KNRTypeListContext:
+    case MemberContext:
+    case BlockContext:
+    case ForContext:
+    case ConditionContext:
+    case PrototypeContext:
+    case LambdaExprParameterContext:
+    case TemplateParamContext:
+    case CXXCatchContext:
+    case ObjCCatchContext:
+    case TypeNameContext:
+    case ConversionIdContext:
+    case ObjCParameterContext:
+    case ObjCResultContext:
+    case BlockLiteralContext:
+    case CXXNewContext:
+    case LambdaExprContext:
+      return false;
+
+    case AliasDeclContext:
+    case AliasTemplateContext:
+    case TemplateTypeArgContext:
+    case TrailingReturnContext:
+      return true;
     }
     llvm_unreachable("unknown context kind!");
   }
@@ -1799,6 +1860,7 @@ public:
     case KNRTypeListContext:
     case MemberContext:
     case PrototypeContext:
+    case LambdaExprParameterContext:
     case ObjCParameterContext:
     case ObjCResultContext:
     case TemplateParamContext:
@@ -1985,6 +2047,7 @@ public:
     case AliasDeclContext:
     case AliasTemplateContext:
     case PrototypeContext:
+    case LambdaExprParameterContext:
     case ObjCParameterContext:
     case ObjCResultContext:
     case TemplateParamContext:
@@ -2046,7 +2109,7 @@ public:
 
   /// \brief Return a source range list of C++11 attributes associated
   /// with the declarator.
-  void getCXX11AttributeRanges(SmallVector<SourceRange, 4> &Ranges) {
+  void getCXX11AttributeRanges(SmallVectorImpl<SourceRange> &Ranges) {
     AttributeList *AttrList = Attrs.getList();
     while (AttrList) {
       if (AttrList->isCXX11Attribute())
@@ -2089,6 +2152,16 @@ public:
     return (FunctionDefinitionKind)FunctionDefinition; 
   }
 
+  /// Returns true if this declares a real member and not a friend.
+  bool isFirstDeclarationOfMember() {
+    return getContext() == MemberContext && !getDeclSpec().isFriendSpecified();
+  }
+
+  /// Returns true if this declares a static member.  This cannot be called on a
+  /// declarator outside of a MemberContext because we won't know until
+  /// redeclaration time if the decl is static.
+  bool isStaticMember();
+
   void setRedeclaration(bool Val) { Redeclaration = Val; }
   bool isRedeclaration() const { return Redeclaration; }
 };
@@ -2108,7 +2181,8 @@ public:
   enum Specifier {
     VS_None = 0,
     VS_Override = 1,
-    VS_Final = 2
+    VS_Final = 2,
+    VS_Sealed = 4
   };
 
   VirtSpecifiers() : Specifiers(0) { }
@@ -2119,7 +2193,8 @@ public:
   bool isOverrideSpecified() const { return Specifiers & VS_Override; }
   SourceLocation getOverrideLoc() const { return VS_overrideLoc; }
 
-  bool isFinalSpecified() const { return Specifiers & VS_Final; }
+  bool isFinalSpecified() const { return Specifiers & (VS_Final | VS_Sealed); }
+  bool isFinalSpelledSealed() const { return Specifiers & VS_Sealed; }
   SourceLocation getFinalLoc() const { return VS_finalLoc; }
 
   void clear() { Specifiers = 0; }
@@ -2139,13 +2214,16 @@ private:
 struct LambdaCapture {
   LambdaCaptureKind Kind;
   SourceLocation Loc;
-  IdentifierInfo* Id;
+  IdentifierInfo *Id;
   SourceLocation EllipsisLoc;
-  
+  ExprResult Init;
+  ParsedType InitCaptureType;
   LambdaCapture(LambdaCaptureKind Kind, SourceLocation Loc,
-                IdentifierInfo* Id = 0,
-                SourceLocation EllipsisLoc = SourceLocation())
-    : Kind(Kind), Loc(Loc), Id(Id), EllipsisLoc(EllipsisLoc)
+                IdentifierInfo* Id,
+                SourceLocation EllipsisLoc,
+                ExprResult Init, ParsedType InitCaptureType)
+    : Kind(Kind), Loc(Loc), Id(Id), EllipsisLoc(EllipsisLoc), Init(Init),
+        InitCaptureType(InitCaptureType)
   {}
 };
 
@@ -2162,11 +2240,13 @@ struct LambdaIntroducer {
   /// \brief Append a capture in a lambda introducer.
   void addCapture(LambdaCaptureKind Kind,
                   SourceLocation Loc,
-                  IdentifierInfo* Id = 0, 
-                  SourceLocation EllipsisLoc = SourceLocation()) {
-    Captures.push_back(LambdaCapture(Kind, Loc, Id, EllipsisLoc));
+                  IdentifierInfo* Id,
+                  SourceLocation EllipsisLoc,
+                  ExprResult Init, 
+                  ParsedType InitCaptureType) {
+    Captures.push_back(LambdaCapture(Kind, Loc, Id, EllipsisLoc, Init, 
+        InitCaptureType));
   }
-
 };
 
 } // end namespace clang

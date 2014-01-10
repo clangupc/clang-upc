@@ -537,8 +537,11 @@ namespace clang {
       /// need a definition in this TU.
       UNDEFINED_BUT_USED = 49,
 
+      /// \brief Record code for late parsed template functions.
+      LATE_PARSED_TEMPLATE = 50,
+
       /// \brief Record code for tracking #pragma upc
-      UPC_PRAGMA_OPTIONS = 50
+      UPC_PRAGMA_OPTIONS = 51
     };
 
     /// \brief Record types used within a source manager block.
@@ -626,7 +629,9 @@ namespace clang {
       /// \brief Specifies a configuration macro for this module.
       SUBMODULE_CONFIG_MACRO = 11,
       /// \brief Specifies a conflict with another module.
-      SUBMODULE_CONFLICT = 12
+      SUBMODULE_CONFLICT = 12,
+      /// \brief Specifies a header that is private to this submodule.
+      SUBMODULE_PRIVATE_HEADER = 13
     };
 
     /// \brief Record types used within a comments block.
@@ -838,8 +843,10 @@ namespace clang {
       TYPE_UNARY_TRANSFORM       = 39,
       /// \brief An AtomicType record.
       TYPE_ATOMIC                = 40,
+      /// \brief A DecayedType record.
+      TYPE_DECAYED               = 41,
       // \brief A UPC Thread array type
-      TYPE_UPC_THREAD_ARRAY      = 41
+      TYPE_UPC_THREAD_ARRAY      = 42
     };
 
     /// \brief The type IDs for special types constructed by semantic
@@ -1028,6 +1035,12 @@ namespace clang {
       DECL_CLASS_TEMPLATE_SPECIALIZATION,
       /// \brief A ClassTemplatePartialSpecializationDecl record.
       DECL_CLASS_TEMPLATE_PARTIAL_SPECIALIZATION,
+      /// \brief A VarTemplateDecl record.
+      DECL_VAR_TEMPLATE,
+      /// \brief A VarTemplateSpecializationDecl record.
+      DECL_VAR_TEMPLATE_SPECIALIZATION,
+      /// \brief A VarTemplatePartialSpecializationDecl record.
+      DECL_VAR_TEMPLATE_PARTIAL_SPECIALIZATION,
       /// \brief A FunctionTemplateDecl record.
       DECL_FUNCTION_TEMPLATE,
       /// \brief A TemplateTypeParmDecl record.
@@ -1055,7 +1068,7 @@ namespace clang {
       DECL_CLASS_SCOPE_FUNCTION_SPECIALIZATION,
       /// \brief An ImportDecl recording a module import.
       DECL_IMPORT,
-      /// \brief A OMPThreadPrivateDecl record.
+      /// \brief An OMPThreadPrivateDecl record.
       DECL_OMP_THREADPRIVATE,
       /// \brief An EmptyDecl record.
       DECL_EMPTY
@@ -1182,6 +1195,8 @@ namespace clang {
       EXPR_GNU_NULL,
       /// \brief A ShuffleVectorExpr record.
       EXPR_SHUFFLE_VECTOR,
+      /// \brief A ConvertVectorExpr record.
+      EXPR_CONVERT_VECTOR,
       /// \brief BlockExpr
       EXPR_BLOCK,
       /// \brief A GenericSelectionExpr record.
@@ -1268,6 +1283,8 @@ namespace clang {
       EXPR_CXX_FUNCTIONAL_CAST,
       /// \brief A UserDefinedLiteral record.
       EXPR_USER_DEFINED_LITERAL,
+      /// \brief A CXXStdInitializerListExpr record.
+      EXPR_CXX_STD_INITIALIZER_LIST,
       /// \brief A CXXBoolLiteralExpr record.
       EXPR_CXX_BOOL_LITERAL,
       EXPR_CXX_NULL_PTR_LITERAL,  // CXXNullPtrLiteralExpr
@@ -1322,7 +1339,10 @@ namespace clang {
       STMT_SEH_EXCEPT,            // SEHExceptStmt
       STMT_SEH_FINALLY,           // SEHFinallyStmt
       STMT_SEH_TRY,               // SEHTryStmt
-      
+
+      // OpenMP drectives
+      STMT_OMP_PARALLEL_DIRECTIVE,
+
       // ARC
       EXPR_OBJC_BRIDGED_CAST,     // ObjCBridgedCastExpr
       

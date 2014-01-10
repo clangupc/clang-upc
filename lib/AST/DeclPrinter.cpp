@@ -337,12 +337,14 @@ void DeclPrinter::VisitTypedefDecl(TypedefDecl *D) {
     if (D->isModulePrivate())
       Out << "__module_private__ ";
   }
-  D->getUnderlyingType().print(Out, Policy, D->getName());
+  D->getTypeSourceInfo()->getType().print(Out, Policy, D->getName());
   prettyPrintAttributes(D);
 }
 
 void DeclPrinter::VisitTypeAliasDecl(TypeAliasDecl *D) {
-  Out << "using " << *D << " = " << D->getUnderlyingType().getAsString(Policy);
+  Out << "using " << *D;
+  prettyPrintAttributes(D);
+  Out << " = " << D->getTypeSourceInfo()->getType().getAsString(Policy);
 }
 
 void DeclPrinter::VisitEnumDecl(EnumDecl *D) {
@@ -665,9 +667,9 @@ void DeclPrinter::VisitVarDecl(VarDecl *D) {
       Out << "__module_private__ ";
   }
 
-  QualType T = D->getASTContext().getUnqualifiedObjCPointerType(D->getType());
-  if (ParmVarDecl *Parm = dyn_cast<ParmVarDecl>(D))
-    T = Parm->getOriginalType();
+  QualType T = D->getTypeSourceInfo()
+    ? D->getTypeSourceInfo()->getType()
+    : D->getASTContext().getUnqualifiedObjCPointerType(D->getType());
   T.print(Out, Policy, D->getName());
   Expr *Init = D->getInit();
   if (!Policy.SuppressInitializers && Init) {
@@ -1153,7 +1155,10 @@ void DeclPrinter::VisitObjCPropertyImplDecl(ObjCPropertyImplDecl *PID) {
 }
 
 void DeclPrinter::VisitUsingDecl(UsingDecl *D) {
-  Out << "using ";
+  if (!D->isAccessDeclaration())
+    Out << "using ";
+  if (D->hasTypename())
+    Out << "typename ";
   D->getQualifier()->print(Out, Policy);
   Out << *D;
 }
@@ -1166,7 +1171,8 @@ DeclPrinter::VisitUnresolvedUsingTypenameDecl(UnresolvedUsingTypenameDecl *D) {
 }
 
 void DeclPrinter::VisitUnresolvedUsingValueDecl(UnresolvedUsingValueDecl *D) {
-  Out << "using ";
+  if (!D->isAccessDeclaration())
+    Out << "using ";
   D->getQualifier()->print(Out, Policy);
   Out << D->getName();
 }
@@ -1180,9 +1186,10 @@ void DeclPrinter::VisitOMPThreadPrivateDecl(OMPThreadPrivateDecl *D) {
   if (!D->varlist_empty()) {
     for (OMPThreadPrivateDecl::varlist_iterator I = D->varlist_begin(),
                                                 E = D->varlist_end();
-         I != E; ++I) {
-      Out << (I == D->varlist_begin() ? '(' : ',')
-          << *cast<NamedDecl>((*I)->getDecl());
+                                                I != E; ++I) {
+      Out << (I == D->varlist_begin() ? '(' : ',');
+      NamedDecl *ND = cast<NamedDecl>(cast<DeclRefExpr>(*I)->getDecl());
+      ND->printQualifiedName(Out);
     }
     Out << ")";
   }
