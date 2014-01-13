@@ -1414,7 +1414,7 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
       << Args.getLastArg(OPT_fupc_pts_vaddr_order_EQ)->getAsString(Args)
       << VaddrOrder;
 
-  int Threads = Args.getLastArgIntValue(OPT_fupc_threads, 0, Diags);
+  int Threads = getLastArgIntValue(Args, OPT_fupc_threads, 0, Diags);
   if (Threads < 0) {
     Diags.Report(diag::err_drv_invalid_int_value)
       << Args.getLastArg(OPT_fupc_threads)->getAsString(Args) << Threads;

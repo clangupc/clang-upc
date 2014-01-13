@@ -732,7 +732,7 @@ private:
   friend class ASTNodeImporter;
 
 protected:
-  enum { NumParameterIndexBits = 8 };
+  enum { NumParameterIndexBits = 7 };
 
   class ParmVarDeclBitfields {
     friend class ParmVarDecl;

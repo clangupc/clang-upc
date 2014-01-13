@@ -1306,12 +1306,17 @@ Value *ScalarExprEmitter::VisitCastExpr(CastExpr *CE) {
              E->getType()->getCanonicalTypeUnqualified());
       return EmitLoadOfLValue(LValue::MakeBitfield(
         LV.getBitFieldAddr(), LV.getBitFieldInfo(),
-        DestTy, LV.getAlignment(), CE->getExprLoc()));
+        DestTy, LV.getAlignment(), CE->getExprLoc()),
+	CE->getExprLoc());
     }
     Value *V = LV.getAddress();
     V = Builder.CreateBitCast(V,
                           ConvertType(CGF.getContext().getPointerType(DestTy)));
-    return EmitLoadOfLValue(CGF.MakeNaturalAlignAddrLValue(V, DestTy),
+    // Preserve alignment when adding strict/relaxed
+    LValue ConvertedLValue = isa<ImplicitCastExpr>(CE)?
+      CGF.MakeAddrLValue(V, DestTy, LV.getAlignment(), CE->getExprLoc()) : 
+      CGF.MakeNaturalAlignAddrLValue(V, DestTy);
+    return EmitLoadOfLValue(ConvertedLValue,
                             CE->getExprLoc());
   }
 

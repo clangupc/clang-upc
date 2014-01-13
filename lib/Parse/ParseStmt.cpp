@@ -1783,7 +1783,7 @@ StmtResult Parser::ParseUPCForAllStatement(SourceLocation *TrailingElseLoc) {
         Diag(Tok, diag::err_expected_semi_for);
       } else {
         // Skip until semicolon or rparen, don't consume it.
-        SkipUntil(tok::r_paren, true, true);
+        SkipUntil(tok::r_paren, StopAtSemi | StopBeforeMatch);
         if (Tok.is(tok::semi))
           ConsumeToken();
       }
@@ -1815,7 +1815,7 @@ StmtResult Parser::ParseUPCForAllStatement(SourceLocation *TrailingElseLoc) {
       Diag(Tok, diag::err_expected_semi_for);
     else
       // Skip until semicolon or rparen, don't consume it.
-      SkipUntil(tok::r_paren, true, true);
+      SkipUntil(tok::r_paren, StopAtSemi | StopBeforeMatch);
   }
 
   if (Tok.is(tok::semi)) {
@@ -1980,7 +1980,7 @@ StmtResult Parser::ParseUPCNotifyStatement() {
   if (Tok.isNot(tok::semi)) {
     R = ParseExpression();
     if (R.isInvalid()) {  // Skip to the semicolon, but don't consume it.
-      SkipUntil(tok::semi, false, true);
+      SkipUntil(tok::semi, StopBeforeMatch);
       return StmtError();
     }
   }
@@ -1998,7 +1998,7 @@ StmtResult Parser::ParseUPCWaitStatement() {
   if (Tok.isNot(tok::semi)) {
     R = ParseExpression();
     if (R.isInvalid()) {  // Skip to the semicolon, but don't consume it.
-      SkipUntil(tok::semi, false, true);
+      SkipUntil(tok::semi, StopBeforeMatch);
       return StmtError();
     }
   }
@@ -2016,7 +2016,7 @@ StmtResult Parser::ParseUPCBarrierStatement() {
   if (Tok.isNot(tok::semi)) {
     R = ParseExpression();
     if (R.isInvalid()) {  // Skip to the semicolon, but don't consume it.
-      SkipUntil(tok::semi, false, true);
+      SkipUntil(tok::semi, StopBeforeMatch);
       return StmtError();
     }
   }

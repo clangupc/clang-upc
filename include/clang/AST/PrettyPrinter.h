@@ -153,11 +153,11 @@ struct PrintingPolicy {
   ///
   unsigned PolishForDeclaration : 1;
 
-  bool IncludeTagDefinition : 1;
-
   /// \brief When true, print the built-in wchar_t type as __wchar_t. For use in
   /// Microsoft mode when wchar_t is not available.
   unsigned MSWChar : 1;
+
+  bool IncludeTagDefinition : 1;
 };
 
 } // end namespace clang

@@ -1135,7 +1135,7 @@ void AggExprEmitter::VisitInitListExpr(InitListExpr *E) {
     if (Dest.isShared()) {
       // This shouldn't be reachable.  It's just here
       // to catch any changes.
-      CGF.ErrorUnsupported(E, "initialization of shared array", true);
+      llvm_unreachable("Can't initialize a shared array here.");
       return;
     }
 

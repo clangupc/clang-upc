@@ -449,7 +449,7 @@ ComplexPairTy ComplexExprEmitter::EmitCast(CastExpr::CastKind CK, Expr *Op,
     V = Builder.CreateBitCast(V, 
                     CGF.ConvertType(CGF.getContext().getPointerType(DestTy)));
     return EmitLoadOfLValue(CGF.MakeAddrLValue(V, DestTy,
-                                               origLV.getAlignment(), origLV.getLoc()));
+                                               origLV.getAlignment(), origLV.getLoc()),
                             Op->getExprLoc());
   }
 

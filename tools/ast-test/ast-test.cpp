@@ -514,7 +514,7 @@ namespace {
     Token Tok;
     Tok.setKind(tok::comment);
     while (Tok.isNot(tok::eof)) {
-      RawLex.Lex(Tok);
+      RawLex.LexFromRawLexer(Tok);
       if (Tok.is(tok::comment)) {
         const char* TokStart = SM.getCharacterData(Tok.getLocation());
         std::string Comment = std::string(TokStart, TokStart+Tok.getLength());

@@ -538,6 +538,11 @@ llvm::DIType CGDebugInfo::CreateQualifiedType(QualType Ty, llvm::DIFile Unit) {
   Qc.removeAddressSpace();
   Qc.removeObjCLifetime();
 
+  Qc.removeShared();
+  Qc.removeLayoutQualifier();
+  Qc.removeStrict();
+  Qc.removeRelaxed();
+
   // We will create one Derived type for one qualifier and recurse to handle any
   // additional ones.
   unsigned Tag;
@@ -550,12 +555,6 @@ llvm::DIType CGDebugInfo::CreateQualifiedType(QualType Ty, llvm::DIFile Unit) {
   } else if (Qc.hasRestrict()) {
     Tag = llvm::dwarf::DW_TAG_restrict_type;
     Qc.removeRestrict();
-  } else if (Qc.hasShared() || Qc.hasStrict() || Qc.hasRelaxed()) {
-    // FIXME: Actually implement this
-    Qc.removeShared();
-    Qc.removeLayoutQualifier();
-    Qc.removeStrict();
-    Qc.removeRelaxed();
   } else {
     assert(Qc.empty() && "Unknown type qualifier for debug info");
     return getOrCreateType(QualType(T, 0), Unit);

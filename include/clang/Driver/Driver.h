@@ -130,7 +130,7 @@ public:
   bool CCCIsCXX() const { return Mode == GXXMode; }
 
   /// Whether the driver should follow gupc like behavior
-  bool CCCIsUPC() const { return Mode == UPCMode }
+  bool CCCIsUPC() const { return Mode == UPCMode; }
 
   /// Whether the driver is just the preprocessor.
   bool CCCIsCPP() const { return Mode == CPPMode; }
