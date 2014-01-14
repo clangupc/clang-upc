@@ -426,6 +426,9 @@ foreach(config ${CONFIGURATIONS})
     set(flags "${flags} -fupc-pts-vaddr-order=last")
   endif()
 
+  # Build in the target library
+  set(lib_defs ${lib_defs};IN_TARGET_LIBS=1)
+
   # Build the library
   if(LIBUPC_ENABLE_SHARED)
     add_library(${lib_name} SHARED ${LIBUPC_SOURCES})
@@ -484,7 +487,7 @@ endif()
 
 set(header_location lib${LLVM_LIBDIR_SUFFIX}/clang/${CLANG_VERSION}/include)
 
-set(lib_upc_header ${LLVM_BINARY_DIR}/${header_location}/upc-lib.h)
+set(lib_upc_header ${LLVM_BINARY_DIR}/${header_location}/clang-upc-lib.h)
 set(lib_upc_header_sources ${PROJECT_SOURCE_DIR}/gen-inline-libupc.pl ${PROJECT_SOURCE_DIR}/smp/upc-lib.in
   ${PROJECT_BINARY_DIR}/config.h
   ${PROJECT_SOURCE_DIR}/smp/upc_access.c

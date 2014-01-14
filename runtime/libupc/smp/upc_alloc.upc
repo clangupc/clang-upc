@@ -18,7 +18,6 @@
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdio.h>
-#include "upc_pts.h"
 
 #define DEBUG_ALLOC 1
 #undef DEBUG_ALLOC

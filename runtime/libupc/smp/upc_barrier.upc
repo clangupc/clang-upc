@@ -74,9 +74,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "upc_config.h"
-#include "upc_sync.h"
-#include "upc_sup.h"
-
 
 /* Thread's children.  */
 static int *__upc_child;

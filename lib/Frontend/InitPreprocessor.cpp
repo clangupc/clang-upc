@@ -353,8 +353,6 @@ static void InitializeStandardPredefinedMacros(const TargetInfo &TI,
     } else {
       Builder.defineMacro("__UPC_DYNAMIC_THREADS__", "1");
     }
-    Builder.append(Twine("extern int main() __asm__(\"") + TI.getUserLabelPrefix() + "upc_main\");\n");
-    Builder.defineMacro("exit", "__upc_exit");
 
     // implementation specific macros
     Builder.defineMacro("__UPC_PHASE_SIZE__", Twine(LangOpts.UPCPhaseBits));
@@ -897,9 +895,8 @@ void clang::InitializePreprocessor(Preprocessor &PP,
     AddImplicitIncludeMacros(Builder, InitOpts.MacroIncludes[i],
                              PP.getFileManager());
 
-  if (PP.getLangOpts().UPCInlineLib) {
-    AddImplicitInclude(Builder, "upc-lib.h", PP.getFileManager());
-  }
+  if (LangOpts.UPC)
+    AddImplicitInclude(Builder, "clang-upc-lib.h", PP.getFileManager());
 
   // Process -include-pch/-include-pth directives.
   if (!InitOpts.ImplicitPCHInclude.empty())

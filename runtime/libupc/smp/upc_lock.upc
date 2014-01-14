@@ -14,10 +14,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "config.h"
-#include "upc_sysdep.h"
-#include "upc_defs.h"
-#include "upc_sup.h"
-#include "upc_sync.h"
 #include "upc_lock_sup.h"
 
 /* UPC lock implementation.
