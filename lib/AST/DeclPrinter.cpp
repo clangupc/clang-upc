@@ -633,7 +633,9 @@ void DeclPrinter::VisitFieldDecl(FieldDecl *D) {
       Out << " ";
     else
       Out << " = ";
-    Init->printPretty(Out, 0, Policy, Indentation);
+    PrintingPolicy SubPolicy(Policy);
+    SubPolicy.SuppressSpecifiers = false;
+    Init->printPretty(Out, 0, SubPolicy, Indentation);
   }
   prettyPrintAttributes(D);
 }
@@ -688,7 +690,9 @@ void DeclPrinter::VisitVarDecl(VarDecl *D) {
       else if (D->getInitStyle() == VarDecl::CInit) {
         Out << " = ";
       }
-      Init->printPretty(Out, 0, Policy, Indentation);
+      PrintingPolicy SubPolicy(Policy);
+      SubPolicy.SuppressSpecifiers = false;
+      Init->printPretty(Out, 0, SubPolicy, Indentation);
       if ((D->getInitStyle() == VarDecl::CallInit) && !isa<ParenListExpr>(Init))
         Out << ")";
     }
