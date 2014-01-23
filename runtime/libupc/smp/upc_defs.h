@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
@@ -142,7 +142,6 @@ extern char GUPCR_PGM_INFO_SECTION_START[1];
 extern char GUPCR_PGM_INFO_SECTION_END[1];
 
 #ifndef __UPC__
-
 /* The value of THREADS when defined at run time */
 extern int THREADS;
 

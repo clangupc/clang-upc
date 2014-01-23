@@ -1,8 +1,8 @@
-/*===-- config.h.cmake - UPC Runtime Support Library --------------------===*
+/*===-- config.h.cmake - UPC Runtime Support Library ---------------------===*
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
@@ -16,17 +16,20 @@
 
 //begin gupcr_config_h
 
+/* Define path to preferred addr2line for backtrace */
+#cmakedefine GUPCR_BACKTRACE_ADDR2LINE "@GUPCR_BACKTRACE_ADDR2LINE@"
+
 /* Define path to preferred GDB for backtrace */
 #cmakedefine GUPCR_BACKTRACE_GDB "@GUPCR_BACKTRACE_GDB@"
 
 /* Define to preferred signal for UPC backtrace. */
-#define GUPCR_BACKTRACE_SIGNAL @GUPCR_BACKTRACE_SIGNAL@
+#cmakedefine GUPCR_BACKTRACE_SIGNAL @GUPCR_BACKTRACE_SIGNAL@
 
 /* Size of get/put bounce buffer */
-#define GUPCR_BOUNCE_BUFFER_SIZE @GUPCR_BOUNCE_BUFFER_SIZE@
+#cmakedefine GUPCR_BOUNCE_BUFFER_SIZE @GUPCR_BOUNCE_BUFFER_SIZE@
 
 /* upc_global_exit() timeout in seconds. */
-#define GUPCR_GLOBAL_EXIT_TIMEOUT @GUPCR_GLOBAL_EXIT_TIMEOUT@
+#cmakedefine GUPCR_GLOBAL_EXIT_TIMEOUT @GUPCR_GLOBAL_EXIT_TIMEOUT@
 
 /* Define to 1 if UPC runtime checks are supported. */
 #cmakedefine GUPCR_HAVE_CHECKS 1
@@ -44,7 +47,7 @@
 #cmakedefine GUPCR_HAVE_TRACE 1
 
 /* Maximum number of locks held per thread */
-#define GUPCR_MAX_LOCKS @GUPCR_MAX_LOCKS@
+#cmakedefine GUPCR_MAX_LOCKS @GUPCR_MAX_LOCKS@
 
 /* Define to 1 if UPC runtime will use node local memory accesses. */
 #cmakedefine GUPCR_NODE_LOCAL_MEM 1
@@ -59,7 +62,7 @@
 #cmakedefine GUPCR_PTE_BASE @GUPCR_PTE_BASE@
 
 /* Maximum number of children at each level of a collective operation tree. */
-#define GUPCR_TREE_FANOUT @GUPCR_TREE_FANOUT@
+#cmakedefine GUPCR_TREE_FANOUT @GUPCR_TREE_FANOUT@
 
 /* Define to 1 if UPC runtime will use Portals4 triggered operations. */
 #cmakedefine GUPCR_USE_PORTALS4_TRIGGERED_OPS 1
@@ -94,6 +97,9 @@
 
 /* Define to 1 if UPC backtrace is enabled. */
 #cmakedefine HAVE_UPC_BACKTRACE 1
+
+/* Define to 1 if UPC backtrace with ADDR2LINE is enabled. */
+#cmakedefine HAVE_UPC_BACKTRACE_ADDR2LINE 1
 
 /* Define to 1 if UPC backtrace with GDB is enabled. */
 #cmakedefine HAVE_UPC_BACKTRACE_GDB 1

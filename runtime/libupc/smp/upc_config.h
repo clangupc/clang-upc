@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
@@ -72,6 +72,14 @@
 #define KILOBYTE 1024
 #define C64K (64*KILOBYTE)
 #define MEGABYTE (KILOBYTE*KILOBYTE)
+
+#ifndef LONG_LONG_BITS
+#define LONG_LONG_BITS (__SIZEOF_LONG_LONG__ * 8)
+#endif /* LONG_LONG_BITS */
+
+#ifndef SIZE_T_BITS
+#define SIZE_T_BITS (__SIZEOF_SIZE_T__ * 8)
+#endif /* SIZE_T_BITS */
 
 //begin detect_target64
 #if (defined(_LP64) && _LP64) \
@@ -240,8 +248,6 @@ extern void __upc_gum_init (int, int);
 #define GUPCR_INIT_ARRAY_START __upc_init_array_start
 /* The ending address (plus one) of pointers to UPC initialization routines */
 #define GUPCR_INIT_ARRAY_END   __upc_init_array_end
-
-extern char GUPCR_SHARED_SECTION_START[];
 
 //end lib_config_shared_section
 

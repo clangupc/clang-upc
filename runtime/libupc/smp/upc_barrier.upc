@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
@@ -73,7 +73,6 @@
 #include <upc.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "upc_config.h"
 
 /* Thread's children.  */
 static int *__upc_child;

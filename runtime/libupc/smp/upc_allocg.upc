@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
@@ -11,7 +11,6 @@
 #include <upc.h>
 #include "gasp_upc.h"
 #include "upc_pupc.h"
-#include "upc_config.h"
 
 #ifndef NULL
 #define NULL (void *)0

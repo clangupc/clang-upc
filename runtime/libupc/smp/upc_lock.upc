@@ -2,12 +2,11 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
 |*===---------------------------------------------------------------------===*/
-
 #include <upc.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -351,6 +350,7 @@ upc_unlock (upc_lock_t *lock)
     __upc_fatal ("Trying to release a NULL lock");
   if (NULL_LOCK_REF (link_ref))
     __upc_fatal ("Trying to release a lock that is not locked");
+  upc_fence;
   link = (upc_lock_link_t *) upc_from_link_ref (link_ref);
 
   /* Try to release the lock by trying to write a NULL into lock

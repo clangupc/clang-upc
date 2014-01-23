@@ -2,17 +2,13 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
 |*===---------------------------------------------------------------------===*/
-
 #ifndef _UPC_SUP_H_
 #define _UPC_SUP_H_
-
-#include "upc_pts.h"
-#include "upc_defs.h"
 
 /* Internal runtime routines and external symbols.  */
 
@@ -23,8 +19,13 @@ extern void *__getaddr (upc_shared_ptr_t);
 extern void __upc_barrier (int barrier_id);
 extern void __upc_notify (int barrier_id);
 extern void __upc_wait (int barrier_id);
-extern void __upc_exit (int status) __attribute__ ((__noreturn__));
-extern void __upc_fatal (const char *msg) __attribute__ ((__noreturn__));
+extern void __upc_exit (int status)
+      __attribute__ ((__nothrow__))
+      __attribute__ ((__noreturn__));
+extern void __upc_fatal (const char *fmt, ...)
+      __attribute__ ((__format__ (__printf__, 1, 2)))
+      __attribute__ ((__nothrow__))
+      __attribute__ ((__noreturn__));
 
 /* Profiled versions of runtime routines.  */
 extern void *__cvtaddrg (upc_shared_ptr_t, const char *filename, const int linenum);

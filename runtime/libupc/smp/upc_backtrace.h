@@ -2,12 +2,11 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
 |*===---------------------------------------------------------------------===*/
-
 #ifndef _UPC_BACKTRACE_H_
 #define _UPC_BACKTRACE_H_
 
@@ -24,10 +23,5 @@ extern void __upc_backtrace (void);
 extern void __upc_fatal_backtrace (void);
 extern void __upc_backtrace_init (const char *execname);
 extern void __upc_backtrace_restore_handlers (void);
-
-#if HAVE_LIBBFD
-extern char **backtrace_src_symbols(void *const *buffer, int size,
-				    const char *filename);
-#endif
 
 #endif /* !_UPC_BACKTRACE_H_ */

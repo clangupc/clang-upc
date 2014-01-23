@@ -2,12 +2,11 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
 |*===---------------------------------------------------------------------===*/
-
 #ifndef _GCC_UPC_LIB_H_
 #define _GCC_UPC_LIB_H_ 1
 
@@ -58,6 +57,30 @@
 #define __UPC_THREADS_MODEL__ "process"
 #endif
 
+/* Support for atomics as specified in version 1.3 of the UPC spec.  */
+#define __UPC_ATOMIC__ 1
+
+/* Support for UPC castable as specified in version 1.3 of the UPC spec.  */
+#define __UPC_CASTABLE__ 1
+
+/* Support for UPC collectives.  */
+#define __UPC_COLLECTIVE__ 1
+
+/* Support for non-blocking shared memory operations
+   as specified in version 1.3 of the UPC spec.  */
+#define __UPC_NB__ 1
+
+/* Support for GASP - gasp.hcs.ufl.edu.  */ 
+#define __UPC_PUPC__ 1
+
+/* Support for UPC tick as specified in version 1.3 of the UPC spec.  */
+#define __UPC_TICK__ 1
+
+#pragma upc upc_code
+/* Opaque data type for referencing UPC atomic domains.  */
+typedef shared struct upc_atomicdomain_struct upc_atomicdomain_t;
+#pragma upc c_code
+
 /* Place configuration information required by the Berkeley
    UPC compilation system into the object file. */
 static const char GCCUPCConfig[]
@@ -76,6 +99,9 @@ static const char GCCUPCConfig[]
    nested upc_forall statements.  */
 extern GUPCR_THREAD_LOCAL int __upc_forall_depth;
 
+/* Clang allows for pointer to shared type (struct/packed) and packed
+   pointer field sizes to be specified on the command line.  Set the
+   run-time macro definitions to correct values.  */
 #define GUPCR_PTS_PHASE_SIZE __UPC_PHASE_SIZE__
 #define GUPCR_PTS_THREAD_SIZE __UPC_THREAD_SIZE__
 #define GUPCR_PTS_VADDR_SIZE __UPC_VADDR_SIZE__
@@ -123,11 +149,13 @@ extern char __upc_shared_start[1];
 extern unsigned long const __upc_global_base;
 
 //include detect_target64
+
+/* Runtime shared access procedures */
 //include mode_types
+/* Shared pointer definitions */
 //include lib_pts_defs
 /* Runtime procedures */
 //include lib_runtime_api
-
 
 #if defined(__UPC_INLINE_LIB__) || defined(IN_TARGET_LIBS)
 

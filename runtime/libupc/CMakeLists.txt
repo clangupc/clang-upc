@@ -51,6 +51,13 @@ set(LIBUPC_ENABLE_LINK_SCRIPT TRUE CACHE STRING "enable UPC's use of a custom li
 set(LIBUPC_ENABLE_BACKTRACE TRUE CACHE STRING "enable UPC backtrace; enable stack frame backtrace report when UPC run-time fatal errors occur or by user request (via signal)")
 set(HAVE_UPC_BACKTRACE ${LIBUPC_ENABLE_BACKTRACE})
 
+set(LIBUPC_ENABLE_BACKTRACE_ADDR2LINE TRUE CACHE STRING "enable the use of addr2line for UPC stack backtrace")
+set(HAVE_UPC_BACKTRACE_ADDR2LINE ${LIBUPC_ENABLE_BACKTRACE_ADDR2LINE})
+if(LIBUPC_ENABLE_BACKTRACE_ADDR2LINE)
+  find_program(LIBUPC_BACKTRACE_ADDR2LINE addr2line)
+  set(GUPCR_BACKTRACE_ADDR2LINE ${LIBUPC_BACKTRACE_ADDR2LINE})
+endif()
+
 set(LIBUPC_ENABLE_BACKTRACE_GDB TRUE CACHE STRING "enable the use of GDB for UPC stack backtrace")
 set(HAVE_UPC_BACKTRACE_GDB ${LIBUPC_ENABLE_BACKTRACE_GDB})
 if(LIBUPC_ENABLE_BACKTRACE_GDB)
@@ -175,26 +182,7 @@ int main() { return __sync_fetch_and_add (&i, 1); }
 "
 HAVE_SYNC_FETCH_AND_ADD_8)
 
-
-# HAVE_BFD
-set(BFD_INCLUDE CACHE PATH "the directory for the installed BFD include files")
-set(BFD_LIB CACHE PATH "the directory for the installed BFD library")
-
-set(CMAKE_REQUIRED_LIBRARIES bfd dl)
-check_cxx_source_compiles(
-"
-#include <bfd.h>
-bfd_error_type error;
-int main() {
-  error = bfd_get_error ();
-  return 0;
-}
-"
-HAVE_BFD)
 set(CMAKE_REQUIRED_LIBRARIES)
-if(HAVE_BFD)
-  set(HAVE_LIBBFD TRUE)
-endif()
 
 set(HAVE_UPC_LINK_SCRIPT ${LIBUPC_ENABLE_LINK_SCRIPT})
 
@@ -262,7 +250,9 @@ set(LIBUPC_SOURCES
   smp/upc_affinity_stub.c
   smp/upc_allocg.upc
   smp/upc_alloc.upc
+  smp/upc_atomic.upc
   smp/upc_barrier.upc
+  smp/upc_castable.upc
   smp/upc_debug.c
   smp/upc_gasp.c
   smp/upc_gum.c
@@ -271,6 +261,7 @@ set(LIBUPC_SOURCES
   smp/upc_lock.upc
   smp/upc_main.c
   smp/upc_mem.c
+  smp/upc_nb.upc
   # smp/upc_numa.c
   smp/upc_numa_stub.c
   smp/upc_pgm_info.c
@@ -282,9 +273,6 @@ set(LIBUPC_SOURCES
 
 if(LIBUPC_ENABLE_BACKTRACE)
   list(APPEND LIBUPC_SOURCES smp/upc_backtrace.c)
-  if(HAVE_BFD)
-    list(append LIBUPC_SOURCES smp/upc_backtrace_sup.c)
-  endif()
 endif()
 
 list(APPEND LIBUPC_SOURCES
@@ -440,6 +428,9 @@ foreach(config ${CONFIGURATIONS})
   set_property(TARGET ${lib_name} PROPERTY COMPILE_FLAGS ${flags})
 
   add_dependencies(${lib_name} clang)
+  add_dependencies(${lib_name} clang-upc-lib-h)
+  add_dependencies(${lib_name} upc-headers)
+  add_dependencies(${lib_name} upc-atomic)
 
   install(TARGETS ${lib_name}
     DESTINATION lib${LLVM_LIBDIR_SUFFIX})
@@ -474,6 +465,7 @@ add_crt_target(upc-crtbeginT -DCRT_BEGIN)
 add_crt_target(upc-crtendT -DCRT_END)
 
 find_package(Perl REQUIRED)
+find_program(AUTOGEN_EXECUTABLE autogen)
 
 if(LIBUPC_ENABLE_LINK_SCRIPT)
 
@@ -487,8 +479,8 @@ endif()
 
 set(header_location lib${LLVM_LIBDIR_SUFFIX}/clang/${CLANG_VERSION}/include)
 
-set(lib_upc_header ${LLVM_BINARY_DIR}/${header_location}/clang-upc-lib.h)
-set(lib_upc_header_sources ${PROJECT_SOURCE_DIR}/gen-inline-libupc.pl ${PROJECT_SOURCE_DIR}/smp/upc-lib.in
+set(clang_upc_lib_h ${LLVM_BINARY_DIR}/${header_location}/clang-upc-lib.h)
+set(clang_upc_lib_h_sources ${PROJECT_SOURCE_DIR}/gen-inline-libupc.pl ${PROJECT_SOURCE_DIR}/smp/upc-lib.in
   ${PROJECT_BINARY_DIR}/config.h
   ${PROJECT_SOURCE_DIR}/smp/upc_access.c
   ${PROJECT_SOURCE_DIR}/smp/upc_access.h
@@ -498,14 +490,28 @@ set(lib_upc_header_sources ${PROJECT_SOURCE_DIR}/gen-inline-libupc.pl ${PROJECT_
   ${PROJECT_SOURCE_DIR}/smp/upc_pts.h
   ${PROJECT_SOURCE_DIR}/smp/upc_sup.h
   ${PROJECT_SOURCE_DIR}/smp/upc_sync.h)
-add_custom_command(OUTPUT ${lib_upc_header}
+add_custom_command(OUTPUT ${clang_upc_lib_h}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${LLVM_BINARY_DIR}/${header_location} &&
-    ${PERL_EXECUTABLE} ${lib_upc_header_sources} > ${lib_upc_header}
-  DEPENDS ${lib_upc_header_sources}
+    ${PERL_EXECUTABLE} ${clang_upc_lib_h_sources} > ${clang_upc_lib_h}
+  DEPENDS ${clang_upc_lib_h_sources}
   VERBATIM)
-add_custom_target(upc-header ALL DEPENDS ${lib_upc_header})
+add_custom_target(clang-upc-lib-h ALL DEPENDS ${clang_upc_lib_h})
 
-set(upc_headers upc.h upc_strict.h upc_relaxed.h upc_collective.h upc_tick.h)
+set(lib_upc_atomic ${PROJECT_SOURCE_DIR}/smp/upc_atomic.upc)
+set(lib_upc_atomic_sources ${PROJECT_SOURCE_DIR}/smp/upc_atomic.def
+  ${PROJECT_SOURCE_DIR}/smp/upc_atomic.tpl
+  ${PROJECT_SOURCE_DIR}/include/upc_types.def
+  ${PROJECT_SOURCE_DIR}/include/upc_ops.def)
+add_custom_command(OUTPUT ${lib_upc_atomic}
+  COMMAND cd ${PROJECT_SOURCE_DIR}/smp &&
+          ${AUTOGEN_EXECUTABLE} -L ../include upc_atomic.def
+  DEPENDS ${lib_upc_atomic_sources}
+  VERBATIM)
+add_custom_target(upc-atomic ALL DEPENDS ${lib_upc_atomic})
+
+set(upc_headers clang-upc.h upc.h upc_atomic.h upc_castable.h
+  upc_collective.h upc_nb.h upc_strict.h upc_tick.h upc_types.h
+  upc_relaxed.h)
 set(upc_header_targets)
 foreach( f ${upc_headers} )
   set( src ${PROJECT_SOURCE_DIR}/include/${f} )
@@ -519,14 +525,16 @@ endforeach( f )
 
 add_custom_target(upc-headers ALL DEPENDS ${upc_header_targets})
 
-install(FILES include/upc.h include/upc_strict.h include/upc_relaxed.h
-  include/upc_collective.h include/upc_collective.h include/upc_tick.h
+install(FILES include/clang-upc.h include/upc.h include/upc_atomic.h
+  include/upc_castable.h include/upc_collective.h include/upc_nb.h
+  include/upc_strict.h include/upc_tick.h include/upc_types.h
+  include/upc_relaxed.h
   DESTINATION ${header_location})
 
 install(FILES ${objects} ${upc_link_script}
   DESTINATION lib${LLVM_LIBDIR_SUFFIX})
 
-install(FILES ${lib_upc_header}
+install(FILES ${clang_upc_lib_h}
   DESTINATION ${header_location})
 
 #===============================================================================

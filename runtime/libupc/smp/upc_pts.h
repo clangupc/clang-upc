@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
@@ -10,8 +10,6 @@
 
 #ifndef _UPC_PTS_H_
 #define _UPC_PTS_H_ 1
-
-#include "upc_config.h"
 
 //begin lib_pts_defs
 
