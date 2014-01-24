@@ -18,16 +18,16 @@ int f() {
   // CHECK-ST: store %__upc_shared_pointer_type {{.*}}, %__upc_shared_pointer_type* @f.ptr, align 8
 
   // CHECK-DT: define internal void @__upc_global_var_init()
-  // CHECK-DT:   %0 = load i32* @THREADS
-  // CHECK-DT:  store %__upc_shared_pointer_type %21, %__upc_shared_pointer_type* @f.ptr, align 8
+  // CHECK-DT:   %{{[0-9]+}} = load i32* @THREADS
+  // CHECK-DT:  store %__upc_shared_pointer_type %{{[0-9]+}}, %__upc_shared_pointer_type* @f.ptr, align 8
 
   static shared int *pval = &a[3];
   // CHECK-ST: define internal void @__upc_global_var_init1()
   // CHECK-ST: store %__upc_shared_pointer_type {{.*}}, %__upc_shared_pointer_type* @f.pval, align 8
 
   // CHECK-DT:  define internal void @__upc_global_var_init1()
-  // CHECK-DT:    %0 = load i32* @THREADS
-  // CHECK-DT:    store %__upc_shared_pointer_type %21, %__upc_shared_pointer_type* @f.pval, align 8
+  // CHECK-DT:    %{{[0-9]+}} = load i32* @THREADS
+  // CHECK-DT:    store %__upc_shared_pointer_type %{{[0-9]+}}, %__upc_shared_pointer_type* @f.pval, align 8
 
   return b[1] * c[0];
 }

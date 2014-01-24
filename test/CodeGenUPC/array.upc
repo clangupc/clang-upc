@@ -15,16 +15,16 @@ shared int *ptr = a + 2;
 // CHECK-ST: store %__upc_shared_pointer_type {{.*}}, %__upc_shared_pointer_type* @ptr, align 8
 
 // CHECK-DT: define internal void @__upc_global_var_init()
-// CHECK-DT:   %0 = load i32* @THREADS
-// CHECK-DT:  store %__upc_shared_pointer_type %21, %__upc_shared_pointer_type* @ptr, align 8
+// CHECK-DT:   %{{[0-9]+}} = load i32* @THREADS
+// CHECK-DT:  store %__upc_shared_pointer_type %{{[0-9]+}}, %__upc_shared_pointer_type* @ptr, align 8
 
 shared int *pval = &a[3];
 // CHECK-ST: define internal void @__upc_global_var_init1()
 // CHECK-ST: store %__upc_shared_pointer_type {{.*}}, %__upc_shared_pointer_type* @pval, align 8
 
 // CHECK-DT:  define internal void @__upc_global_var_init1()
-// CHECK-DT:    %0 = load i32* @THREADS
-// CHECK-DT:    store %__upc_shared_pointer_type %21, %__upc_shared_pointer_type* @pval, align 8
+// CHECK-DT:    %{{[0-9]+}} = load i32* @THREADS
+// CHECK-DT:    store %__upc_shared_pointer_type %{{[0-9]+}}, %__upc_shared_pointer_type* @pval, align 8
 
 
 // not supported by gupc; possible with full dynamic initialization

@@ -24,7 +24,7 @@
 #endif /* IN_TARGET_LIBS */
 
 /* required, for size_t definition */
-#include <sys/types.h>
+#include <stddef.h>
 
 #pragma upc c_code
 

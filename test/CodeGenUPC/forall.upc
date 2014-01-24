@@ -8,23 +8,29 @@ void test_upcforall_int(shared int * ptr, int n) {
   }
 }
 // CHECK: test_upcforall_int
-// CHECK: %0 = load i32* @__upc_forall_depth
-// CHECK-NEXT: %upc_forall.inc_depth = add nuw i32 %0, 1
+// CHECK: %{{[0-9]+}} = load i32* @__upc_forall_depth
+// CHECK-NEXT: %upc_forall.inc_depth = add nuw i32 %{{[0-9]+}}, 1
 // CHECK-NEXT: store i32 %upc_forall.inc_depth, i32* @__upc_forall_depth
+
+// CHECK: upc_forall.cond:
+// CHECK-NEXT:  %{{[0-9]+}} = load i32* %i, align 4                                                   
+// CHECK-NEXT:  %{{[0-9]+}} = load i32* %n.addr, align 4
+// CHECK-NEXT:  %cmp = icmp slt i32 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT:  br i1 %cmp, label %upc_forall.filter, label %upcforall.cond.cleanup
 
 // CHECK: upcforall.cond.cleanup:
 // CHECK-NEXT: store i32 2, i32* %cleanup.dest.slot
-// CHECK-NEXT: store i32 %0, i32* @__upc_forall_depth
+// CHECK-NEXT: store i32 %{{[0-9]+}}, i32* @__upc_forall_depth
 
 // CHECK: upc_forall.filter:
-// CHECK-NEXT: %3 = load i32* %i, align 4
-// CHECK-NEXT: %4 = load i32* @THREADS
-// CHECK-NEXT: %5 = srem i32 %3, %4
-// CHECK-NEXT: %6 = add i32 %5, %4
-// CHECK-NEXT: %7 = icmp slt i32 %5, 0
-// CHECK-NEXT: %8 = select i1 %7, i32 %6, i32 %5
-// CHECK-NEXT: %9 = load i32* @MYTHREAD
-// CHECK-NEXT: %10 = icmp eq i32 %8, %9
-// CHECK-NEXT: %11 = icmp ugt i32 %0, 0
-// CHECK-NEXT: %12 = or i1 %11, %10
-// CHECK-NEXT: br i1 %12, label %upc_forall.body, label %upc_forall.inc
+// CHECK-NEXT: %{{[0-9]+}} = load i32* %i, align 4
+// CHECK-NEXT: %{{[0-9]+}} = load i32* @THREADS
+// CHECK-NEXT: %{{[0-9]+}} = srem i32 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = add i32 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = icmp slt i32 %{{[0-9]+}}, 0
+// CHECK-NEXT: %{{[0-9]+}} = select i1 %{{[0-9]+}}, i32 %{{[0-9]+}}, i32 %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = load i32* @MYTHREAD
+// CHECK-NEXT: %{{[0-9]+}} = icmp eq i32 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = icmp ugt i32 %{{[0-9]+}}, 0
+// CHECK-NEXT: %{{[0-9]+}} = or i1 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: br i1 %{{[0-9]+}}, label %upc_forall.body, label %upc_forall.inc
