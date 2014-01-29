@@ -909,7 +909,7 @@ void StmtPrinter::VisitIntegerLiteral(IntegerLiteral *Node) {
 
 static void PrintFloatingLiteral(raw_ostream &OS, FloatingLiteral *Node,
                                  bool PrintSuffix) {
-  SmallString<16> Str;
+  SmallString<17> Str;
   Node->getValue().toString(Str);
   OS << Str;
   if (Str.find_first_not_of("-0123456789") == StringRef::npos)
