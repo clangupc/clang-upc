@@ -3192,7 +3192,7 @@ void Parser::ParseDeclarationSpecifiers(DeclSpec &DS,
           LQ = DeclSpec::TQ_unspecified;
         }
         isInvalid = DS.SetTypeQualShared(Actions, Loc, LQ, LayoutQualifier.take(),
-                                         PrevSpec, DiagID);
+                                         PrevSpec, DiagID, getLangOpts());
 
         // If the specifier combination wasn't legal, issue a diagnostic.
         if (isInvalid) {
@@ -3202,10 +3202,10 @@ void Parser::ParseDeclarationSpecifiers(DeclSpec &DS,
         continue;
       }
     case tok::kw_relaxed:
-      isInvalid = DS.SetTypeQualRelaxed(Loc, PrevSpec, DiagID);
+      isInvalid = DS.SetTypeQualRelaxed(Loc, PrevSpec, DiagID, getLangOpts());
       break;
     case tok::kw_strict:
-      isInvalid = DS.SetTypeQualStrict(Loc, PrevSpec, DiagID);
+      isInvalid = DS.SetTypeQualStrict(Loc, PrevSpec, DiagID, getLangOpts());
       break;
 
     // C++ typename-specifier:
@@ -4534,7 +4534,7 @@ void Parser::ParseTypeQualifierListOpt(DeclSpec &DS,
           LQ = DeclSpec::TQ_unspecified;
         }
         isInvalid = DS.SetTypeQualShared(Actions, Loc, LQ, LayoutQualifier.take(),
-                                         PrevSpec, DiagID);
+                                         PrevSpec, DiagID, getLangOpts());
 
         // If the specifier combination wasn't legal, issue a diagnostic.
         if (isInvalid) {
@@ -4544,10 +4544,10 @@ void Parser::ParseTypeQualifierListOpt(DeclSpec &DS,
         continue;
       }
     case tok::kw_relaxed:
-      isInvalid = DS.SetTypeQualRelaxed(Loc, PrevSpec, DiagID);
+      isInvalid = DS.SetTypeQualRelaxed(Loc, PrevSpec, DiagID, getLangOpts());
       break;
     case tok::kw_strict:
-      isInvalid = DS.SetTypeQualStrict(Loc, PrevSpec, DiagID);
+      isInvalid = DS.SetTypeQualStrict(Loc, PrevSpec, DiagID, getLangOpts());
       break;
     case tok::kw__Atomic:
       if (!AtomicAllowed)

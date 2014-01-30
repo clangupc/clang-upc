@@ -775,7 +775,15 @@ bool DeclSpec::SetTypeQual(TQ T, SourceLocation Loc, const char *&PrevSpec,
 
 bool DeclSpec::SetTypeQualShared(Sema &S, SourceLocation Loc, TQ T,
                                  Expr * LayoutQualifier,
-                                 const char *&PrevSpec, unsigned &DiagID) {
+                                 const char *&PrevSpec, unsigned &DiagID,
+                                 const LangOptions &Lang) {
+  if (TypeQualifiers & TQ_shared) {
+    bool IsExtension = true;
+    if (Lang.C99)
+      IsExtension = false;
+    return BadSpecifier(TQ_shared, TQ_shared, PrevSpec, DiagID, IsExtension);
+  }
+
   if (T == TQ_lqexpr && TypeQualifiers & TQ_lqexpr) {
     // FIXME: Don't evalute the ICE multiple times
     if ((S.CheckLayoutQualifier(UPCLayoutQualifier) !=
@@ -800,11 +808,17 @@ bool DeclSpec::SetTypeQualShared(Sema &S, SourceLocation Loc, TQ T,
 }
 
 bool DeclSpec::SetTypeQualRelaxed(SourceLocation Loc, const char *&PrevSpec,
-                                  unsigned &DiagID) {
+                                  unsigned &DiagID, const LangOptions &Lang) {
   if (TypeQualifiers & TQ_strict) {
     PrevSpec = "strict";
     DiagID = diag::err_invalid_decl_spec_combination;
     return true;
+  }
+  if (TypeQualifiers & TQ_relaxed) {
+    bool IsExtension = true;
+    if (Lang.C99)
+      IsExtension = false;
+    return BadSpecifier(TQ_relaxed, TQ_relaxed, PrevSpec, DiagID, IsExtension);
   }
   TypeQualifiers |= TQ_relaxed;
   UPC_relaxedLoc = Loc;
@@ -812,11 +826,17 @@ bool DeclSpec::SetTypeQualRelaxed(SourceLocation Loc, const char *&PrevSpec,
 }
 
 bool DeclSpec::SetTypeQualStrict(SourceLocation Loc, const char *&PrevSpec,
-                                 unsigned &DiagID) {
+                                 unsigned &DiagID, const LangOptions &Lang) {
   if (TypeQualifiers & TQ_relaxed) {
     PrevSpec = "relaxed";
     DiagID = diag::err_invalid_decl_spec_combination;
     return true;
+  }
+  if (TypeQualifiers & TQ_strict) {
+    bool IsExtension = true;
+    if (Lang.C99)
+      IsExtension = false;
+    return BadSpecifier(TQ_strict, TQ_strict, PrevSpec, DiagID, IsExtension);
   }
   TypeQualifiers |= TQ_strict;
   UPC_strictLoc = Loc;

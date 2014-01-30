@@ -676,11 +676,12 @@ public:
   bool SetTypeQual(TQ T, SourceLocation Loc, const char *&PrevSpec,
                    unsigned &DiagID, const LangOptions &Lang);
   bool SetTypeQualShared(Sema& S, SourceLocation Loc, TQ T, Expr * LayoutQualifier,
-                         const char *&PrevSpec, unsigned &DiagID);
+                         const char *&PrevSpec, unsigned &DiagID,
+                         const LangOptions &Lang);
   bool SetTypeQualRelaxed(SourceLocation Loc, const char *&PrevSpec,
-                          unsigned &DiagID);
+                          unsigned &DiagID, const LangOptions &Lang);
   bool SetTypeQualStrict(SourceLocation Loc, const char *&PrevSpec,
-                         unsigned &DiagID);
+                         unsigned &DiagID, const LangOptions &Lang);
 
   bool setFunctionSpecInline(SourceLocation Loc, const char *&PrevSpec,
                              unsigned &DiagID);
