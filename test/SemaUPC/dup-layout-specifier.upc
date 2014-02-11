@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -fsyntax-only -fupc-threads 1 -verify %s
+// RUN: %clang_cc1 -fsyntax-only -fupc-threads 1 -Wno-duplicate-decl-specifier -verify %s
 
 // combine shared, shared [], shared[0], shared[1], shared[2], shared[3], shared[*]
 // in every possible way directly, through typedefs and through pointers.

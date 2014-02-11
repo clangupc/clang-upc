@@ -777,13 +777,6 @@ bool DeclSpec::SetTypeQualShared(Sema &S, SourceLocation Loc, TQ T,
                                  Expr * LayoutQualifier,
                                  const char *&PrevSpec, unsigned &DiagID,
                                  const LangOptions &Lang) {
-  if (TypeQualifiers & TQ_shared) {
-    bool IsExtension = true;
-    if (Lang.C99)
-      IsExtension = false;
-    return BadSpecifier(TQ_shared, TQ_shared, PrevSpec, DiagID, IsExtension);
-  }
-
   if (T == TQ_lqexpr && TypeQualifiers & TQ_lqexpr) {
     // FIXME: Don't evalute the ICE multiple times
     if ((S.CheckLayoutQualifier(UPCLayoutQualifier) !=
@@ -796,6 +789,14 @@ bool DeclSpec::SetTypeQualShared(Sema &S, SourceLocation Loc, TQ T,
     }
   }
 
+  bool result = false;
+  if (TypeQualifiers & TQ_shared) {
+    bool IsExtension = true;
+    if (Lang.C99)
+      IsExtension = false;
+    result = BadSpecifier(TQ_shared, TQ_shared, PrevSpec, DiagID, IsExtension);
+  }
+
   TypeQualifiers |= TQ_shared;
   TypeQualifiers |= T;
   UPC_sharedLoc = Loc;
@@ -804,7 +805,7 @@ bool DeclSpec::SetTypeQualShared(Sema &S, SourceLocation Loc, TQ T,
     UPCLayoutQualifier = LayoutQualifier;
   }
 
-  return false;
+  return result;
 }
 
 bool DeclSpec::SetTypeQualRelaxed(SourceLocation Loc, const char *&PrevSpec,
