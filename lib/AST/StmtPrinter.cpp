@@ -1262,6 +1262,8 @@ void StmtPrinter::VisitImplicitValueInitExpr(ImplicitValueInitExpr *Node) {
     OS << "/*implicit*/";
     Node->getType().print(OS, Policy);
     OS << "()";
+  } else if(Node->getType()->isArrayType()) {
+    OS << "/*implicit*/{}";
   } else {
     OS << "/*implicit*/(";
     Node->getType().print(OS, Policy);
