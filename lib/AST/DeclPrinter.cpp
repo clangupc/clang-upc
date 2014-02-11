@@ -224,6 +224,7 @@ void DeclPrinter::VisitDeclContext(DeclContext *DC, bool Indent) {
     Indentation += Policy.Indentation;
 
   SmallVector<Decl*, 2> Decls;
+  bool MergeOneDecl = false;
   for (DeclContext::decl_iterator D = DC->decls_begin(), DEnd = DC->decls_end();
        D != DEnd; ++D) {
 
@@ -256,14 +257,15 @@ void DeclPrinter::VisitDeclContext(DeclContext *DC, bool Indent) {
     // Check whether the current declaration should be grouped with a previous
     // unnamed struct.
     QualType CurDeclType = getDeclType(*D);
-    if (!Decls.empty() && !CurDeclType.isNull()) {
+    if (!Decls.empty() && !CurDeclType.isNull() &&
+	(!MergeOneDecl || Decls.size() == 1)) {
       QualType BaseType = GetBaseType(CurDeclType);
       if (!BaseType.isNull() && isa<ElaboratedType>(BaseType))
         BaseType = cast<ElaboratedType>(BaseType)->getNamedType();
       if (!BaseType.isNull() && isa<TagType>(BaseType) &&
           cast<TagType>(BaseType)->getDecl() == Decls[0]) {
         Decls.push_back(*D);
-        continue;
+	continue;
       }
     }
 
@@ -275,6 +277,21 @@ void DeclPrinter::VisitDeclContext(DeclContext *DC, bool Indent) {
     // so we can merge it with the subsequent declaration(s) using it.
     if (isa<TagDecl>(*D) && !cast<TagDecl>(*D)->getIdentifier()) {
       Decls.push_back(*D);
+      MergeOneDecl = false;
+      continue;
+    }
+
+    // Attempt to merge named tags too, but
+    // only with a single decl.  (This cleans
+    // up warnings about unused declarations
+    // when a struct is defined inline inside
+    // another struct.)  Only merge one variable
+    // declaration, so we don't have to worry
+    // about whether the storage class and/or
+    // qualifiers match.
+    if (isa<TagDecl>(*D)) {
+      Decls.push_back(*D);
+      MergeOneDecl = true;
       continue;
     }
 
