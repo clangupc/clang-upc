@@ -343,7 +343,7 @@ static void InitializeStandardPredefinedMacros(const TargetInfo &TI,
 
   if (LangOpts.UPC) {
     Builder.defineMacro("__UPC__", "1");
-    Builder.defineMacro("__UPC_VERSION__", "200505L");
+    Builder.defineMacro("__UPC_VERSION__", "201311L");
 
     Builder.defineMacro("UPC_MAX_BLOCK_SIZE", Twine((uint64_t(2) << (LangOpts.UPCPhaseBits - 1)) - 1));
 
