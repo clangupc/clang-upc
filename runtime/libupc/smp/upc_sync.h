@@ -67,6 +67,12 @@ PA-RISC		SYNC			none reqd. */
   /* Use GCC's builtin implementation, if available.  */
   #define __upc_atomic_cas(PTR, OLD_VAL, NEW_VAL) \
     __sync_bool_compare_and_swap (PTR, OLD_VAL, NEW_VAL)
+#elif defined(__GCC_ATOMIC_LONG_LOCK_FREE) \
+    || defined (__GCC_ATOMIC_INT_LOCK_FREE)
+  #define __upc_atomic_cas(PTR, OLD_VAL, NEW_VAL) \
+    ({ typeof(*(PTR)) __oval = (OLD_VAL); \
+       typeof(*(PTR)) __nval = (NEW_VAL); \
+       __atomic_compare_exchange (PTR, (void*)&__oval, &__nval, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST); })
 #else
   extern int __upc_atomic_cas (os_atomic_p, os_atomic_t, os_atomic_t);
 #endif
