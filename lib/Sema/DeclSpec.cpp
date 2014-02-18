@@ -763,6 +763,11 @@ bool DeclSpec::SetTypeQual(TQ T, SourceLocation Loc, const char *&PrevSpec,
   TypeQualifiers |= T;
 
   switch (T) {
+  case TQ_shared:
+  case TQ_relaxed:
+  case TQ_strict:
+  case TQ_lqstar:
+  case TQ_lqexpr:
   case TQ_unspecified: break;
   case TQ_const:    TQ_constLoc = Loc; return false;
   case TQ_restrict: TQ_restrictLoc = Loc; return false;
