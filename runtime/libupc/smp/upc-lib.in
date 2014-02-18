@@ -175,6 +175,8 @@ extern unsigned long const __upc_global_base;
 
 #ifdef IN_TARGET_LIBS
 
+//include lib_os_atomic
+
 //include lib_atomic
 //include lib_spin_until
 
