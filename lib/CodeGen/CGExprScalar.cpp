@@ -1467,6 +1467,9 @@ Value *ScalarExprEmitter::VisitCastExpr(CastExpr *CE) {
   }
   case CK_PointerToIntegral:
     assert(!DestTy->isBooleanType() && "bool should use PointerToBool");
+    if(E->getType()->hasPointerToSharedRepresentation()) {
+      return CGF.EmitUPCPointerToInt(Visit(E), ConvertType(DestTy));
+    }
     return Builder.CreatePtrToInt(Visit(E), ConvertType(DestTy));
 
   case CK_ToVoid: {

@@ -1684,6 +1684,7 @@ public:
                                         SourceLocation Loc);
   llvm::Value *EmitUPCBitCastZeroPhase(llvm::Value *Value, QualType DestTy);
   llvm::Value *EmitUPCPointerToBoolConversion(llvm::Value *Pointer);
+  llvm::Value *EmitUPCPointerToInt(llvm::Value *Pointer, llvm::Type *DestTy);
   llvm::Value *EmitUPCNullPointer(QualType DestTy);
   llvm::Value *EmitUPCLoad(llvm::Value *Addr, bool isStrict, QualType Ty,
                            CharUnits Align, SourceLocation Loc);

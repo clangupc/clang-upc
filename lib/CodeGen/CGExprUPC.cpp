@@ -99,6 +99,17 @@ llvm::Value *CodeGenFunction::EmitUPCPointerToBoolConversion(llvm::Value *Pointe
                           Builder.CreateIsNotNull(Addr));
 }
 
+llvm::Value *CodeGenFunction::EmitUPCPointerToInt(llvm::Value *Pointer, llvm::Type *DestTy) {
+  llvm::Type *SrcTy = Pointer->getType();
+  llvm::Type *TmpTy = SrcTy;
+  if(CGM.getDataLayout().getTypeSizeInBits(SrcTy) < CGM.getDataLayout().getTypeSizeInBits(DestTy))
+    TmpTy = DestTy;
+  llvm::AllocaInst *Tmp = CreateTempAlloca(TmpTy);
+  InitTempAlloca(Tmp, llvm::Constant::getNullValue(TmpTy));
+  Builder.CreateStore(Pointer, Builder.CreateBitCast(Tmp, SrcTy->getPointerTo()));
+  return Builder.CreateLoad(Builder.CreateBitCast(Tmp, DestTy->getPointerTo()));
+}
+
 llvm::Value *CodeGenFunction::EmitUPCNullPointer(QualType DestTy) {
   return EmitUPCPointer(llvm::ConstantInt::get(SizeTy, 0),
                         llvm::ConstantInt::get(SizeTy, 0),
