@@ -6147,6 +6147,10 @@ checkPointerTypesForAssignment(Sema &S, QualType LHSType, QualType RHSType) {
     rhq.removeLayoutQualifier();
   }
 
+  // We don't care whether strict/relax match
+  lhq.removeStrict();
+  lhq.removeRelaxed();
+
   if (!lhq.compatiblyIncludes(rhq)) {
     // Treat address-space mismatches as fatal.  TODO: address subspaces
     if (lhq.getAddressSpace() != rhq.getAddressSpace())
