@@ -1133,9 +1133,7 @@ void AggExprEmitter::VisitInitListExpr(InitListExpr *E) {
       return Visit(E->getInit(0));
 
     if (Dest.isShared()) {
-      // This shouldn't be reachable.  It's just here
-      // to catch any changes.
-      llvm_unreachable("Can't initialize a shared array here.");
+      // We should already have emitted an error for this.
       return;
     }
 
