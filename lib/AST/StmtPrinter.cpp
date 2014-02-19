@@ -1257,21 +1257,36 @@ void StmtPrinter::VisitDesignatedInitExpr(DesignatedInitExpr *Node) {
   PrintExpr(Node->getInit());
 }
 
+static void IVIEHelper(raw_ostream &OS, QualType Ty) {
+  if (Ty->isRecordType()) { // Recurse on first field
+    Ty = (* Ty->getAs<RecordType>()->getDecl()->field_begin())->getType();
+  } else if (Ty->isArrayType()) { // Recurse on element type
+    Ty = cast<ArrayType>(Ty)->getElementType();
+  } else {
+    OS << 0;
+    return;
+  }
+  OS << '{';
+  IVIEHelper(OS, Ty);
+  OS << '}';
+}
+
 void StmtPrinter::VisitImplicitValueInitExpr(ImplicitValueInitExpr *Node) {
+  OS << "/*implicit*/";
   if (Policy.LangOpts.CPlusPlus) {
-    OS << "/*implicit*/";
     Node->getType().print(OS, Policy);
     OS << "()";
-  } else if(Node->getType()->isArrayType()) {
-    OS << "/*implicit*/{}";
   } else {
-    OS << "/*implicit*/(";
-    Node->getType().print(OS, Policy);
-    OS << ')';
-    if (Node->getType()->isRecordType())
-      OS << "{}";
-    else
-      OS << 0;
+#if 0
+    // PGI compiler doesn't like seeing these casts
+    // TODO: Is this PGI's problem our ours?
+    if (! Node->getType()->isArrayType()) {
+      OS << '(';
+      Node->getType().print(OS, Policy);
+      OS << ')';
+    }
+#endif
+    IVIEHelper(OS, Node->getType());
   }
 }
 
