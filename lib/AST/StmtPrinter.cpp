@@ -1277,15 +1277,7 @@ void StmtPrinter::VisitImplicitValueInitExpr(ImplicitValueInitExpr *Node) {
     Node->getType().print(OS, Policy);
     OS << "()";
   } else {
-#if 0
-    // PGI compiler doesn't like seeing these casts
-    // TODO: Is this PGI's problem our ours?
-    if (! Node->getType()->isArrayType()) {
-      OS << '(';
-      Node->getType().print(OS, Policy);
-      OS << ')';
-    }
-#endif
+    // Proper initialization is simplest via recursion:
     IVIEHelper(OS, Node->getType());
   }
 }
