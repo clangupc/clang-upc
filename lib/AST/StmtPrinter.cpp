@@ -1261,7 +1261,7 @@ static void IVIEHelper(raw_ostream &OS, QualType Ty) {
   if (Ty->isRecordType()) { // Recurse on first field
     Ty = (* Ty->getAs<RecordType>()->getDecl()->field_begin())->getType();
   } else if (Ty->isArrayType()) { // Recurse on element type
-    Ty = cast<ArrayType>(Ty)->getElementType();
+    Ty = Ty->getAsArrayTypeUnsafe()->getElementType();
   } else {
     OS << 0;
     return;
