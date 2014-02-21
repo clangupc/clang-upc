@@ -489,7 +489,8 @@ set(clang_upc_lib_h_sources ${PROJECT_SOURCE_DIR}/gen-inline-libupc.pl ${PROJECT
   ${PROJECT_SOURCE_DIR}/smp/upc_mem.h
   ${PROJECT_SOURCE_DIR}/smp/upc_pts.h
   ${PROJECT_SOURCE_DIR}/smp/upc_sup.h
-  ${PROJECT_SOURCE_DIR}/smp/upc_sync.h)
+  ${PROJECT_SOURCE_DIR}/smp/upc_sync.h
+  ${PROJECT_SOURCE_DIR}/smp/upc_sysdep.h)
 add_custom_command(OUTPUT ${clang_upc_lib_h}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${LLVM_BINARY_DIR}/${header_location} &&
     ${PERL_EXECUTABLE} ${clang_upc_lib_h_sources} > ${clang_upc_lib_h}

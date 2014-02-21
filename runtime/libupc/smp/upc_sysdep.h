@@ -24,12 +24,14 @@ typedef void *os_heap_t;
 #endif
 typedef os_heap_t *os_heap_p;
 
+//begin lib_os_atomic
 #ifdef __sgi__
 typedef volatile ptrdiff_t os_atomic_t;
 #else
 typedef volatile int os_atomic_t;
 #endif
 typedef os_atomic_t *os_atomic_p;
+//end lib_os_atomic
 
 #define OS_ATOMIC_WORD_SIZE (sizeof(os_atomic_t))
 #define OS_BITS_PER_ATOMIC_WORD (OS_ATOMIC_WORD_SIZE * 8)
