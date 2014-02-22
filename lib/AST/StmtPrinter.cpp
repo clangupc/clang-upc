@@ -1267,8 +1267,15 @@ static void IVIEHelper(raw_ostream &OS, QualType Ty) {
       OS << "{}";
       return;
     }
-  } else if (Ty->isArrayType()) { // Recurse on element type
-    Ty = Ty->getAsArrayTypeUnsafe()->getElementType();
+  } else if (Ty->isArrayType()) {
+    // Only ConstantArray is possible in this context
+    const ConstantArrayType *Arr = cast<ConstantArrayType>(Ty->getAsArrayTypeUnsafe());
+    if (Arr->getSize().getZExtValue()) { // Recurse on element type
+      Ty = Arr->getElementType();
+    } else { // non-C99 0-length array
+      OS << "{}";
+      return;
+    }
   } else {
     OS << 0;
     return;
