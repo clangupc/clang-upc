@@ -1258,8 +1258,15 @@ void StmtPrinter::VisitDesignatedInitExpr(DesignatedInitExpr *Node) {
 }
 
 static void IVIEHelper(raw_ostream &OS, QualType Ty) {
-  if (Ty->isRecordType()) { // Recurse on first field
-    Ty = (* Ty->getAs<RecordType>()->getDecl()->field_begin())->getType();
+  if (Ty->isRecordType()) {
+    const RecordDecl *RD = Ty->getAs<RecordType>()->getDecl();
+    RecordDecl::field_iterator I = RD->field_begin();
+    if (I != RD->field_end()) { // Recurse on first field
+      Ty = (*I)->getType();
+    } else { // non-C99 empty structure
+      OS << "{}";
+      return;
+    }
   } else if (Ty->isArrayType()) { // Recurse on element type
     Ty = Ty->getAsArrayTypeUnsafe()->getElementType();
   } else {
