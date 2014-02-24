@@ -219,6 +219,8 @@ bool ToolInvocation::run() {
   }
   OwningPtr<clang::CompilerInvocation> Invocation(
       newInvocation(&Diagnostics, *CC1Args));
+  if(Diagnostics.hasUncompilableErrorOccurred())
+    return false;
   for (llvm::StringMap<StringRef>::const_iterator
            It = MappedFileContents.begin(), End = MappedFileContents.end();
        It != End; ++It) {
