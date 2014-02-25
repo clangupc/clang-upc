@@ -1259,21 +1259,42 @@ void StmtPrinter::VisitDesignatedInitExpr(DesignatedInitExpr *Node) {
   PrintExpr(Node->getInit());
 }
 
+static void IVIEHelper(raw_ostream &OS, QualType Ty) {
+  if (Ty->isRecordType()) {
+    const RecordDecl *RD = Ty->getAs<RecordType>()->getDecl();
+    RecordDecl::field_iterator I = RD->field_begin();
+    if (I != RD->field_end()) { // Recurse on first field
+      Ty = (*I)->getType();
+    } else { // non-C99 empty structure
+      OS << "{}";
+      return;
+    }
+  } else if (Ty->isArrayType()) {
+    // Only ConstantArray is possible in this context
+    const ConstantArrayType *Arr = cast<ConstantArrayType>(Ty->getAsArrayTypeUnsafe());
+    if (Arr->getSize().getZExtValue()) { // Recurse on element type
+      Ty = Arr->getElementType();
+    } else { // non-C99 0-length array
+      OS << "{}";
+      return;
+    }
+  } else {
+    OS << 0;
+    return;
+  }
+  OS << '{';
+  IVIEHelper(OS, Ty);
+  OS << '}';
+}
+
 void StmtPrinter::VisitImplicitValueInitExpr(ImplicitValueInitExpr *Node) {
+  OS << "/*implicit*/";
   if (Policy.LangOpts.CPlusPlus) {
-    OS << "/*implicit*/";
     Node->getType().print(OS, Policy);
     OS << "()";
-  } else if(Node->getType()->isArrayType()) {
-    OS << "/*implicit*/{}";
   } else {
-    OS << "/*implicit*/(";
-    Node->getType().print(OS, Policy);
-    OS << ')';
-    if (Node->getType()->isRecordType())
-      OS << "{}";
-    else
-      OS << 0;
+    // Proper initialization is simplest via recursion:
+    IVIEHelper(OS, Node->getType());
   }
 }
 
