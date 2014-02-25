@@ -280,15 +280,15 @@ Retry:
     break;
   case tok::kw_upc_wait:
     Res = ParseUPCWaitStatement();
-    SemiError = "upc_notify";
+    SemiError = "upc_wait";
     break;
   case tok::kw_upc_barrier:
     Res = ParseUPCBarrierStatement();
-    SemiError = "upc_notify";
+    SemiError = "upc_barrier";
     break;
   case tok::kw_upc_fence:
     Res = ParseUPCFenceStatement();
-    SemiError = "upc_notify";
+    SemiError = "upc_fence";
     break;
   case tok::kw_upc_forall:             // UPC 6.6.2 upc_forall statement
     return ParseUPCForAllStatement(TrailingElseLoc);
@@ -1974,7 +1974,7 @@ StmtResult Parser::ParseReturnStatement() {
 ///         'upc_notify' expression[opt] ';'
 StmtResult Parser::ParseUPCNotifyStatement() {
   assert(Tok.is(tok::kw_upc_notify) && "Not a upc_notify stmt!");
-  SourceLocation NotifyLoc = ConsumeToken();  // eat the 'upc_barrier'.
+  SourceLocation NotifyLoc = ConsumeToken();  // eat the 'upc_notify'.
 
   ExprResult R;
   if (Tok.isNot(tok::semi)) {
@@ -2028,7 +2028,7 @@ StmtResult Parser::ParseUPCBarrierStatement() {
 ///         'upc_fence' expression[opt] ';'
 StmtResult Parser::ParseUPCFenceStatement() {
   assert(Tok.is(tok::kw_upc_fence) && "Not a upc_fence stmt!");
-  SourceLocation FenceLoc = ConsumeToken();  // eat the 'return'.
+  SourceLocation FenceLoc = ConsumeToken();  // eat the 'upc_fence'.
   return Actions.ActOnUPCFenceStmt(FenceLoc);
 }
 
