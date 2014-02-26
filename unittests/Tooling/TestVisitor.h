@@ -45,7 +45,7 @@ public:
   bool runOver(StringRef Code, Language L = Lang_CXX) {
     std::vector<std::string> Args;
     switch (L) {
-      case Lang_C: Args.push_back("-std=c99"); break;
+      case Lang_C: Args.push_back("-std=c99"); Args.push_back("-xc"); break;
       case Lang_CXX98: Args.push_back("-std=c++98"); break;
       case Lang_CXX11: Args.push_back("-std=c++11"); break;
     }
