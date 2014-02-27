@@ -43,7 +43,9 @@ char *__upc_strsignal (sig)
   char **sys_siglist = _sys_siglist;
   const int nsig = _sys_nsig;
 #else
+ #ifndef __NetBSD__ // signal.h has pointer decl instead of array
   extern const char * const sys_siglist[];
+ #endif
   const int nsig = NSIG;
 #endif
   if (sig > 0 && sig < nsig)
