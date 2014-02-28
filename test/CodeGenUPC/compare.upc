@@ -2,9 +2,9 @@
 
 int testeq(shared int * lhs, shared int * rhs) { return lhs == rhs; }
 // CHECK: testeq
-// CHECK: %{{[0-9]+}} = load %__upc_shared_pointer_type* %lhs.addr, align 8
-// CHECK-NEXT: %{{[0-9]+}} = load %__upc_shared_pointer_type* %rhs.addr, align 8
-// CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
+// CHECK: %{{lhs|[0-9]+}} = load %__upc_shared_pointer_type* %{{lhs.addr|[0-9]+}}, align 8
+// CHECK: %{{rhs|[0-9]+}} = load %__upc_shared_pointer_type* %{{rhs.addr|[0-9]+}}, align 8
+// CHECK: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = [[PHASEOP:and]] i64 %{{[0-9]+}}, [[PHASEVAL:1048575]]
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = lshr i64 %{{[0-9]+}}, [[THREADSHIFT:20]]
@@ -21,13 +21,13 @@ int testeq(shared int * lhs, shared int * rhs) { return lhs == rhs; }
 // CHECK-NEXT: %{{[0-9]+}} = icmp eq i64 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = icmp eq i64 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = and i1 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %conv = zext i1 %{{[0-9]+}} to i32
+// CHECK-NEXT: %{{conv|[0-9]+}} = zext i1 %{{[0-9]+}} to i32
 
 int testne(shared int * lhs, shared int * rhs) { return lhs != rhs; }
 // CHECK: testne
-// CHECK: %{{[0-9]+}} = load %__upc_shared_pointer_type* %lhs.addr, align 8
-// CHECK-NEXT: %{{[0-9]+}} = load %__upc_shared_pointer_type* %rhs.addr, align 8
-// CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
+// CHECK: %{{lhs|[0-9]+}} = load %__upc_shared_pointer_type* %{{lhs.addr|[0-9]+}}, align 8
+// CHECK: %{{rhs|[0-9]+}} = load %__upc_shared_pointer_type* %{{rhs.addr|[0-9]+}}, align 8
+// CHECK: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = and i64 %{{[0-9]+}}, 1048575
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = lshr i64 %{{[0-9]+}}, 20
@@ -45,13 +45,13 @@ int testne(shared int * lhs, shared int * rhs) { return lhs != rhs; }
 // CHECK-NEXT: %{{[0-9]+}} = icmp eq i64 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = and i1 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = xor i1 %{{[0-9]+}}, true
-// CHECK-NEXT: %conv = zext i1 %{{[0-9]+}} to i32
+// CHECK-NEXT: %{{conv|[0-9]+}} = zext i1 %{{[0-9]+}} to i32
 
 int testlt(shared int * lhs, shared int * rhs) { return lhs < rhs; }
 // CHECK: testlt
-// CHECK: %{{[0-9]+}} = load %__upc_shared_pointer_type* %lhs.addr, align 8
-// CHECK-NEXT: %{{[0-9]+}} = load %__upc_shared_pointer_type* %rhs.addr, align 8
-// CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
+// CHECK: %{{lhs|[0-9]+}} = load %__upc_shared_pointer_type* %{{lhs.addr|[0-9]+}}, align 8
+// CHECK: %{{rhs|[0-9]+}} = load %__upc_shared_pointer_type* %{{rhs.addr|[0-9]+}}, align 8
+// CHECK: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = [[PHASEOP]] i64 %{{[0-9]+}}, [[PHASEVAL]]
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = lshr i64 %{{[0-9]+}}, [[THREADSHIFT]]
@@ -65,11 +65,11 @@ int testlt(shared int * lhs, shared int * rhs) { return lhs < rhs; }
 // CHECK-NEXT: %{{[0-9]+}} = and i64 %{{[0-9]+}}, 1023
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0 
 // CHECK-NEXT: %{{[0-9]+}} = [[ADDROP]] i64 %{{[0-9]+}}, [[ADDRVAL]]
-// CHECK-NEXT: %addr.diff = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %phase.diff = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = mul i64 %phase.diff, 4
-// CHECK-NEXT: %{{[0-9]+}} = icmp slt i64 %addr.diff, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = icmp eq i64 %addr.diff, %{{[0-9]+}}
+// CHECK-NEXT: %{{addr.diff|[0-9]+}} = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{phase.diff|[0-9]+}} = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = mul i64 %{{phase.diff|[0-9]+}}, 4
+// CHECK-NEXT: %{{[0-9]+}} = icmp slt i64 %{{addr.diff|[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = icmp eq i64 %{{addr.diff|[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = icmp ult i64 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = icmp eq i64 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = icmp ult i64 %{{[0-9]+}}, %{{[0-9]+}}
@@ -77,13 +77,13 @@ int testlt(shared int * lhs, shared int * rhs) { return lhs < rhs; }
 // CHECK-NEXT: %{{[0-9]+}} = select i1 %{{[0-9]+}}, i1 true, i1 %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = select i1 %{{[0-9]+}}, i1 %{{[0-9]+}}, i1 false
 // CHECK-NEXT: %{{[0-9]+}} = select i1 %{{[0-9]+}}, i1 true, i1 %{{[0-9]+}}
-// CHECK-NEXT: %conv = zext i1 %{{[0-9]+}} to i32
+// CHECK-NEXT: %{{conv|[0-9]+}} = zext i1 %{{[0-9]+}} to i32
 
 int testle(shared int * lhs, shared int * rhs) { return lhs <= rhs; }
 // CHECK: testle
-// CHECK: %{{[0-9]+}} = load %__upc_shared_pointer_type* %lhs.addr, align 8
-// CHECK-NEXT: %{{[0-9]+}} = load %__upc_shared_pointer_type* %rhs.addr, align 8
-// CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
+// CHECK: %{{lhs|[0-9]+}} = load %__upc_shared_pointer_type* %{{lhs.addr|[0-9]+}}, align 8
+// CHECK: %{{rhs|[0-9]+}} = load %__upc_shared_pointer_type* %{{rhs.addr|[0-9]+}}, align 8
+// CHECK: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = [[PHASEOP]] i64 %{{[0-9]+}}, [[PHASEVAL]]
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = lshr i64 %{{[0-9]+}}, [[THREADSHIFT]]
@@ -97,11 +97,11 @@ int testle(shared int * lhs, shared int * rhs) { return lhs <= rhs; }
 // CHECK-NEXT: %{{[0-9]+}} = and i64 %{{[0-9]+}}, 1023
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0 
 // CHECK-NEXT: %{{[0-9]+}} = [[ADDROP]] i64 %{{[0-9]+}}, [[ADDRVAL]]
-// CHECK-NEXT: %addr.diff = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %phase.diff = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = mul i64 %phase.diff, 4
-// CHECK-NEXT: %{{[0-9]+}} = icmp slt i64 %addr.diff, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = icmp eq i64 %addr.diff, %{{[0-9]+}}
+// CHECK-NEXT: %{{addr.diff|[0-9]+}} = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{phase.diff|[0-9]+}} = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = mul i64 %{{phase.diff|[0-9]+}}, 4
+// CHECK-NEXT: %{{[0-9]+}} = icmp slt i64 %{{addr.diff|[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = icmp eq i64 %{{addr.diff|[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = icmp ult i64 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = icmp eq i64 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = icmp ult i64 %{{[0-9]+}}, %{{[0-9]+}}
@@ -110,13 +110,13 @@ int testle(shared int * lhs, shared int * rhs) { return lhs <= rhs; }
 // CHECK-NEXT: %{{[0-9]+}} = select i1 %{{[0-9]+}}, i1 %{{[0-9]+}}, i1 false
 // CHECK-NEXT: %{{[0-9]+}} = select i1 %{{[0-9]+}}, i1 true, i1 %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = xor i1 %{{[0-9]+}}, true
-// CHECK-NEXT: %conv = zext i1 %{{[0-9]+}} to i32
+// CHECK-NEXT: %{{conv|[0-9]+}} = zext i1 %{{[0-9]+}} to i32
 
 int testgt(shared int * lhs, shared int * rhs) { return lhs > rhs; }
 // CHECK: testgt
-// CHECK: %{{[0-9]+}} = load %__upc_shared_pointer_type* %lhs.addr, align 8
-// CHECK-NEXT: %{{[0-9]+}} = load %__upc_shared_pointer_type* %rhs.addr, align 8
-// CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
+// CHECK: %{{lhs|[0-9]+}} = load %__upc_shared_pointer_type* %{{lhs.addr|[0-9]+}}, align 8
+// CHECK: %{{rhs|[0-9]+}} = load %__upc_shared_pointer_type* %{{rhs.addr|[0-9]+}}, align 8
+// CHECK: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = [[PHASEOP]] i64 %{{[0-9]+}}, [[PHASEVAL]]
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = lshr i64 %{{[0-9]+}}, [[THREADSHIFT]]
@@ -130,11 +130,11 @@ int testgt(shared int * lhs, shared int * rhs) { return lhs > rhs; }
 // CHECK-NEXT: %{{[0-9]+}} = and i64 %{{[0-9]+}}, 1023
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0 
 // CHECK-NEXT: %{{[0-9]+}} = [[ADDROP]] i64 %{{[0-9]+}}, [[ADDRVAL]]
-// CHECK-NEXT: %addr.diff = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %phase.diff = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = mul i64 %phase.diff, 4
-// CHECK-NEXT: %{{[0-9]+}} = icmp slt i64 %addr.diff, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = icmp eq i64 %addr.diff, %{{[0-9]+}}
+// CHECK-NEXT: %{{addr.diff|[0-9]+}} = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{phase.diff|[0-9]+}} = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = mul i64 %{{phase.diff|[0-9]+}}, 4
+// CHECK-NEXT: %{{[0-9]+}} = icmp slt i64 %{{addr.diff|[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = icmp eq i64 %{{addr.diff|[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = icmp ult i64 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = icmp eq i64 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = icmp ult i64 %{{[0-9]+}}, %{{[0-9]+}}
@@ -142,13 +142,13 @@ int testgt(shared int * lhs, shared int * rhs) { return lhs > rhs; }
 // CHECK-NEXT: %{{[0-9]+}} = select i1 %{{[0-9]+}}, i1 true, i1 %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = select i1 %{{[0-9]+}}, i1 %{{[0-9]+}}, i1 false
 // CHECK-NEXT: %{{[0-9]+}} = select i1 %{{[0-9]+}}, i1 true, i1 %{{[0-9]+}}
-// CHECK-NEXT: %conv = zext i1 %{{[0-9]+}} to i32
+// CHECK-NEXT: %{{conv|[0-9]+}} = zext i1 %{{[0-9]+}} to i32
 
 int testge(shared int * lhs, shared int * rhs) { return lhs >= rhs; }
 // CHECK: testge
-// CHECK: %{{[0-9]+}} = load %__upc_shared_pointer_type* %lhs.addr, align 8
-// CHECK-NEXT: %{{[0-9]+}} = load %__upc_shared_pointer_type* %rhs.addr, align 8
-// CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
+// CHECK: %{{lhs|[0-9]+}} = load %__upc_shared_pointer_type* %{{lhs.addr|[0-9]+}}, align 8
+// CHECK: %{{rhs|[0-9]+}} = load %__upc_shared_pointer_type* %{{rhs.addr|[0-9]+}}, align 8
+// CHECK: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = [[PHASEOP]] i64 %{{[0-9]+}}, [[PHASEVAL]]
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = lshr i64 %{{[0-9]+}}, [[THREADSHIFT]]
@@ -162,11 +162,11 @@ int testge(shared int * lhs, shared int * rhs) { return lhs >= rhs; }
 // CHECK-NEXT: %{{[0-9]+}} = and i64 %{{[0-9]+}}, 1023
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0 
 // CHECK-NEXT: %{{[0-9]+}} = [[ADDROP]] i64 %{{[0-9]+}}, [[ADDRVAL]]
-// CHECK-NEXT: %addr.diff = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %phase.diff = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = mul i64 %phase.diff, 4
-// CHECK-NEXT: %{{[0-9]+}} = icmp slt i64 %addr.diff, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = icmp eq i64 %addr.diff, %{{[0-9]+}}
+// CHECK-NEXT: %{{addr.diff|[0-9]+}} = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{phase.diff|[0-9]+}} = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = mul i64 %{{phase.diff|[0-9]+}}, 4
+// CHECK-NEXT: %{{[0-9]+}} = icmp slt i64 %{{addr.diff|[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = icmp eq i64 %{{addr.diff|[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = icmp ult i64 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = icmp eq i64 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = icmp ult i64 %{{[0-9]+}}, %{{[0-9]+}}
@@ -175,4 +175,4 @@ int testge(shared int * lhs, shared int * rhs) { return lhs >= rhs; }
 // CHECK-NEXT: %{{[0-9]+}} = select i1 %{{[0-9]+}}, i1 %{{[0-9]+}}, i1 false
 // CHECK-NEXT: %{{[0-9]+}} = select i1 %{{[0-9]+}}, i1 true, i1 %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = xor i1 %{{[0-9]+}}, true
-// CHECK-NEXT: %conv = zext i1 %{{[0-9]+}} to i32
+// CHECK-NEXT: %{{conv|[0-9]+}} = zext i1 %{{[0-9]+}} to i32

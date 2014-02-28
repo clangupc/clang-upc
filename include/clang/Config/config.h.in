@@ -21,4 +21,13 @@
 /* Directory where gcc is installed. */
 #undef GCC_INSTALL_PREFIX
 
+/* UPC shared pointer representation. */                                        
+#undef UPC_PTS
+                                                                                
+/* the number of bits in each field. */                                         
+#undef UPC_PACKED_BITS
+                                                                                
+/* the field order */                                                           
+#undef UPC_PTS_VADDR_ORDER
+
 #endif

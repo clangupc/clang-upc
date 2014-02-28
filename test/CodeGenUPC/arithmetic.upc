@@ -9,13 +9,13 @@ shared int * testadd(shared int * ptr, int x) { return ptr + x; }
 // CHECK-NEXT: %{{[0-9]+}} = and i64 %{{[0-9]+}}, 1023
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = lshr i64 %{{[0-9]+}}, 30
-// CHECK-NEXT: %idx.ext = sext i32 %{{[0-9]+}} to i64
+// CHECK-NEXT: %{{idx.ext|[0-9]+}} = sext i32 %{{[0-9]+}} to i64
 // CHECK-NEXT: %{{[0-9]+}} = load i32* @THREADS
 // CHECK-NEXT: %{{[0-9]+}} = zext i32 %{{[0-9]+}} to i64
 // CHECK-NEXT: %{{[0-9]+}} = mul nuw i64 %{{[0-9]+}}, 1
 // CHECK-NEXT: %{{[0-9]+}} = mul nuw i64 %{{[0-9]+}}, 1
 // CHECK-NEXT: %{{[0-9]+}} = add nuw i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = add i64 %{{[0-9]+}}, %idx.ext
+// CHECK-NEXT: %{{[0-9]+}} = add i64 %{{[0-9]+}}, %{{idx.ext|[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = sdiv i64 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = srem i64 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = icmp slt i64 %{{[0-9]+}}, 0
@@ -38,8 +38,8 @@ shared int * testadd(shared int * ptr, int x) { return ptr + x; }
 
 shared int * testsub(shared int * ptr, int x) { return ptr - x; }
 // CHECK: testsub
-// CHECK: %{{[0-9]+}} = load %__upc_shared_pointer_type* %ptr.addr, align 8
-// CHECK-NEXT: %{{[0-9]+}} = load i32* %x.addr, align 4
+// CHECK: %{{ptr|[0-9]+}} = load %__upc_shared_pointer_type* %{{ptr.addr|[0-9]+}}, align 8
+// CHECK: %{{[0-9]+}} = load i32* %{{x.addr|[0-9]+}}, align 4
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = and i64 %{{[0-9]+}}, 1048575
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
@@ -47,8 +47,8 @@ shared int * testsub(shared int * ptr, int x) { return ptr - x; }
 // CHECK-NEXT: %{{[0-9]+}} = and i64 %{{[0-9]+}}, 1023
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = lshr i64 %{{[0-9]+}}, 30
-// CHECK-NEXT: %idx.ext = sext i32 %{{[0-9]+}} to i64
-// CHECK-NEXT: %{{[0-9]+}} = sub i64 0, %idx.ext
+// CHECK-NEXT: %{{idx.ext|[0-9]+}} = sext i32 %{{[0-9]+}} to i64
+// CHECK-NEXT: %{{[0-9]+}} = sub i64 0, %{{idx.ext|[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = load i32* @THREADS
 // CHECK-NEXT: %{{[0-9]+}} = zext i32 %{{[0-9]+}} to i64
 // CHECK-NEXT: %{{[0-9]+}} = mul nuw i64 %{{[0-9]+}}, 1
@@ -77,9 +77,9 @@ shared int * testsub(shared int * ptr, int x) { return ptr - x; }
 
 long long testsub2(shared int * ptr1, shared int * ptr2) { return ptr1 - ptr2; }
 // CHECK: testsub2
-// CHECK: %{{[0-9]+}} = load %__upc_shared_pointer_type* %ptr1.addr, align 8
-// CHECK-NEXT: %{{[0-9]+}} = load %__upc_shared_pointer_type* %ptr2.addr, align 8
-// CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
+// CHECK: %{{ptr1|[0-9]+}} = load %__upc_shared_pointer_type* %{{ptr1.addr|[0-9]+}}, align 8
+// CHECK: %{{ptr2|[0-9]+}} = load %__upc_shared_pointer_type* %{{ptr2.addr|[0-9]+}}, align 8
+// CHECK: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = and i64 %{{[0-9]+}}, 1048575
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = lshr i64 %{{[0-9]+}}, 20
@@ -93,23 +93,23 @@ long long testsub2(shared int * ptr1, shared int * ptr2) { return ptr1 - ptr2; }
 // CHECK-NEXT: %{{[0-9]+}} = and i64 %{{[0-9]+}}, 1023
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = lshr i64 %{{[0-9]+}}, 30
-// CHECK-NEXT: %addr.diff = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = sdiv exact i64 %addr.diff, 4
+// CHECK-NEXT: %{{addr.diff|[0-9]+}} = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = sdiv exact i64 %{{addr.diff|[0-9]+}}, 4
 // CHECK-NEXT: %{{[0-9]+}} = load i32* @THREADS
 // CHECK-NEXT: %{{[0-9]+}} = zext i32 %{{[0-9]+}} to i64
-// CHECK-NEXT: %thread.diff = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = mul i64 %thread.diff, 1
-// CHECK-NEXT: %phase.diff = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = sub i64 %{{[0-9]+}}, %phase.diff
-// CHECK-NEXT: %block.diff = mul i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = add i64 %{{[0-9]+}}, %phase.diff
-// CHECK-NEXT: %ptr.diff = add i64 %block.diff, %{{[0-9]+}}
+// CHECK-NEXT: %{{thread.diff|[0-9]+}} = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = mul i64 %{{thread.diff|[0-9]+}}, 1
+// CHECK-NEXT: %{{phase.diff|[0-9]+}} = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = sub i64 %{{[0-9]+}}, %{{phase.diff|[0-9]+}}
+// CHECK-NEXT: %{{block.diff|[0-9]+}} = mul i64 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = add i64 %{{[0-9]+}}, %{{phase.diff|[0-9]+}}
+// CHECK-NEXT: %{{ptr.diff|[0-9]+}} = add i64 %{{block.diff|[0-9]+}}, %{{[0-9]+}}
 
 shared int *testsubscript(shared int * ptr, int idx) { return &ptr[idx]; }
 // CHECK: testsubscript
-// CHECK: %{{[0-9]+}} = load i32* %idx.addr, align 4
-// CHECK-NEXT: %idxprom = sext i32 %{{[0-9]+}} to i64
-// CHECK-NEXT: %{{[0-9]+}} = load %__upc_shared_pointer_type* %ptr.addr, align 8
+// CHECK: %{{[0-9]+}} = load i32* %{{idx.addr|[0-9]+}}, align 4
+// CHECK-NEXT: %{{idxprom|[0-9]+}} = sext i32 %{{[0-9]+}} to i64
+// CHECK-NEXT: %{{[0-9]+}} = load %__upc_shared_pointer_type* %{{ptr.addr|[0-9]+}}, align 8
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = and i64 %{{[0-9]+}}, 1048575
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
@@ -122,7 +122,7 @@ shared int *testsubscript(shared int * ptr, int idx) { return &ptr[idx]; }
 // CHECK-NEXT: %{{[0-9]+}} = mul nuw i64 %{{[0-9]+}}, 1
 // CHECK-NEXT: %{{[0-9]+}} = mul nuw i64 %{{[0-9]+}}, 1
 // CHECK-NEXT: %{{[0-9]+}} = add nuw i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = add i64 %{{[0-9]+}}, %idxprom
+// CHECK-NEXT: %{{[0-9]+}} = add i64 %{{[0-9]+}}, %{{idxprom|[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = sdiv i64 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = srem i64 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = icmp slt i64 %{{[0-9]+}}, 0
@@ -189,13 +189,13 @@ void testplusassign(shared int * * ptr, int val) { *ptr += val; }
 // CHECK-NEXT: %{{[0-9]+}} = and i64 %{{[0-9]+}}, 1023
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = lshr i64 %{{[0-9]+}}, 30
-// CHECK-NEXT: %idx.ext = sext i32 %{{[0-9]+}} to i64
+// CHECK-NEXT: %{{idx.ext|[0-9]+}} = sext i32 %{{[0-9]+}} to i64
 // CHECK-NEXT: %{{[0-9]+}} = load i32* @THREADS
 // CHECK-NEXT: %{{[0-9]+}} = zext i32 %{{[0-9]+}} to i64
 // CHECK-NEXT: %{{[0-9]+}} = mul nuw i64 %{{[0-9]+}}, 1
 // CHECK-NEXT: %{{[0-9]+}} = mul nuw i64 %{{[0-9]+}}, 1
 // CHECK-NEXT: %{{[0-9]+}} = add nuw i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = add i64 %{{[0-9]+}}, %idx.ext
+// CHECK-NEXT: %{{[0-9]+}} = add i64 %{{[0-9]+}}, %{{idx.ext|[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = sdiv i64 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = srem i64 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = icmp slt i64 %{{[0-9]+}}, 0
@@ -220,8 +220,8 @@ typedef int array_type[10][THREADS][7];
 
 shared array_type * testarrayplus(shared array_type * ptr, int x) { return ptr + x; }
 // CHECK: testarrayplus
-// CHECK: %{{[0-9]+}} = load %__upc_shared_pointer_type* %ptr.addr, align 8
-// CHECK-NEXT: %{{[0-9]+}} = load i32* %x.addr, align 4
+// CHECK: %{{[0-9]+}} = load %__upc_shared_pointer_type* %{{ptr.addr|[0-9]+}}, align 8
+// CHECK-NEXT: %{{[0-9]+}} = load i32* %{{x.addr|[0-9]+}}, align 4
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = and i64 %{{[0-9]+}}, 1048575
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
@@ -229,19 +229,19 @@ shared array_type * testarrayplus(shared array_type * ptr, int x) { return ptr +
 // CHECK-NEXT: %{{[0-9]+}} = and i64 %{{[0-9]+}}, 1023
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = lshr i64 %{{[0-9]+}}, 30
-// CHECK-NEXT: %idx.ext = sext i32 %{{[0-9]+}} to i64
+// CHECK-NEXT: %{{idx.ext|[0-9]+}} = sext i32 %{{[0-9]+}} to i64
 // CHECK-NEXT: %{{[0-9]+}} = load i32* @THREADS
 // CHECK-NEXT: %{{[0-9]+}} = zext i32 %{{[0-9]+}} to i64
 // CHECK-NEXT: %{{[0-9]+}} = mul nuw i64 1, %{{[0-9]+}}
-// CHECK-NEXT: %mul.dim = mul nuw i64 10, %{{[0-9]+}}
-// CHECK-NEXT: %mul.dim2 = mul nuw i64 %mul.dim, 7
-// CHECK-NEXT: %idx.dim = mul nsw i64 %idx.ext, %mul.dim2
+// CHECK-NEXT: %{{mul.dim|[0-9]+}} = mul nuw i64 10, %{{[0-9]+}}
+// CHECK-NEXT: %{{mul.dim2|[0-9]+}} = mul nuw i64 %{{mul.dim|[0-9]+}}, 7
+// CHECK-NEXT: %{{idx.dim|[0-9]+}} = mul nsw i64 %{{idx.ext|[0-9]+}}, %{{mul.dim2|[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = load i32* @THREADS
 // CHECK-NEXT: %{{[0-9]+}} = zext i32 %{{[0-9]+}} to i64
 // CHECK-NEXT: %{{[0-9]+}} = mul nuw i64 %{{[0-9]+}}, 1
 // CHECK-NEXT: %{{[0-9]+}} = mul nuw i64 %{{[0-9]+}}, 1
 // CHECK-NEXT: %{{[0-9]+}} = add nuw i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = add i64 %{{[0-9]+}}, %idx.dim
+// CHECK-NEXT: %{{[0-9]+}} = add i64 %{{[0-9]+}}, %{{idx.dim|[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = sdiv i64 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = srem i64 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = icmp slt i64 %{{[0-9]+}}, 0
@@ -264,8 +264,8 @@ shared array_type * testarrayplus(shared array_type * ptr, int x) { return ptr +
 
 int testarrayminus2(shared array_type * ptr1, shared array_type * ptr2) { return ptr1 - ptr2; }
 // CHECK: testarrayminus2
-// CHECK: %{{[0-9]+}} = load %__upc_shared_pointer_type* %ptr1.addr, align 8
-// CHECK-NEXT: %{{[0-9]+}} = load %__upc_shared_pointer_type* %ptr2.addr, align 8
+// CHECK: %{{[0-9]+}} = load %__upc_shared_pointer_type* %{{ptr1.addr|[0-9]+}}, align 8
+// CHECK-NEXT: %{{[0-9]+}} = load %__upc_shared_pointer_type* %{{ptr2.addr|[0-9]+}}, align 8
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = and i64 %{{[0-9]+}}, 1048575
 // CHECK-NEXT: %{{[0-9]+}} = extractvalue %__upc_shared_pointer_type %{{[0-9]+}}, 0
@@ -283,18 +283,18 @@ int testarrayminus2(shared array_type * ptr1, shared array_type * ptr2) { return
 // CHECK-NEXT: %{{[0-9]+}} = load i32* @THREADS
 // CHECK-NEXT: %{{[0-9]+}} = zext i32 %{{[0-9]+}} to i64
 // CHECK-NEXT: %{{[0-9]+}} = mul nuw i64 1, %{{[0-9]+}}
-// CHECK-NEXT: %mul.dim = mul nuw i64 10, %{{[0-9]+}}
-// CHECK-NEXT: %mul.dim4 = mul nuw i64 %mul.dim, 7
-// CHECK-NEXT: %addr.diff = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = sdiv exact i64 %addr.diff, 4
+// CHECK-NEXT: %{{mul.dim|[0-9]+}} = mul nuw i64 10, %{{[0-9]+}}
+// CHECK-NEXT: %{{mul.dim4|[0-9]+}} = mul nuw i64 %{{mul.dim|[0-9]+}}, 7
+// CHECK-NEXT: %{{addr.diff|[0-9]+}} = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = sdiv exact i64 %{{addr.diff|[0-9]+}}, 4
 // CHECK-NEXT: %{{[0-9]+}} = load i32* @THREADS
 // CHECK-NEXT: %{{[0-9]+}} = zext i32 %{{[0-9]+}} to i64
-// CHECK-NEXT: %thread.diff = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = mul i64 %thread.diff, 1
-// CHECK-NEXT: %phase.diff = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = sub i64 %{{[0-9]+}}, %phase.diff
-// CHECK-NEXT: %block.diff = mul i64 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: %{{[0-9]+}} = add i64 %{{[0-9]+}}, %phase.diff
-// CHECK-NEXT: %ptr.diff = add i64 %block.diff, %{{[0-9]+}}
-// CHECK-NEXT: %diff.dim = sdiv exact i64 %ptr.diff, %mul.dim4
-// CHECK-NEXT: %conv = trunc i64 %diff.dim to i32
+// CHECK-NEXT: %{{thread.diff|[0-9]+}} = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = mul i64 %{{thread.diff|[0-9]+}}, 1
+// CHECK-NEXT: %{{phase.diff|[0-9]+}} = sub i64 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = sub i64 %{{[0-9]+}}, %{{phase.diff|[0-9]+}}
+// CHECK-NEXT: %{{block.diff|[0-9]+}} = mul i64 %{{[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{[0-9]+}} = add i64 %{{[0-9]+}}, %{{phase.diff|[0-9]+}}
+// CHECK-NEXT: %{{ptr.diff|[0-9]+}} = add i64 %{{block.diff|[0-9]+}}, %{{[0-9]+}}
+// CHECK-NEXT: %{{diff.dim|[0-9]+}} = sdiv exact i64 %{{ptr.diff|[0-9]+}}, %{{mul.dim4|[0-9]+}}
+// CHECK-NEXT: %{{conv|[0-9]+}} = trunc i64 %{{diff.dim|[0-9]+}} to i32

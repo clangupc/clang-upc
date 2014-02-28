@@ -55,4 +55,4 @@ unsigned test_bitfield_load(shared BitField * ptr) { return ptr->i2; }
 void test_bitfield_store(shared BitField * ptr, unsigned val) { ptr->i2 = val; }
 // CHECK: test_bitfield_store
 // CHECK: call i32 @__getgsi3(i64 %{{[0-9]+}}, i8* getelementptr inbounds ([{{[0-9]+}} x i8]* @.str, i32 0, i32 0), i32 55)
-// CHECK: call void @__putgsi4(i64 %{{[0-9]+}}, i32 %bf.set, i8* getelementptr inbounds ([{{[0-9]+}} x i8]* @.str, i32 0, i32 0), i32 55)
+// CHECK: call void @__putgsi4(i64 %{{[0-9]+}}, i32 %{{bf.set|[0-9]+}}, i8* getelementptr inbounds ([{{[0-9]+}} x i8]* @.str, i32 0, i32 0), i32 55)

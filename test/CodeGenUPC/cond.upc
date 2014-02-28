@@ -19,4 +19,4 @@ int test_if(shared int * ptr) {
 // CHECK-NEXT: %{{[0-9]+}} = icmp ne i64 %{{[0-9]+}}, 0
 // CHECK-NEXT: %{{[0-9]+}} = or i1 %{{[0-9]+}}, %{{[0-9]+}}
 // CHECK-NEXT: %{{[0-9]+}} = or i1 %{{[0-9]+}}, %{{[0-9]+}}
-// CHECK-NEXT: br i1 %{{[0-9]+}}, label %if.then, label %if.else
+// CHECK-NEXT: br i1 %{{[0-9]+}}, label %{{if.then|[0-9]+}}, label %{{if.else|[0-9]+}}
