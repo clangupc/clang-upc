@@ -19,9 +19,10 @@ endif()
 set(bindir "${CLANGXX_DESTDIR}${CMAKE_INSTALL_PREFIX}/bin/")
 set(clang "clang${EXECUTABLE_SUFFIX}")
 set(clangxx "clang++${EXECUTABLE_SUFFIX}")
-set(clangupc "clangupc${EXECUTABLE_SUFFIX}")
+set(clang_upc "clang-upc${EXECUTABLE_SUFFIX}")
 set(clang_cl "clang-cl${EXECUTABLE_SUFFIX}")
 set(cl "cl${EXECUTABLE_SUFFIX}")
+set(upc "upc${EXECUTABLE_SUFFIX}")
 
 message("Creating clang++ executable based on ${clang}")
 
@@ -29,10 +30,16 @@ execute_process(
   COMMAND "${CMAKE_COMMAND}" -E ${CLANGXX_LINK_OR_COPY} "${clang}" "${clangxx}"
   WORKING_DIRECTORY "${bindir}")
 
-message("Creating clangupc executable based on ${clang}")
+message("Creating clang-upc executable based on ${clang}")
 
 execute_process(
-  COMMAND "${CMAKE_COMMAND}" -E ${CLANGXX_LINK_OR_COPY} "${clang}" "${clangupc}"
+  COMMAND "${CMAKE_COMMAND}" -E ${CLANGXX_LINK_OR_COPY} "${clang}" "${clang_upc}"
+  WORKING_DIRECTORY "${bindir}")
+
+message("Creating upc executable based on ${clang}")
+
+execute_process(
+  COMMAND "${CMAKE_COMMAND}" -E ${CLANGXX_LINK_OR_COPY} "${clang}" "${upc}"
   WORKING_DIRECTORY "${bindir}")
 
 message("Creating clang-cl executable based on ${clang}")
