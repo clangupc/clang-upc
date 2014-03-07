@@ -22,6 +22,10 @@ ifeq ($(ENABLE_CLANG_STATIC_ANALYZER), 1)
   PARALLEL_DIRS += clang-check
 endif
 
+ifeq ($(ENABLE_CLANG_UPC2C), 1)
+  PARALLEL_DIRS += upc2c
+endif
+
 ifeq ($(ENABLE_CLANG_ARCMT), 1)
   DIRS += libclang c-index-test c-arcmt-test
   PARALLEL_DIRS += arcmt-test
