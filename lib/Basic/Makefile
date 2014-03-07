@@ -28,9 +28,7 @@ LLVM_REVISION := $(strip \
 LLVM_REPOSITORY := $(strip \
         $(shell $(LLVM_SRC_ROOT)/utils/GetRepositoryPath $(LLVM_SRC_ROOT)))
 
-CPP.Defines += -I$(PROJ_SRC_DIR)/../../include -I$(PROJ_OBJ_DIR)/../../include \
-         -DSVN_REVISION='"$(SVN_REVISION)"' -DSVN_REPOSITORY='"$(SVN_REPOSITORY)"' \
-         -DLLVM_REVISION='"$(LLVM_REVISION)"' -DLLVM_REPOSITORY='"$(LLVM_REPOSITORY)"'
+CPP.Defines += -I$(PROJ_SRC_DIR)/../../include -I$(PROJ_OBJ_DIR)/../../include
 
 $(ObjDir)/.ver-svn .ver: $(ObjDir)/.dir
 	@if [ '$(SVN_REVISION) $(LLVM_REVISION)' != '$(shell cat $(ObjDir)/.ver-svn 2>/dev/null)' ]; then\

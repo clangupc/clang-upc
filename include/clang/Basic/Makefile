@@ -30,6 +30,7 @@ CLANG_HAS_VERSION_PATCHLEVEL := 0
 else
 CLANG_HAS_VERSION_PATCHLEVEL := 1
 endif
+CLANG_UPC_VERSION := `date +%Y%m%d`
 
 $(ObjDir)/Diagnostic%Kinds.inc.tmp : Diagnostic.td $(INPUT_TDS) $(CLANG_TBLGEN) $(ObjDir)/.dir
 	$(Echo) "Building Clang $(patsubst Diagnostic%Kinds.inc.tmp,%,$(@F)) diagnostic tables with tblgen"
@@ -59,4 +60,5 @@ $(ObjDir)/Version.inc.tmp : Version.inc.in Makefile $(LLVM_OBJ_ROOT)/Makefile.co
 	           -e "s#@CLANG_VERSION_MINOR@#$(CLANG_VERSION_MINOR)#g" \
 	           -e "s#@CLANG_VERSION_PATCHLEVEL@#$(CLANG_VERSION_PATCHLEVEL)#g" \
 	           -e "s#@CLANG_HAS_VERSION_PATCHLEVEL@#$(CLANG_HAS_VERSION_PATCHLEVEL)#g" \
+	           -e "s#@CLANG_UPC_VERSION@#$(CLANG_UPC_VERSION)#g" \
 	           $< > $@
