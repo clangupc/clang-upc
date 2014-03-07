@@ -893,7 +893,7 @@ void clang::InitializePreprocessor(Preprocessor &PP,
     AddImplicitIncludeMacros(Builder, InitOpts.MacroIncludes[i],
                              PP.getFileManager());
 
-  if (LangOpts.UPC)
+  if (LangOpts.UPC && LangOpts.UPCPreInclude)
     AddImplicitInclude(Builder, "clang-upc.h", PP.getFileManager());
 
   // Process -include-pch/-include-pth directives.

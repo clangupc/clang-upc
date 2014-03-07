@@ -795,6 +795,10 @@ def fupc_inline_lib : Flag<["-"], "fupc-inline-lib">,
                       Group<f_Group>, Flags<[CC1Option]>;
 def fno_upc_inline_lib : Flag<["-"], "fno-upc-inline-lib">,
                          Group<f_Group>, Flags<[CC1Option]>;
+def fupc_pre_include : Flag<["-"], "fupc-pre-include">,
+                      Group<f_Group>, Flags<[CC1Option]>;
+def fno_upc_pre_include : Flag<["-"], "fno-upc-pre-include">,
+                      Group<f_Group>, Flags<[CC1Option]>;
 def fupc_debug : Flag<["-"], "fupc-debug">, Group<f_Group>,
                  Flags<[CC1Option]>;
 def fno_upc_debug : Flag<["-"], "fno-upc-debug">, Group<f_Group>;

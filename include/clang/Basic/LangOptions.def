@@ -154,6 +154,7 @@ LANGOPT(UPCThreadBits, 8, 10, "number of thread bits")
 LANGOPT(UPCAddrBits, 8, 34, "number of addr bits")
 LANGOPT(UPCVaddrFirst, 1, 0, "UPC pointer field order")
 LANGOPT(UPCInlineLib, 1, 0, "inline the UPC runtime")
+LANGOPT(UPCPreInclude, 1, 0, "pre-include UPC runtime header files")
 
 LANGOPT(MRTD , 1, 0, "-mrtd calling convention")
 BENIGN_LANGOPT(DelayedTemplateParsing , 1, 0, "delayed template parsing")

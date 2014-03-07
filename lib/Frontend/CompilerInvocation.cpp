@@ -1478,6 +1478,9 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
   Opts.Optimize = Opt != 0;
   Opts.OptimizeSize = OptSize != 0;
 
+  if (Opts.UPC && !Args.hasArg(OPT_fno_upc_pre_include))
+    Opts.UPCPreInclude = true;
+
   if (Opts.UPC &&
       ((Opts.Optimize && !Args.hasArg(OPT_fno_upc_inline_lib)) ||
        Args.hasFlag(OPT_fupc_inline_lib, OPT_fno_upc_inline_lib, false)))
