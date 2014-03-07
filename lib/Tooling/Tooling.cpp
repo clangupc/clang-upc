@@ -214,15 +214,17 @@ bool ToolInvocation::run() {
   Driver->setCheckInputsExist(false);
   const OwningPtr<clang::driver::Compilation> Compilation(
       Driver->BuildCompilation(llvm::makeArrayRef(Argv)));
-  // On --version just return.  Version string has been printed already.
-  if (Compilation->getArgs().hasArg(driver::options::OPT__version)) {
-    return true;
-  }
   // Just print the cc1 options if -### was present.
   if (Compilation->getArgs().hasArg(driver::options::OPT__HASH_HASH_HASH)) {
     Compilation->getJobs().Print(llvm::errs(), "\n", true);
     return true;
   }
+  // We expect to get back a command job.  If there is no job
+  // everything was handled by the driver.
+  const driver::JobList &Jobs = Compilation->getJobs();                                   
+  if (Jobs.size() == 0)
+    return true;                                                                   
+
   const llvm::opt::ArgStringList *const CC1Args = getCC1Arguments(
       &Diagnostics, Compilation.get());
   if (CC1Args == NULL) {
