@@ -864,6 +864,14 @@ void InitListChecker::CheckSubElementType(const InitializedEntity &Entity,
       return;
     }
 
+    if (isa<ImplicitValueInitExpr>(expr)) {
+      if (!VerifyOnly) {
+        UpdateStructuredListElement(StructuredList, StructuredIndex, expr);
+      }
+      ++Index;
+      return;
+    }
+
     // Fall through for subaggregate initialization.
 
   } else if (SemaRef.getLangOpts().CPlusPlus) {
