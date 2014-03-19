@@ -705,8 +705,10 @@ uint32_t Sema::CheckLayoutQualifier(Expr * LQExpr) {
       } else if (Val.getActiveBits() > getLangOpts().UPCPhaseBits) {
         llvm::SmallString<64> ValStr;
         Val.toStringUnsigned(ValStr);
+	llvm::SmallString<64> LQMaxStr;
+	llvm::APInt::getMaxValue(getLangOpts().UPCPhaseBits).toStringUnsigned(LQMaxStr);
         Diag(LQExpr->getLocStart(), diag::err_upc_layout_qualifier_too_big)
-          << ValStr << LQExpr->getSourceRange();
+          << ValStr << LQMaxStr << LQExpr->getSourceRange();
         return 1;
       } else {
         return Val.getZExtValue();
@@ -2581,7 +2583,9 @@ static bool ComputeLayoutQualifierStar(QualType T, Sema& S, uint32_t& Out, Sourc
     if (result.getActiveBits() > S.getLangOpts().UPCPhaseBits) {
       llvm::SmallString<64> ValStr;
       result.toStringUnsigned(ValStr);
-      S.Diag(Loc, diag::err_upc_layout_qualifier_too_big) << ValStr;
+      llvm::SmallString<64> LQMaxStr;
+      llvm::APInt::getMaxValue(S.getLangOpts().UPCPhaseBits).toStringUnsigned(LQMaxStr);
+      S.Diag(Loc, diag::err_upc_layout_qualifier_too_big) << ValStr << LQMaxStr;
       Out = 1;
     } else {
       Out = result.getZExtValue();
@@ -2602,7 +2606,9 @@ static bool ComputeLayoutQualifierStar(QualType T, Sema& S, uint32_t& Out, Sourc
       if (result.getActiveBits() > S.getLangOpts().UPCPhaseBits) {
         llvm::SmallString<64> ValStr;
         result.toStringUnsigned(ValStr);
-        S.Diag(Loc, diag::err_upc_layout_qualifier_too_big) << ValStr;
+	llvm::SmallString<64> LQMax;
+	llvm::APInt::getMaxValue(S.getLangOpts().UPCPhaseBits).toStringUnsigned(LQMax);
+        S.Diag(Loc, diag::err_upc_layout_qualifier_too_big) << ValStr << LQMax;
         Out = 1;
       } else {
         Out = result.getZExtValue();
