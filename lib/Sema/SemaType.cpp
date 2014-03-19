@@ -696,7 +696,13 @@ uint32_t Sema::CheckLayoutQualifier(Expr * LQExpr) {
       // Diagnostic printed by VerifyIntegerConstantExpression
       return 1;
     } else {
-      if (Val.getActiveBits() > getLangOpts().UPCPhaseBits) {
+      if (Val.isSigned() && Val.isNegative()) {
+        llvm::SmallString<64> ValStr;
+        Val.toString(ValStr);
+        Diag(LQExpr->getLocStart(), diag::err_upc_layout_qualifier_negative)
+          << ValStr << LQExpr->getSourceRange();
+        return 1;
+      } else if (Val.getActiveBits() > getLangOpts().UPCPhaseBits) {
         llvm::SmallString<64> ValStr;
         Val.toStringUnsigned(ValStr);
         Diag(LQExpr->getLocStart(), diag::err_upc_layout_qualifier_too_big)

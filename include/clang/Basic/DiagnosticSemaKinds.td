@@ -6704,6 +6704,8 @@ def err_opencl_no_main : Error<"%select{function|kernel}0 cannot be called 'main
 // UPC warnings and errors
 def err_upc_layout_qualifier_too_big : Error<
   "block size %0 exceeds UPC_MAX_BLOCK_SIZE">;
+def err_upc_layout_qualifier_negative : Error<
+  "block size %0 is negative">;
 def err_upc_star_requires_threads : Error<
   "THREADS must appear exactly once in one dimension of a shared array">;
 def err_upc_dynamic_threads_requires_threads : Error<
