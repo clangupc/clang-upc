@@ -216,7 +216,7 @@ CodeGenFunction::CreateStaticVarDecl(const VarDecl &D,
                              AddrSpace);
   GV->setAlignment(getContext().getDeclAlign(&D).getQuantity());
   CGM.setGlobalVisibility(GV, &D);
-  if(SharedInit) {
+  if(Ty.getQualifiers().hasShared()) {
     if(CGM.isTargetDarwin())
       GV->setSection("__DATA,upc_shared");
     else
