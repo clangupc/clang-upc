@@ -369,7 +369,7 @@ static void InitializeStandardPredefinedMacros(const TargetInfo &TI,
       Builder.defineMacro("__UPC_THREAD_TYPE__", "__INT32_TYPE__");
       Builder.defineMacro("__UPC_VADDR_TYPE__", "char *");
     }
-    Builder.defineMacro("__GCC_UPC__", "1");
+    Builder.defineMacro("__clang_upc__", "1");
 
     if (LangOpts.UPCInlineLib) {
       Builder.defineMacro("__UPC_INLINE_LIB__", "1");
