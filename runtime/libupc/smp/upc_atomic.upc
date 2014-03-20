@@ -1819,9 +1819,9 @@ upc_all_atomicdomain_free (upc_atomicdomain_t * domain)
  * @ingroup UPCATOMIC UPC Atomic Functions
  */
 int
-upc_atomic_query (__attribute__((unused)) upc_type_t optype,
-	 	  __attribute__((unused)) upc_op_t ops,
-		  __attribute__((unused)) shared void *addr)
+upc_atomic_isfast (__attribute__((unused)) upc_type_t optype,
+	 	   __attribute__((unused)) upc_op_t ops,
+		   __attribute__((unused)) shared void *addr)
 {
   /* We could make the distinction that only operations
      directly supported by the builtin atomics are "fast",
