@@ -323,9 +323,6 @@ static bool is32Or64BitBasicType(QualType Ty, ASTContext &Context) {
 // should probably make this smarter, or better yet make the LLVM backend
 // capable of handling it.
 static bool canExpandIndirectArgument(QualType Ty, ASTContext &Context) {
-  // A UPC pointer-to-shared acts like a structure type
-  if (Ty->hasPointerToSharedRepresentation())
-    return true;
   // We can only expand structure types.
   const RecordType *RT = Ty->getAs<RecordType>();
   if (!RT)
