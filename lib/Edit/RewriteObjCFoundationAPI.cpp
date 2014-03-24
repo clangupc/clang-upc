@@ -1001,6 +1001,8 @@ static bool rewriteToNumericBoxedExpression(const ObjCMessageExpr *Msg,
     case CK_LValueToRValue:
     case CK_NoOp:
     case CK_UserDefinedConversion:
+    case CK_UPCSharedToLocal:
+    case CK_UPCBitCastZeroPhase:
       break;
 
     case CK_IntegralCast: {

@@ -7059,8 +7059,6 @@ bool IntExprEvaluator::VisitUnaryExprOrTypeTraitExpr(
     if (const ReferenceType *Ref = SrcTy->getAs<ReferenceType>())
       SrcTy = Ref->getPointeeType();
 
-    Qualifiers Quals = SrcTy.getQualifiers();
-
     SrcTy = SrcTy.getCanonicalType();
     while(const ArrayType *AT = dyn_cast<ArrayType>(SrcTy.getTypePtr())) {
       SrcTy = AT->getElementType();
