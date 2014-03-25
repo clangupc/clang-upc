@@ -1391,14 +1391,16 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
     else
       Diags.Report(diag::err_drv_invalid_value)
         << Args.getLastArg(OPT_fupc_pts_EQ)->getAsString(Args) << PackedBits;
+    Opts.UPCPtsRep = 1;
   } else if(UPCPts == "struct") {
-    Opts.UPCPhaseBits = 32;
-    Opts.UPCThreadBits = 32;
-    Opts.UPCAddrBits = 64;
+    Opts.UPCPhaseBits = 16;
+    Opts.UPCThreadBits = 16;
+    Opts.UPCAddrBits = 32;
     if (Args.hasArg(OPT_fupc_packed_bits_EQ))
       Diags.Report(diag::err_drv_argument_not_allowed_with)
         << Args.getLastArg(OPT_fupc_packed_bits_EQ)->getAsString(Args)
         << Args.getLastArg(OPT_fupc_pts_EQ)->getAsString(Args);
+    Opts.UPCPtsRep = 0;
   } else {
     Diags.Report(diag::err_drv_invalid_value)
       << Args.getLastArg(OPT_fupc_pts_EQ)->getAsString(Args) << UPCPts;

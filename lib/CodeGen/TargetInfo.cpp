@@ -707,6 +707,15 @@ ABIArgInfo X86_32ABIInfo::classifyReturnType(QualType RetTy,
 
     return ABIArgInfo::getDirect();
   }
+  // UPC shared pointer is returned in register for
+  // packed pointer representation, otherwise indirectly
+  // for struct representation.
+  if (RetTy->hasPointerToSharedRepresentation()) {
+    if (getContext().getLangOpts().UPCPtsRep == 0)
+      return ABIArgInfo::getIndirect(0);
+    else
+      return ABIArgInfo::getDirect();
+  }
 
   if (isAggregateTypeForABI(RetTy)) {
     if (const RecordType *RT = RetTy->getAs<RecordType>()) {
@@ -1500,7 +1509,7 @@ void X86_64ABIInfo::classify(QualType Ty, uint64_t OffsetBase,
   // an integer or a pair of integers depending
   // on the PTS representation
   if (Ty->hasPointerToSharedRepresentation()) {
-    if (getContext().getLangOpts().UPCAddrBits == 64)
+    if (getContext().getLangOpts().UPCPtsRep == 0)
       Lo = Hi = Integer;
     else
       Current = Integer;
@@ -2931,7 +2940,7 @@ PPC64_SVR4_ABIInfo::classifyReturnType(QualType RetTy) const {
   // packed pointer representation, otherwise indirectly
   // for struct representation.
   if (RetTy->hasPointerToSharedRepresentation()) {
-    if (getContext().getLangOpts().UPCAddrBits == 64)
+    if (getContext().getLangOpts().UPCPtsRep == 0)
       return ABIArgInfo::getIndirect(0);
     else
       return ABIArgInfo::getDirect();

@@ -367,7 +367,7 @@ llvm::Value *CodeGenFunction::EmitUPCPointerGetPhase(llvm::Value *Pointer) {
   unsigned ThreadBits = LangOpts.UPCThreadBits;
   unsigned AddrBits = LangOpts.UPCAddrBits;
   llvm::Value *Result;
-  if (PhaseBits + ThreadBits + AddrBits == 64) {
+  if (LangOpts.UPCPtsRep) {
     llvm::Value *Val = Builder.CreateExtractValue(Pointer, 0);
     if (LangOpts.UPCVaddrFirst) {
       Result = Builder.CreateAnd(Val, llvm::APInt::getLowBitsSet(64, PhaseBits));
@@ -390,7 +390,7 @@ llvm::Value *CodeGenFunction::EmitUPCPointerGetThread(llvm::Value *Pointer) {
   unsigned ThreadBits = LangOpts.UPCThreadBits;
   unsigned AddrBits = LangOpts.UPCAddrBits;
   llvm::Value *Result;
-  if (PhaseBits + ThreadBits + AddrBits == 64) {
+  if (LangOpts.UPCPtsRep) {
     llvm::Value *Val = Builder.CreateExtractValue(Pointer, 0);
     if (LangOpts.UPCVaddrFirst) {
       Val = Builder.CreateLShr(Val, PhaseBits);
@@ -410,7 +410,7 @@ llvm::Value *CodeGenFunction::EmitUPCPointerGetAddr(llvm::Value *Pointer) {
   unsigned ThreadBits = LangOpts.UPCThreadBits;
   unsigned AddrBits = LangOpts.UPCAddrBits;
   llvm::Value *Result;
-  if (PhaseBits + ThreadBits + AddrBits == 64) {
+  if (LangOpts.UPCPtsRep) {
     llvm::Value *Val = Builder.CreateExtractValue(Pointer, 0);
     if (LangOpts.UPCVaddrFirst) {
       Result = Builder.CreateLShr(Val, ThreadBits + PhaseBits);
@@ -433,7 +433,7 @@ llvm::Value *CodeGenFunction::EmitUPCPointer(llvm::Value *Phase, llvm::Value *Th
   unsigned ThreadBits = LangOpts.UPCThreadBits;
   unsigned AddrBits = LangOpts.UPCAddrBits;
   llvm::Value *Result = llvm::UndefValue::get(GenericPtsTy);
-  if (PhaseBits + ThreadBits + AddrBits == 64) {
+  if (LangOpts.UPCPtsRep) {
     // The arguments are size_t.  Convert them
     // to the correct size.
     Phase = Builder.CreateZExtOrTrunc(Phase, Int64Ty);
@@ -451,8 +451,8 @@ llvm::Value *CodeGenFunction::EmitUPCPointer(llvm::Value *Phase, llvm::Value *Th
     }
     Result = Builder.CreateInsertValue(Result, Val, 0);
   } else {
-    Phase = Builder.CreateZExtOrTrunc(Phase, Int32Ty);
-    Thread = Builder.CreateZExtOrTrunc(Thread, Int32Ty);
+    Phase = Builder.CreateZExtOrTrunc(Phase, Int16Ty);
+    Thread = Builder.CreateZExtOrTrunc(Thread, Int16Ty);
     if (LangOpts.UPCVaddrFirst) {
       Result = Builder.CreateInsertValue(Result, Addr, 0);
       Result = Builder.CreateInsertValue(Result, Thread, 1);

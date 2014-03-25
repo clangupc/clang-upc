@@ -1729,7 +1729,7 @@ LValue CodeGenFunction::EmitSharedVarDeclLValue(llvm::Value *V, CharUnits Alignm
   unsigned PhaseBits = LangOpts.UPCPhaseBits;
   unsigned ThreadBits = LangOpts.UPCThreadBits;
   unsigned AddrBits = LangOpts.UPCAddrBits;
-  if (PhaseBits + ThreadBits + AddrBits == 64) {
+  if (LangOpts.UPCPtsRep) {
     llvm::Value *SectionStart = CGM.getModule().getOrInsertGlobal("__upc_shared_start", Int8Ty);
     llvm::Value *StartInt = Builder.CreatePtrToInt(SectionStart, PtrDiffTy, "sect.cast");
     llvm::Value *VInt = Builder.CreatePtrToInt(V, PtrDiffTy, "addr.cast");
