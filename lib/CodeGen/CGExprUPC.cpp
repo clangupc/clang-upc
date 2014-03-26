@@ -14,6 +14,7 @@
 #include "CodeGenFunction.h"
 #include "clang/Basic/SourceLocation.h"
 #include "clang/Basic/SourceManager.h"
+#include "clang/Basic/TargetInfo.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/ADT/SmallVector.h"
 using namespace clang;
@@ -451,8 +452,13 @@ llvm::Value *CodeGenFunction::EmitUPCPointer(llvm::Value *Phase, llvm::Value *Th
     }
     Result = Builder.CreateInsertValue(Result, Val, 0);
   } else {
-    Phase = Builder.CreateZExtOrTrunc(Phase, Int16Ty);
-    Thread = Builder.CreateZExtOrTrunc(Thread, Int16Ty);
+    if (getContext().getTargetInfo().getPointerWidth(0) == 64) {
+      Phase = Builder.CreateZExtOrTrunc(Phase, Int16Ty);
+      Thread = Builder.CreateZExtOrTrunc(Thread, Int16Ty);
+    } else {
+      Phase = Builder.CreateZExtOrTrunc(Phase, Int16Ty);
+      Thread = Builder.CreateZExtOrTrunc(Thread, Int16Ty);
+    }
     if (LangOpts.UPCVaddrFirst) {
       Result = Builder.CreateInsertValue(Result, Addr, 0);
       Result = Builder.CreateInsertValue(Result, Thread, 1);
