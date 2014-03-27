@@ -90,8 +90,6 @@ if( CLANG_VENDOR )
   add_definitions( -DCLANG_VENDOR="${CLANG_VENDOR} " )
 endif()
 
-EXECUTE_PROCESS(COMMAND "date" "+%Y%m%d" OUTPUT_VARIABLE CLANG_UPC_VERSION)
-
 set(CLANG_REPOSITORY_STRING "" CACHE STRING
   "Vendor-specific text for showing the repository the source is taken from.")
 
@@ -140,6 +138,14 @@ if (${CLANG_VERSION} MATCHES "[0-9]+\\.[0-9]+\\.[0-9]+")
     ${CLANG_VERSION})
 else()
   set(CLANG_HAS_VERSION_PATCHLEVEL 0)
+endif()
+
+# Set the UPC version number
+if(NOT CLANG_UPC_VERSION )
+  configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/UPC_VERSION
+    ${CMAKE_CURRENT_BINARY_DIR}/UPC_VERSION)
+  file(READ "${CMAKE_CURRENT_BINARY_DIR}/UPC_VERSION" CLANG_UPC_VERSION)
 endif()
 
 # Configure the Version.inc file.
