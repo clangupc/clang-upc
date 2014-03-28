@@ -141,7 +141,7 @@ else()
 endif()
 
 # Set the UPC version number
-if(NOT CLANG_UPC_VERSION )
+if(NOT CLANG_UPC_VERSION)
   configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/UPC_VERSION
     ${CMAKE_CURRENT_BINARY_DIR}/UPC_VERSION)
