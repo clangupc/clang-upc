@@ -30,7 +30,6 @@ CLANG_HAS_VERSION_PATCHLEVEL := 0
 else
 CLANG_HAS_VERSION_PATCHLEVEL := 1
 endif
-CLANG_UPC_VERSION := `date +%Y%m%d`
 
 $(ObjDir)/Diagnostic%Kinds.inc.tmp : Diagnostic.td $(INPUT_TDS) $(CLANG_TBLGEN) $(ObjDir)/.dir
 	$(Echo) "Building Clang $(patsubst Diagnostic%Kinds.inc.tmp,%,$(@F)) diagnostic tables with tblgen"
@@ -53,7 +52,13 @@ $(ObjDir)/arm_neon.inc.tmp : arm_neon.td $(CLANG_TBLGEN) $(ObjDir)/.dir
 	$(Echo) "Building Clang arm_neon.inc with tblgen"
 	$(Verb) $(ClangTableGen) -gen-arm-neon-sema -o $(call SYSPATH, $@) $<
 
-$(ObjDir)/Version.inc.tmp : Version.inc.in Makefile $(LLVM_OBJ_ROOT)/Makefile.config $(ObjDir)/.dir
+$(PROJ_OBJ_DIR)/$(CLANG_LEVEL)/UPC_VERSION : $(PROJ_SRC_DIR)/$(CLANG_LEVEL)/UPC_VERSION
+	$(Echo) "Updating UPC version info."
+	$(Verb) install -p $(PROJ_SRC_DIR)/$(CLANG_LEVEL)/UPC_VERSION $(PROJ_OBJ_DIR)/$(CLANG_LEVEL)/UPC_VERSION
+
+$(ObjDir)/Version.inc.tmp : CLANG_UPC_VERSION = $(shell cat $(PROJ_OBJ_DIR)/$(CLANG_LEVEL)/UPC_VERSION)
+
+$(ObjDir)/Version.inc.tmp : Version.inc.in Makefile $(LLVM_OBJ_ROOT)/Makefile.config $(ObjDir)/.dir $(PROJ_OBJ_DIR)/$(CLANG_LEVEL)/UPC_VERSION
 	$(Echo) "Updating Clang version info."
 	$(Verb)sed -e "s#@CLANG_VERSION@#$(CLANG_VERSION)#g" \
 	           -e "s#@CLANG_VERSION_MAJOR@#$(CLANG_VERSION_MAJOR)#g" \
