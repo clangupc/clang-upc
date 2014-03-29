@@ -53,6 +53,7 @@ namespace  {
       IndentLevel += SubIndent;
       if (S && isa<Expr>(S)) {
         // If this is an expr used in a stmt context, indent and newline it.
+	PrintLineDirective(S);
         Indent();
         Visit(S);
         OS << ";\n";
@@ -62,6 +63,18 @@ namespace  {
         Indent() << "<<<NULL STATEMENT>>>\n";
       }
       IndentLevel -= SubIndent;
+    }
+
+    void PrintLineDirective(Stmt *S) {
+      if(Policy.IncludeLineDirectives) {
+	assert(Policy.SM != NULL);
+	SourceLocation Loc = S->getLocStart();
+	if(Loc.isValid()) {
+	  PresumedLoc PLoc = Policy.SM->getPresumedLoc(Loc);
+	  OS << "#line " << (PLoc.getLine() - 1) << " \""
+	     << PLoc.getFilename() << "\"\n";
+	}
+      }
     }
 
     void PrintRawCompoundStmt(CompoundStmt *S);
@@ -140,12 +153,14 @@ void StmtPrinter::VisitNullStmt(NullStmt *Node) {
 }
 
 void StmtPrinter::VisitDeclStmt(DeclStmt *Node) {
+  PrintLineDirective(Node);
   Indent();
   PrintRawDeclStmt(Node);
   OS << ";\n";
 }
 
 void StmtPrinter::VisitCompoundStmt(CompoundStmt *Node) {
+  PrintLineDirective(Node);
   Indent();
   PrintRawCompoundStmt(Node);
   OS << "\n";
@@ -226,11 +241,13 @@ void StmtPrinter::PrintRawIfStmt(IfStmt *If) {
 }
 
 void StmtPrinter::VisitIfStmt(IfStmt *If) {
+  PrintLineDirective(If);
   Indent();
   PrintRawIfStmt(If);
 }
 
 void StmtPrinter::VisitSwitchStmt(SwitchStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "switch (";
   if (const DeclStmt *DS = Node->getConditionVariableDeclStmt())
     PrintRawDeclStmt(DS);
@@ -250,6 +267,7 @@ void StmtPrinter::VisitSwitchStmt(SwitchStmt *Node) {
 }
 
 void StmtPrinter::VisitWhileStmt(WhileStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "while (";
   if (const DeclStmt *DS = Node->getConditionVariableDeclStmt())
     PrintRawDeclStmt(DS);
@@ -260,6 +278,7 @@ void StmtPrinter::VisitWhileStmt(WhileStmt *Node) {
 }
 
 void StmtPrinter::VisitDoStmt(DoStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "do ";
   if (CompoundStmt *CS = dyn_cast<CompoundStmt>(Node->getBody())) {
     PrintRawCompoundStmt(CS);
@@ -276,6 +295,7 @@ void StmtPrinter::VisitDoStmt(DoStmt *Node) {
 }
 
 void StmtPrinter::VisitForStmt(ForStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "for (";
   if (Node->getInit()) {
     if (DeclStmt *DS = dyn_cast<DeclStmt>(Node->getInit()))
@@ -305,6 +325,7 @@ void StmtPrinter::VisitForStmt(ForStmt *Node) {
 }
 
 void StmtPrinter::VisitObjCForCollectionStmt(ObjCForCollectionStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "for (";
   if (DeclStmt *DS = dyn_cast<DeclStmt>(Node->getElement()))
     PrintRawDeclStmt(DS);
@@ -324,6 +345,7 @@ void StmtPrinter::VisitObjCForCollectionStmt(ObjCForCollectionStmt *Node) {
 }
 
 void StmtPrinter::VisitCXXForRangeStmt(CXXForRangeStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "for (";
   PrintingPolicy SubPolicy(Policy);
   SubPolicy.SuppressInitializers = true;
@@ -352,25 +374,30 @@ void StmtPrinter::VisitMSDependentExistsStmt(MSDependentExistsStmt *Node) {
 }
 
 void StmtPrinter::VisitGotoStmt(GotoStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "goto " << Node->getLabel()->getName() << ";\n";
 }
 
 void StmtPrinter::VisitIndirectGotoStmt(IndirectGotoStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "goto *";
   PrintExpr(Node->getTarget());
   OS << ";\n";
 }
 
 void StmtPrinter::VisitContinueStmt(ContinueStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "continue;\n";
 }
 
 void StmtPrinter::VisitBreakStmt(BreakStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "break;\n";
 }
 
 
 void StmtPrinter::VisitReturnStmt(ReturnStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "return";
   if (Node->getRetValue()) {
     OS << " ";
@@ -380,6 +407,7 @@ void StmtPrinter::VisitReturnStmt(ReturnStmt *Node) {
 }
 
 void StmtPrinter::VisitUPCNotifyStmt(UPCNotifyStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "upc_notify";
   if (Node->getIdValue()) {
     OS << " ";
@@ -389,6 +417,7 @@ void StmtPrinter::VisitUPCNotifyStmt(UPCNotifyStmt *Node) {
 }
 
 void StmtPrinter::VisitUPCWaitStmt(UPCWaitStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "upc_wait";
   if (Node->getIdValue()) {
     OS << " ";
@@ -398,6 +427,7 @@ void StmtPrinter::VisitUPCWaitStmt(UPCWaitStmt *Node) {
 }
 
 void StmtPrinter::VisitUPCBarrierStmt(UPCBarrierStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "upc_barrier";
   if (Node->getIdValue()) {
     OS << " ";
@@ -407,6 +437,7 @@ void StmtPrinter::VisitUPCBarrierStmt(UPCBarrierStmt *Node) {
 }
 
 void StmtPrinter::VisitUPCFenceStmt(UPCFenceStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "upc_fence;\n";
 }
 
@@ -418,6 +449,7 @@ void StmtPrinter::VisitUPCPragmaStmt(UPCPragmaStmt *Node) {
 }
 
 void StmtPrinter::VisitUPCForAllStmt(UPCForAllStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "upc_forall (";
   if (Node->getInit()) {
     if (DeclStmt *DS = dyn_cast<DeclStmt>(Node->getInit()))
@@ -454,6 +486,7 @@ void StmtPrinter::VisitUPCForAllStmt(UPCForAllStmt *Node) {
 }
 
 void StmtPrinter::VisitGCCAsmStmt(GCCAsmStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "asm ";
 
   if (Node->isVolatile())
@@ -519,6 +552,7 @@ void StmtPrinter::VisitGCCAsmStmt(GCCAsmStmt *Node) {
 
 void StmtPrinter::VisitMSAsmStmt(MSAsmStmt *Node) {
   // FIXME: Implement MS style inline asm statement printer.
+  PrintLineDirective(Node);
   Indent() << "__asm ";
   if (Node->hasBraces())
     OS << "{\n";
@@ -532,6 +566,7 @@ void StmtPrinter::VisitCapturedStmt(CapturedStmt *Node) {
 }
 
 void StmtPrinter::VisitObjCAtTryStmt(ObjCAtTryStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "@try";
   if (CompoundStmt *TS = dyn_cast<CompoundStmt>(Node->getTryBody())) {
     PrintRawCompoundStmt(TS);
@@ -568,6 +603,7 @@ void StmtPrinter::VisitObjCAtCatchStmt (ObjCAtCatchStmt *Node) {
 }
 
 void StmtPrinter::VisitObjCAtThrowStmt(ObjCAtThrowStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "@throw";
   if (Node->getThrowExpr()) {
     OS << " ";
@@ -577,6 +613,7 @@ void StmtPrinter::VisitObjCAtThrowStmt(ObjCAtThrowStmt *Node) {
 }
 
 void StmtPrinter::VisitObjCAtSynchronizedStmt(ObjCAtSynchronizedStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "@synchronized (";
   PrintExpr(Node->getSynchExpr());
   OS << ")";
@@ -585,6 +622,7 @@ void StmtPrinter::VisitObjCAtSynchronizedStmt(ObjCAtSynchronizedStmt *Node) {
 }
 
 void StmtPrinter::VisitObjCAutoreleasePoolStmt(ObjCAutoreleasePoolStmt *Node) {
+  PrintLineDirective(Node);
   Indent() << "@autoreleasepool";
   PrintRawCompoundStmt(dyn_cast<CompoundStmt>(Node->getSubStmt()));
   OS << "\n";
@@ -645,6 +683,7 @@ void StmtPrinter::PrintRawSEHExceptHandler(SEHExceptStmt *Node) {
 }
 
 void StmtPrinter::VisitSEHExceptStmt(SEHExceptStmt *Node) {
+  PrintLineDirective(Node);
   Indent();
   PrintRawSEHExceptHandler(Node);
   OS << "\n";
@@ -719,6 +758,7 @@ void OMPClausePrinter::VisitOMPSharedClause(OMPSharedClause *Node) {
 //===----------------------------------------------------------------------===//
 
 void StmtPrinter::VisitOMPParallelDirective(OMPParallelDirective *Node) {
+  PrintLineDirective(Node);
   Indent() << "#pragma omp parallel ";
 
   OMPClausePrinter Printer(OS);

@@ -42,7 +42,8 @@ struct PrintingPolicy {
       SuppressStrongLifetime(false), SuppressLifetimeQualifiers(false),
       Bool(LO.Bool), TerseOutput(false), PolishForDeclaration(false),
       MSWChar(LO.MicrosoftExt && !LO.WChar),
-      IncludeTagDefinition(false) { }
+      IncludeTagDefinition(false), IncludeLineDirectives(false),
+      SM(0) { }
 
   /// \brief What language we're printing.
   LangOptions LangOpts;
@@ -158,6 +159,11 @@ struct PrintingPolicy {
   unsigned MSWChar : 1;
 
   bool IncludeTagDefinition : 1;
+
+  // Print #line directives.  Requires SM to be set.
+  bool IncludeLineDirectives : 1;
+
+  SourceManager *SM;
 };
 
 } // end namespace clang
