@@ -71,7 +71,7 @@ namespace  {
 	SourceLocation Loc = S->getLocStart();
 	if(Loc.isValid()) {
 	  PresumedLoc PLoc = Policy.SM->getPresumedLoc(Loc);
-	  OS << "#line " << (PLoc.getLine() - 1) << " \""
+	  OS << "#line " << PLoc.getLine() << " \""
 	     << PLoc.getFilename() << "\"\n";
 	}
       }
