@@ -11,6 +11,7 @@
 #include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/FileManager.h"
 #include "clang/Basic/Version.h"
+#include "clang/Basic/TargetInfo.h"
 #include "clang/Driver/DriverDiagnostic.h"
 #include "clang/Driver/Options.h"
 #include "clang/Driver/Util.h"
@@ -1393,9 +1394,6 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
         << Args.getLastArg(OPT_fupc_pts_EQ)->getAsString(Args) << PackedBits;
     Opts.UPCPtsRep = 1;
   } else if(UPCPts == "struct") {
-    Opts.UPCPhaseBits = 16;
-    Opts.UPCThreadBits = 16;
-    Opts.UPCAddrBits = 32;
     if (Args.hasArg(OPT_fupc_packed_bits_EQ))
       Diags.Report(diag::err_drv_argument_not_allowed_with)
         << Args.getLastArg(OPT_fupc_packed_bits_EQ)->getAsString(Args)

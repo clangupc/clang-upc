@@ -355,22 +355,28 @@ static void InitializeStandardPredefinedMacros(const TargetInfo &TI,
     }
 
     // implementation specific macros
-    Builder.defineMacro("__UPC_PHASE_SIZE__", Twine(LangOpts.UPCPhaseBits));
-    Builder.defineMacro("__UPC_THREAD_SIZE__", Twine(LangOpts.UPCThreadBits));
-    Builder.defineMacro("__UPC_VADDR_SIZE__", Twine(LangOpts.UPCAddrBits));
     if (LangOpts.UPCVaddrFirst) {
       Builder.defineMacro("__UPC_VADDR_FIRST__", "1");
     }
-    if(LangOpts.UPCPtsRep)
+    if(LangOpts.UPCPtsRep) {
       Builder.defineMacro("__UPC_PTS_PACKED_REP__", "1");
-    else {
+      Builder.defineMacro("__UPC_PHASE_SIZE__", Twine(LangOpts.UPCPhaseBits));
+      Builder.defineMacro("__UPC_THREAD_SIZE__", Twine(LangOpts.UPCThreadBits));
+      Builder.defineMacro("__UPC_VADDR_SIZE__", Twine(LangOpts.UPCAddrBits));
+    } else {
       Builder.defineMacro("__UPC_PTS_STRUCT_REP__", "1");
       if (TI.getPointerWidth(0) == 64) {
+        Builder.defineMacro("__UPC_PHASE_SIZE__", "32");
+        Builder.defineMacro("__UPC_THREAD_SIZE__", "32");
         Builder.defineMacro("__UPC_PHASE_TYPE__", "__INT32_TYPE__");
         Builder.defineMacro("__UPC_THREAD_TYPE__", "__INT32_TYPE__");
+        Builder.defineMacro("__UPC_VADDR_SIZE__", "64");
       } else {
+        Builder.defineMacro("__UPC_PHASE_SIZE__", "16");
+        Builder.defineMacro("__UPC_THREAD_SIZE__", "16");
         Builder.defineMacro("__UPC_PHASE_TYPE__", "__INT16_TYPE__");
         Builder.defineMacro("__UPC_THREAD_TYPE__", "__INT16_TYPE__");
+        Builder.defineMacro("__UPC_VADDR_SIZE__", "32");
       }
       Builder.defineMacro("__UPC_VADDR_TYPE__", "char *");
     }
