@@ -72,6 +72,16 @@ StmtResult Sema::ActOnPragmaUPC(SourceLocation PragmaLoc, PragmaUPCKind Kind) {
   return Owned(new (Context) UPCPragmaStmt(PragmaLoc, IsStrict));
 }
 
+Decl * Sema::ActOnPragmaPUPC(SourceLocation PragmaLoc, PragmaPUPCKind Kind) {
+  if(Kind == PPUPCK_Off) {
+    PUPCOn = false;
+  } else if(Kind == PPUPCK_On) {
+    PUPCOn = true;
+  }
+  Decl * Result = PragmaPupcDecl::Create(Context, CurContext, PragmaLoc, PUPCOn);
+  CurContext->addDecl(Result);
+}
+
 StmtResult Sema::ActOnDeclStmt(DeclGroupPtrTy dg, SourceLocation StartLoc,
                                SourceLocation EndLoc) {
   DeclGroupRef DG = dg.get();

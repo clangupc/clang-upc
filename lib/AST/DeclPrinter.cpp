@@ -83,6 +83,7 @@ namespace {
     void VisitUsingDecl(UsingDecl *D);
     void VisitUsingShadowDecl(UsingShadowDecl *D);
     void VisitOMPThreadPrivateDecl(OMPThreadPrivateDecl *D);
+    void VisitPragmaPupcDecl(PragmaPupcDecl *D);
 
     void PrintTemplateParameters(const TemplateParameterList *Params,
                                  const TemplateArgumentList *Args = 0);
@@ -309,7 +310,7 @@ void DeclPrinter::VisitDeclContext(DeclContext *DC, bool Indent) {
 
     // FIXME: Need to be able to tell the DeclPrinter when
     const char *Terminator = 0;
-    if (isa<OMPThreadPrivateDecl>(*D))
+    if (isa<OMPThreadPrivateDecl>(*D) || isa<PragmaPupcDecl>(*D))
       Terminator = 0;
     else if (isa<FunctionDecl>(*D) &&
              cast<FunctionDecl>(*D)->isThisDeclarationADefinition())
@@ -1216,3 +1217,6 @@ void DeclPrinter::VisitOMPThreadPrivateDecl(OMPThreadPrivateDecl *D) {
   }
 }
 
+void DeclPrinter::VisitPragmaPupcDecl(PragmaPupcDecl *D) {
+  Out << "#pragma pupc " << (D->getOn()? "on" : "off");
+}

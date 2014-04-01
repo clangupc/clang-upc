@@ -265,6 +265,9 @@ public:
   /// state is strict or relaxed.
   bool UPCIsStrict;
 
+  /// PUPCOn - Indicates whether #pragma pupc on is in force
+  bool PUPCOn;
+
   bool MSStructPragmaOn; // True when \#pragma ms_struct on
 
   /// VisContext - Manages the stack for \#pragma GCC visibility.
@@ -6967,6 +6970,11 @@ public:
     PUPCK_C_Code
   };
 
+  enum PragmaPUPCKind {
+    PPUPCK_Off,
+    PPUPCK_On
+  };
+
   enum PragmaMSStructKind {
     PMSST_OFF,  // #pragms ms_struct off
     PMSST_ON    // #pragms ms_struct on
@@ -6991,6 +6999,9 @@ public:
 
   /// ActOnPragmaUPC - Called on well formed #pragma upc [relaxed|strict].
   StmtResult ActOnPragmaUPC(SourceLocation PragmaLoc, PragmaUPCKind Kind);
+
+  /// ActOnPragmaPUPC - Called on well formed \#pragma pupc [on|off].
+  Decl * ActOnPragmaPUPC(SourceLocation PragmaLoc, PragmaPUPCKind Kind);
 
   /// ActOnPragmaMSStruct - Called on well formed \#pragma ms_struct [on|off].
   void ActOnPragmaMSStruct(PragmaMSStructKind Kind);

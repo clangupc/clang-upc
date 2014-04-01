@@ -2631,6 +2631,11 @@ void Parser::ParseCXXMemberSpecification(SourceLocation RecordLoc,
         continue;
       }
 
+      if (Tok.is(tok::annot_pragma_pupc)) {
+        HandlePragmaPUPC();
+        continue;
+      }
+
       if (Tok.is(tok::annot_pragma_align)) {
         HandlePragmaAlign();
         continue;

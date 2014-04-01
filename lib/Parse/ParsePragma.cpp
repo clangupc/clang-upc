@@ -70,6 +70,14 @@ StmtResult Parser::HandlePragmaUPC() {
   return Actions.ActOnPragmaUPC(PragmaLoc, *Kind);
 }
 
+Decl * Parser::HandlePragmaPUPC() {
+  assert(Tok.is(tok::annot_pragma_pupc));
+  const Sema::PragmaPUPCKind *Kind =
+    static_cast<Sema::PragmaPUPCKind *>(Tok.getAnnotationValue());
+  SourceLocation PragmaLoc = ConsumeToken();
+  return Actions.ActOnPragmaPUPC(PragmaLoc, *Kind);
+}
+
 void Parser::HandlePragmaMSStruct() {
   assert(Tok.is(tok::annot_pragma_msstruct));
   Sema::PragmaMSStructKind Kind =
@@ -417,6 +425,54 @@ void PragmaUPCHandler::HandlePragma(Preprocessor &PP,
   Toks[0].startToken();
   Toks[0].setKind(tok::annot_pragma_upc);
   Toks[0].setLocation(UPCLoc);
+  Toks[0].setAnnotationValue(
+                          const_cast<void*>(static_cast<const void*>(Info)));
+  PP.EnterTokenStream(Toks, 1, /*DisableMacroExpansion=*/true,
+                      /*OwnsTokens=*/true);
+}
+
+void PragmaPUPCHandler::HandlePragma(Preprocessor &PP, 
+                                     PragmaIntroducerKind Introducer,
+                                     Token &PUPCTok) {
+  SourceLocation PUPCLoc = PUPCTok.getLocation();
+
+  Token Tok;
+  PP.LexUnexpandedToken(Tok);
+
+  const IdentifierInfo *PUpcPragma = Tok.getIdentifierInfo();
+
+  Sema::PragmaPUPCKind Kind;
+
+  if (Tok.is(tok::eod)) {
+    PP.Diag(Tok.getLocation(), diag::warn_pragma_expected_identifier)
+      << "pupc";
+    return;
+  }
+
+  if (PUpcPragma && PUpcPragma->isStr("on")) {
+    Kind = Sema::PPUPCK_On;
+  } else if (PUpcPragma && PUpcPragma->isStr("off")) {
+    Kind = Sema::PPUPCK_Off;
+  } else {
+    PP.Diag(Tok.getLocation(), diag::warn_pragma_pupc_invalid);
+    return;
+  }
+  PP.LexUnexpandedToken(Tok);
+  if (Tok.isNot(tok::eod)) {
+    PP.Diag(Tok.getLocation(), diag::warn_pragma_extra_tokens_at_eol)
+      << "upc";
+    return;
+  }
+
+  Sema::PragmaPUPCKind *Info = 
+    (Sema::PragmaPUPCKind*) PP.getPreprocessorAllocator().Allocate(
+      sizeof(Sema::PragmaPUPCKind), llvm::alignOf<Sema::PragmaPUPCKind>());
+  new (Info) Sema::PragmaPUPCKind(Kind);
+
+  Token *Toks = new Token[1];
+  Toks[0].startToken();
+  Toks[0].setKind(tok::annot_pragma_pupc);
+  Toks[0].setLocation(PUPCLoc);
   Toks[0].setAnnotationValue(
                           const_cast<void*>(static_cast<const void*>(Info)));
   PP.EnterTokenStream(Toks, 1, /*DisableMacroExpansion=*/true,

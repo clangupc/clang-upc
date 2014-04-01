@@ -182,6 +182,13 @@ TemplateDeclInstantiator::VisitLabelDecl(LabelDecl *D) {
 }
 
 Decl *
+TemplateDeclInstantiator::VisitPragmaPupcDecl(PragmaPupcDecl *D) {
+  PragmaPupcDecl *Inst = PragmaPupcDecl::Create(SemaRef.Context, Owner, D->getLocation(), D->getOn());
+  Owner->addDecl(Inst);
+  return Inst;
+}
+
+Decl *
 TemplateDeclInstantiator::VisitNamespaceDecl(NamespaceDecl *D) {
   llvm_unreachable("Namespaces cannot be instantiated");
 }

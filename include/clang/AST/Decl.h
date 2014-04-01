@@ -3468,6 +3468,22 @@ public:
   static bool classofKind(Kind K) { return K == Import; }
 };
 
+// \brief represent #pragma pupc
+class PragmaPupcDecl : public Decl {
+  bool V;
+  virtual void anchor();
+  PragmaPupcDecl(DeclContext *DC, SourceLocation L, bool Val)
+    : Decl(PragmaPupc, DC, L), V(Val) { }
+public:
+  bool getOn() const { return V; }
+  static PragmaPupcDecl *Create(ASTContext &C, DeclContext *DC,
+                                SourceLocation L, bool Val);
+  static PragmaPupcDecl *CreateDeserialized(ASTContext &C, unsigned ID);
+
+  static bool classof(const Decl *D) { return classofKind(D->getKind()); }
+  static bool classofKind(Kind K) { return K == PragmaPupc; }
+};
+
 /// \brief Represents an empty-declaration.
 class EmptyDecl : public Decl {
   virtual void anchor();

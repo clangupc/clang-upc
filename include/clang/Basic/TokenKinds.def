@@ -637,6 +637,11 @@ ANNOTATION(pragma_pack)
 // handles them.
 ANNOTATION(pragma_upc)
 
+// Annotation for #pragma pupc [on|off]
+// The lexer produces these so that they only take effect when the parser
+// handles them.
+ANNOTATION(pragma_pupc)
+
 // Annotation for #pragma clang __debug parser_crash...
 // The lexer produces these so that they only take effect when the parser
 // handles them.

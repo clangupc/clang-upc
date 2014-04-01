@@ -112,6 +112,8 @@ Parser::Parser(Preprocessor &pp, Sema &actions, bool skipFunctionBodies)
   if (getLangOpts().UPC) {
     UPCHandler.reset(new PragmaUPCHandler(actions));
     PP.AddPragmaHandler(UPCHandler.get());
+    PUPCHandler.reset(new PragmaPUPCHandler(actions));
+    PP.AddPragmaHandler(PUPCHandler.get());
   }
       
   CommentSemaHandler.reset(new ActionCommentHandler(actions));
@@ -474,6 +476,8 @@ Parser::~Parser() {
   }
 
   if (getLangOpts().UPC) {
+    PP.RemovePragmaHandler(PUPCHandler.get());
+    PUPCHandler.reset();
     PP.RemovePragmaHandler(UPCHandler.get());
     UPCHandler.reset();
   }
@@ -668,6 +672,9 @@ Parser::ParseExternalDeclaration(ParsedAttributesWithRange &attrs,
   case tok::annot_pragma_upc:
     HandlePragmaUPC();
     return DeclGroupPtrTy();
+  case tok::annot_pragma_pupc:
+    SingleDecl =  HandlePragmaPUPC();
+    break;
   case tok::annot_pragma_msstruct:
     HandlePragmaMSStruct();
     return DeclGroupPtrTy();

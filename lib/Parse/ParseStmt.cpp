@@ -325,6 +325,12 @@ Retry:
     Diag(Tok.getLocation(), diag::warn_pragma_upc_must_precede_statements);
     return HandlePragmaUPC();
 
+  case tok::annot_pragma_pupc: {
+    ProhibitAttributes(Attrs);
+    Decl * D[] = { HandlePragmaPUPC() };
+    return Actions.ActOnDeclStmt(Sema::DeclGroupPtrTy::make(DeclGroupRef::Create(Actions.Context, D, 1)), Tok.getLocation(), Tok.getLocation());
+  }
+
   case tok::annot_pragma_msstruct:
     ProhibitAttributes(Attrs);
     HandlePragmaMSStruct();

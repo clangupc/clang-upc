@@ -145,6 +145,7 @@ class Parser : public CodeCompletionHandler {
   OwningPtr<PragmaHandler> OptionsHandler;
   OwningPtr<PragmaHandler> PackHandler;
   OwningPtr<PragmaHandler> UPCHandler;
+  OwningPtr<PragmaHandler> PUPCHandler;
   OwningPtr<PragmaHandler> MSStructHandler;
   OwningPtr<PragmaHandler> UnusedHandler;
   OwningPtr<PragmaHandler> WeakHandler;
@@ -423,6 +424,10 @@ private:
   /// \brief Handle the annotation token produced for
   /// #pragma upc...
   StmtResult HandlePragmaUPC();
+
+  /// \brief Handle the annotation token produced for
+  /// #pragma pupc...
+  Decl * HandlePragmaPUPC();
 
   /// \brief Handle the annotation token produced for
   /// #pragma ms_struct...

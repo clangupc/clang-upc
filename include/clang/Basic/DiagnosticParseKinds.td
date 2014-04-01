@@ -803,6 +803,8 @@ def warn_pragma_upc_invalid : Warning<
   "expected 'strict' or 'relaxed' after '#pragma upc' - ignored">;
 def warn_pragma_upc_must_precede_statements : Warning<
   "#pragma upc must precede all explicit declarations and statements in a compound statement">;
+def warn_pragma_pupc_invalid : Warning<
+  "expected 'on' or 'off' after '#pragma upc' - ignored">;
 // - #pragma fp_contract
 def err_pragma_fp_contract_scope : Error<
   "'#pragma fp_contract' can only appear at file scope or at the start of a "

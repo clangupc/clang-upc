@@ -1314,6 +1314,8 @@ DEF_TRAVERSE_DECL(CapturedDecl, {
     return true;
   })
 
+DEF_TRAVERSE_DECL(PragmaPupcDecl, { })
+
 DEF_TRAVERSE_DECL(EmptyDecl, { })
 
 DEF_TRAVERSE_DECL(FileScopeAsmDecl, {
