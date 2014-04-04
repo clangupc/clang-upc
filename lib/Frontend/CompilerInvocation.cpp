@@ -1025,7 +1025,8 @@ void CompilerInvocation::setLangDefaults(LangOptions &Opts, InputKind IK,
              IK == IK_PreprocessedObjC ||
              IK == IK_PreprocessedObjCXX) {
     Opts.ObjC1 = Opts.ObjC2 = 1;
-  } else if (IK == IK_UPC) {
+  } else if (IK == IK_UPC ||
+             IK == IK_PreprocessedUPC) {
     Opts.UPC = 1;
   }
 

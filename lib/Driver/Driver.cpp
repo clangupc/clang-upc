@@ -1058,12 +1058,8 @@ void Driver::BuildInputs(const ToolChain &TC, const DerivedArgList &Args,
                 << getTypeName(OldTy) << getTypeName(Ty);
           }
           if (CCCIsUPC()) {
-            types::ID OldTy = Ty;
+            // Allow UPC to process other C related files (.c,.i)
             Ty = types::lookupUPCTypeForCType(Ty);
-
-            if (Ty != OldTy)
-              Diag(clang::diag::warn_drv_treating_input_as_upc)
-                << getTypeName(OldTy) << getTypeName(Ty);
           }
         }
 
