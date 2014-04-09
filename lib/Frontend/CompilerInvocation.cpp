@@ -1479,7 +1479,9 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
   Opts.Optimize = Opt != 0;
   Opts.OptimizeSize = OptSize != 0;
 
-  if (Opts.UPC && !Args.hasArg(OPT_fno_upc_pre_include))
+  // By default enable UPC pre-include
+  if (Opts.UPC && !Args.hasArg(OPT_fno_upc_pre_include) &&
+      (IK != IK_PreprocessedUPC))
     Opts.UPCPreInclude = true;
 
   if (Opts.UPC &&
