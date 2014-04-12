@@ -308,6 +308,7 @@ __upc_atomic_I (
 {
   I_type orig_value __attribute__((unused));
   I_type new_value __attribute__((unused));
+  
   I_type *target_ptr = __cvtaddr (*(upc_shared_ptr_t *)&target);
   switch (op_num)
     {
@@ -318,7 +319,7 @@ __upc_atomic_I (
       case UPC_MULT_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value * *operand1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -341,7 +342,7 @@ __upc_atomic_I (
       case UPC_MIN_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 < orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -352,7 +353,7 @@ __upc_atomic_I (
       case UPC_MAX_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 > orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -371,15 +372,15 @@ __upc_atomic_I (
 			     /* memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_CSWAP_OP:
-	do
-	  {
-	    orig_value = *target_ptr;
-	    new_value = (orig_value == *operand1) ? *operand2 : orig_value;
-	  }
-	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
-				/* weak */ 0,
-				/* success_memmodel */ __ATOMIC_SEQ_CST,
-				/* failure_memmodel */ __ATOMIC_SEQ_CST));
+	orig_value = *operand1;
+	/* __atomic_compare_exchange will return the previous value
+	   in &orig_value independent of whether operand2 is written
+	   to the target location.  */
+	(void) __atomic_compare_exchange (target_ptr,
+			    &orig_value, operand2,
+			    /* weak */ 0,
+			    /* success_memmodel */ __ATOMIC_SEQ_CST,
+			    /* failure_memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_SUB_OP:
 	orig_value = __atomic_fetch_sub (target_ptr, *operand1,
@@ -409,6 +410,7 @@ __upc_atomic_UI (
 {
   UI_type orig_value __attribute__((unused));
   UI_type new_value __attribute__((unused));
+  
   UI_type *target_ptr = __cvtaddr (*(upc_shared_ptr_t *)&target);
   switch (op_num)
     {
@@ -419,7 +421,7 @@ __upc_atomic_UI (
       case UPC_MULT_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value * *operand1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -442,7 +444,7 @@ __upc_atomic_UI (
       case UPC_MIN_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 < orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -453,7 +455,7 @@ __upc_atomic_UI (
       case UPC_MAX_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 > orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -472,15 +474,15 @@ __upc_atomic_UI (
 			     /* memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_CSWAP_OP:
-	do
-	  {
-	    orig_value = *target_ptr;
-	    new_value = (orig_value == *operand1) ? *operand2 : orig_value;
-	  }
-	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
-				/* weak */ 0,
-				/* success_memmodel */ __ATOMIC_SEQ_CST,
-				/* failure_memmodel */ __ATOMIC_SEQ_CST));
+	orig_value = *operand1;
+	/* __atomic_compare_exchange will return the previous value
+	   in &orig_value independent of whether operand2 is written
+	   to the target location.  */
+	(void) __atomic_compare_exchange (target_ptr,
+			    &orig_value, operand2,
+			    /* weak */ 0,
+			    /* success_memmodel */ __ATOMIC_SEQ_CST,
+			    /* failure_memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_SUB_OP:
 	orig_value = __atomic_fetch_sub (target_ptr, *operand1,
@@ -510,6 +512,7 @@ __upc_atomic_L (
 {
   L_type orig_value __attribute__((unused));
   L_type new_value __attribute__((unused));
+  
   L_type *target_ptr = __cvtaddr (*(upc_shared_ptr_t *)&target);
   switch (op_num)
     {
@@ -520,7 +523,7 @@ __upc_atomic_L (
       case UPC_MULT_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value * *operand1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -543,7 +546,7 @@ __upc_atomic_L (
       case UPC_MIN_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 < orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -554,7 +557,7 @@ __upc_atomic_L (
       case UPC_MAX_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 > orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -573,15 +576,15 @@ __upc_atomic_L (
 			     /* memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_CSWAP_OP:
-	do
-	  {
-	    orig_value = *target_ptr;
-	    new_value = (orig_value == *operand1) ? *operand2 : orig_value;
-	  }
-	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
-				/* weak */ 0,
-				/* success_memmodel */ __ATOMIC_SEQ_CST,
-				/* failure_memmodel */ __ATOMIC_SEQ_CST));
+	orig_value = *operand1;
+	/* __atomic_compare_exchange will return the previous value
+	   in &orig_value independent of whether operand2 is written
+	   to the target location.  */
+	(void) __atomic_compare_exchange (target_ptr,
+			    &orig_value, operand2,
+			    /* weak */ 0,
+			    /* success_memmodel */ __ATOMIC_SEQ_CST,
+			    /* failure_memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_SUB_OP:
 	orig_value = __atomic_fetch_sub (target_ptr, *operand1,
@@ -611,6 +614,7 @@ __upc_atomic_UL (
 {
   UL_type orig_value __attribute__((unused));
   UL_type new_value __attribute__((unused));
+  
   UL_type *target_ptr = __cvtaddr (*(upc_shared_ptr_t *)&target);
   switch (op_num)
     {
@@ -621,7 +625,7 @@ __upc_atomic_UL (
       case UPC_MULT_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value * *operand1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -644,7 +648,7 @@ __upc_atomic_UL (
       case UPC_MIN_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 < orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -655,7 +659,7 @@ __upc_atomic_UL (
       case UPC_MAX_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 > orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -674,15 +678,15 @@ __upc_atomic_UL (
 			     /* memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_CSWAP_OP:
-	do
-	  {
-	    orig_value = *target_ptr;
-	    new_value = (orig_value == *operand1) ? *operand2 : orig_value;
-	  }
-	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
-				/* weak */ 0,
-				/* success_memmodel */ __ATOMIC_SEQ_CST,
-				/* failure_memmodel */ __ATOMIC_SEQ_CST));
+	orig_value = *operand1;
+	/* __atomic_compare_exchange will return the previous value
+	   in &orig_value independent of whether operand2 is written
+	   to the target location.  */
+	(void) __atomic_compare_exchange (target_ptr,
+			    &orig_value, operand2,
+			    /* weak */ 0,
+			    /* success_memmodel */ __ATOMIC_SEQ_CST,
+			    /* failure_memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_SUB_OP:
 	orig_value = __atomic_fetch_sub (target_ptr, *operand1,
@@ -712,6 +716,7 @@ __upc_atomic_LL (
 {
   LL_type orig_value __attribute__((unused));
   LL_type new_value __attribute__((unused));
+  
   LL_type *target_ptr = __cvtaddr (*(upc_shared_ptr_t *)&target);
   switch (op_num)
     {
@@ -722,7 +727,7 @@ __upc_atomic_LL (
       case UPC_MULT_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value * *operand1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -745,7 +750,7 @@ __upc_atomic_LL (
       case UPC_MIN_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 < orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -756,7 +761,7 @@ __upc_atomic_LL (
       case UPC_MAX_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 > orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -775,15 +780,15 @@ __upc_atomic_LL (
 			     /* memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_CSWAP_OP:
-	do
-	  {
-	    orig_value = *target_ptr;
-	    new_value = (orig_value == *operand1) ? *operand2 : orig_value;
-	  }
-	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
-				/* weak */ 0,
-				/* success_memmodel */ __ATOMIC_SEQ_CST,
-				/* failure_memmodel */ __ATOMIC_SEQ_CST));
+	orig_value = *operand1;
+	/* __atomic_compare_exchange will return the previous value
+	   in &orig_value independent of whether operand2 is written
+	   to the target location.  */
+	(void) __atomic_compare_exchange (target_ptr,
+			    &orig_value, operand2,
+			    /* weak */ 0,
+			    /* success_memmodel */ __ATOMIC_SEQ_CST,
+			    /* failure_memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_SUB_OP:
 	orig_value = __atomic_fetch_sub (target_ptr, *operand1,
@@ -813,6 +818,7 @@ __upc_atomic_ULL (
 {
   ULL_type orig_value __attribute__((unused));
   ULL_type new_value __attribute__((unused));
+  
   ULL_type *target_ptr = __cvtaddr (*(upc_shared_ptr_t *)&target);
   switch (op_num)
     {
@@ -823,7 +829,7 @@ __upc_atomic_ULL (
       case UPC_MULT_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value * *operand1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -846,7 +852,7 @@ __upc_atomic_ULL (
       case UPC_MIN_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 < orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -857,7 +863,7 @@ __upc_atomic_ULL (
       case UPC_MAX_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 > orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -876,15 +882,15 @@ __upc_atomic_ULL (
 			     /* memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_CSWAP_OP:
-	do
-	  {
-	    orig_value = *target_ptr;
-	    new_value = (orig_value == *operand1) ? *operand2 : orig_value;
-	  }
-	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
-				/* weak */ 0,
-				/* success_memmodel */ __ATOMIC_SEQ_CST,
-				/* failure_memmodel */ __ATOMIC_SEQ_CST));
+	orig_value = *operand1;
+	/* __atomic_compare_exchange will return the previous value
+	   in &orig_value independent of whether operand2 is written
+	   to the target location.  */
+	(void) __atomic_compare_exchange (target_ptr,
+			    &orig_value, operand2,
+			    /* weak */ 0,
+			    /* success_memmodel */ __ATOMIC_SEQ_CST,
+			    /* failure_memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_SUB_OP:
 	orig_value = __atomic_fetch_sub (target_ptr, *operand1,
@@ -914,6 +920,7 @@ __upc_atomic_I32 (
 {
   I32_type orig_value __attribute__((unused));
   I32_type new_value __attribute__((unused));
+  
   I32_type *target_ptr = __cvtaddr (*(upc_shared_ptr_t *)&target);
   switch (op_num)
     {
@@ -924,7 +931,7 @@ __upc_atomic_I32 (
       case UPC_MULT_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value * *operand1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -947,7 +954,7 @@ __upc_atomic_I32 (
       case UPC_MIN_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 < orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -958,7 +965,7 @@ __upc_atomic_I32 (
       case UPC_MAX_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 > orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -977,15 +984,15 @@ __upc_atomic_I32 (
 			     /* memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_CSWAP_OP:
-	do
-	  {
-	    orig_value = *target_ptr;
-	    new_value = (orig_value == *operand1) ? *operand2 : orig_value;
-	  }
-	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
-				/* weak */ 0,
-				/* success_memmodel */ __ATOMIC_SEQ_CST,
-				/* failure_memmodel */ __ATOMIC_SEQ_CST));
+	orig_value = *operand1;
+	/* __atomic_compare_exchange will return the previous value
+	   in &orig_value independent of whether operand2 is written
+	   to the target location.  */
+	(void) __atomic_compare_exchange (target_ptr,
+			    &orig_value, operand2,
+			    /* weak */ 0,
+			    /* success_memmodel */ __ATOMIC_SEQ_CST,
+			    /* failure_memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_SUB_OP:
 	orig_value = __atomic_fetch_sub (target_ptr, *operand1,
@@ -1015,6 +1022,7 @@ __upc_atomic_UI32 (
 {
   UI32_type orig_value __attribute__((unused));
   UI32_type new_value __attribute__((unused));
+  
   UI32_type *target_ptr = __cvtaddr (*(upc_shared_ptr_t *)&target);
   switch (op_num)
     {
@@ -1025,7 +1033,7 @@ __upc_atomic_UI32 (
       case UPC_MULT_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value * *operand1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1048,7 +1056,7 @@ __upc_atomic_UI32 (
       case UPC_MIN_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 < orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1059,7 +1067,7 @@ __upc_atomic_UI32 (
       case UPC_MAX_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 > orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1078,15 +1086,15 @@ __upc_atomic_UI32 (
 			     /* memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_CSWAP_OP:
-	do
-	  {
-	    orig_value = *target_ptr;
-	    new_value = (orig_value == *operand1) ? *operand2 : orig_value;
-	  }
-	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
-				/* weak */ 0,
-				/* success_memmodel */ __ATOMIC_SEQ_CST,
-				/* failure_memmodel */ __ATOMIC_SEQ_CST));
+	orig_value = *operand1;
+	/* __atomic_compare_exchange will return the previous value
+	   in &orig_value independent of whether operand2 is written
+	   to the target location.  */
+	(void) __atomic_compare_exchange (target_ptr,
+			    &orig_value, operand2,
+			    /* weak */ 0,
+			    /* success_memmodel */ __ATOMIC_SEQ_CST,
+			    /* failure_memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_SUB_OP:
 	orig_value = __atomic_fetch_sub (target_ptr, *operand1,
@@ -1116,6 +1124,7 @@ __upc_atomic_I64 (
 {
   I64_type orig_value __attribute__((unused));
   I64_type new_value __attribute__((unused));
+  
   I64_type *target_ptr = __cvtaddr (*(upc_shared_ptr_t *)&target);
   switch (op_num)
     {
@@ -1126,7 +1135,7 @@ __upc_atomic_I64 (
       case UPC_MULT_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value * *operand1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1149,7 +1158,7 @@ __upc_atomic_I64 (
       case UPC_MIN_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 < orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1160,7 +1169,7 @@ __upc_atomic_I64 (
       case UPC_MAX_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 > orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1179,15 +1188,15 @@ __upc_atomic_I64 (
 			     /* memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_CSWAP_OP:
-	do
-	  {
-	    orig_value = *target_ptr;
-	    new_value = (orig_value == *operand1) ? *operand2 : orig_value;
-	  }
-	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
-				/* weak */ 0,
-				/* success_memmodel */ __ATOMIC_SEQ_CST,
-				/* failure_memmodel */ __ATOMIC_SEQ_CST));
+	orig_value = *operand1;
+	/* __atomic_compare_exchange will return the previous value
+	   in &orig_value independent of whether operand2 is written
+	   to the target location.  */
+	(void) __atomic_compare_exchange (target_ptr,
+			    &orig_value, operand2,
+			    /* weak */ 0,
+			    /* success_memmodel */ __ATOMIC_SEQ_CST,
+			    /* failure_memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_SUB_OP:
 	orig_value = __atomic_fetch_sub (target_ptr, *operand1,
@@ -1217,6 +1226,7 @@ __upc_atomic_UI64 (
 {
   UI64_type orig_value __attribute__((unused));
   UI64_type new_value __attribute__((unused));
+  
   UI64_type *target_ptr = __cvtaddr (*(upc_shared_ptr_t *)&target);
   switch (op_num)
     {
@@ -1227,7 +1237,7 @@ __upc_atomic_UI64 (
       case UPC_MULT_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value * *operand1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1250,7 +1260,7 @@ __upc_atomic_UI64 (
       case UPC_MIN_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 < orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1261,7 +1271,7 @@ __upc_atomic_UI64 (
       case UPC_MAX_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 > orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1280,15 +1290,15 @@ __upc_atomic_UI64 (
 			     /* memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_CSWAP_OP:
-	do
-	  {
-	    orig_value = *target_ptr;
-	    new_value = (orig_value == *operand1) ? *operand2 : orig_value;
-	  }
-	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
-				/* weak */ 0,
-				/* success_memmodel */ __ATOMIC_SEQ_CST,
-				/* failure_memmodel */ __ATOMIC_SEQ_CST));
+	orig_value = *operand1;
+	/* __atomic_compare_exchange will return the previous value
+	   in &orig_value independent of whether operand2 is written
+	   to the target location.  */
+	(void) __atomic_compare_exchange (target_ptr,
+			    &orig_value, operand2,
+			    /* weak */ 0,
+			    /* success_memmodel */ __ATOMIC_SEQ_CST,
+			    /* failure_memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_SUB_OP:
 	orig_value = __atomic_fetch_sub (target_ptr, *operand1,
@@ -1318,13 +1328,14 @@ __upc_atomic_F (
 {
   F_type orig_value __attribute__((unused));
   F_type new_value __attribute__((unused));
+  
   F_type *target_ptr = __cvtaddr (*(upc_shared_ptr_t *)&target);
   switch (op_num)
     {
       case UPC_ADD_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value + *operand1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1335,7 +1346,7 @@ __upc_atomic_F (
       case UPC_MULT_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value * *operand1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1346,7 +1357,7 @@ __upc_atomic_F (
       case UPC_MIN_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 < orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1357,7 +1368,7 @@ __upc_atomic_F (
       case UPC_MAX_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 > orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1376,20 +1387,20 @@ __upc_atomic_F (
 			     /* memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_CSWAP_OP:
-	do
-	  {
-	    orig_value = *target_ptr;
-	    new_value = (orig_value == *operand1) ? *operand2 : orig_value;
-	  }
-	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
-				/* weak */ 0,
-				/* success_memmodel */ __ATOMIC_SEQ_CST,
-				/* failure_memmodel */ __ATOMIC_SEQ_CST));
+	orig_value = *operand1;
+	/* __atomic_compare_exchange will return the previous value
+	   in &orig_value independent of whether operand2 is written
+	   to the target location.  */
+	(void) __atomic_compare_exchange (target_ptr,
+			    &orig_value, operand2,
+			    /* weak */ 0,
+			    /* success_memmodel */ __ATOMIC_SEQ_CST,
+			    /* failure_memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_SUB_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value - *operand1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1400,7 +1411,7 @@ __upc_atomic_F (
       case UPC_INC_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value + (float) 1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1411,7 +1422,7 @@ __upc_atomic_F (
       case UPC_DEC_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value - (float) 1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1435,13 +1446,14 @@ __upc_atomic_D (
 {
   D_type orig_value __attribute__((unused));
   D_type new_value __attribute__((unused));
+  
   D_type *target_ptr = __cvtaddr (*(upc_shared_ptr_t *)&target);
   switch (op_num)
     {
       case UPC_ADD_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value + *operand1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1452,7 +1464,7 @@ __upc_atomic_D (
       case UPC_MULT_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value * *operand1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1463,7 +1475,7 @@ __upc_atomic_D (
       case UPC_MIN_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 < orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1474,7 +1486,7 @@ __upc_atomic_D (
       case UPC_MAX_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = (*operand1 > orig_value) ? *operand1 : orig_value;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1493,20 +1505,20 @@ __upc_atomic_D (
 			     /* memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_CSWAP_OP:
-	do
-	  {
-	    orig_value = *target_ptr;
-	    new_value = (orig_value == *operand1) ? *operand2 : orig_value;
-	  }
-	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
-				/* weak */ 0,
-				/* success_memmodel */ __ATOMIC_SEQ_CST,
-				/* failure_memmodel */ __ATOMIC_SEQ_CST));
+	orig_value = *operand1;
+	/* __atomic_compare_exchange will return the previous value
+	   in &orig_value independent of whether operand2 is written
+	   to the target location.  */
+	(void) __atomic_compare_exchange (target_ptr,
+			    &orig_value, operand2,
+			    /* weak */ 0,
+			    /* success_memmodel */ __ATOMIC_SEQ_CST,
+			    /* failure_memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_SUB_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value - *operand1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1517,7 +1529,7 @@ __upc_atomic_D (
       case UPC_INC_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value + (double) 1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1528,7 +1540,7 @@ __upc_atomic_D (
       case UPC_DEC_OP:
 	do
 	  {
-	    orig_value = *target_ptr;
+            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
 	    new_value = orig_value - (double) 1;
 	  }
 	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
@@ -1552,6 +1564,8 @@ __upc_atomic_PTS (
 {
   PTS_type orig_value __attribute__((unused));
   PTS_type new_value __attribute__((unused));
+  
+  int op_ok __attribute__((unused));
   PTS_type *target_ptr = __cvtaddr (*(upc_shared_ptr_t *)&target);
   switch (op_num)
     {
@@ -1566,15 +1580,25 @@ __upc_atomic_PTS (
 			     /* memmodel */ __ATOMIC_SEQ_CST);
         break;
       case UPC_CSWAP_OP:
-	do
-	  {
-	    orig_value = *target_ptr;
-	    new_value = (orig_value == *operand1) ? *operand2 : orig_value;
-	  }
-	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
+	orig_value = *operand1;
+	/* __atomic_compare_exchange will return the previous value
+	   in &orig_value independent of whether operand2 is written
+	   to the target location.  */
+	op_ok = __atomic_compare_exchange (target_ptr, &orig_value, operand2,
 				/* weak */ 0,
 				/* success_memmodel */ __ATOMIC_SEQ_CST,
-				/* failure_memmodel */ __ATOMIC_SEQ_CST));
+				/* failure_memmodel */ __ATOMIC_SEQ_CST);
+	/* If the previous compare exchange operation failed, check
+	   for UPC PTS equality (which ignores phase).  If the pointers
+	   compare as equal, try again.  */
+	if (!op_ok && (orig_value == *operand1))
+	  {
+            (void) __atomic_compare_exchange (target_ptr,
+	                        &orig_value, operand2,
+				/* weak */ 0,
+				/* success_memmodel */ __ATOMIC_SEQ_CST,
+				/* failure_memmodel */ __ATOMIC_SEQ_CST);
+	  }
         break;
       default: break;
     }
