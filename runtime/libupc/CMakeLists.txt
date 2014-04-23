@@ -258,7 +258,8 @@ set(LIBUPC_SOURCES
   smp/upc_affinity_stub.c
   smp/upc_allocg.upc
   smp/upc_alloc.upc
-  smp/upc_atomic.upc
+  smp/upc_atomic_generic.upc
+  smp/upc_atomic_sup.c
   smp/upc_barrier.upc
   smp/upc_castable.upc
   smp/upc_debug.c
@@ -506,17 +507,24 @@ add_custom_command(OUTPUT ${clang_upc_lib_h}
   VERBATIM)
 add_custom_target(clang-upc-lib-h ALL DEPENDS ${clang_upc_lib_h})
 
-set(lib_upc_atomic ${PROJECT_SOURCE_DIR}/smp/upc_atomic.upc)
+set(lib_upc_atomic_builtin ${PROJECT_SOURCE_DIR}/smp/upc_atomic_builtin.upc)
+set(lib_upc_atomic_generic ${PROJECT_SOURCE_DIR}/smp/upc_atomic_generic.upc)
 set(lib_upc_atomic_sources ${PROJECT_SOURCE_DIR}/smp/upc_atomic.def
   ${PROJECT_SOURCE_DIR}/smp/upc_atomic.tpl
   ${PROJECT_SOURCE_DIR}/include/upc_types.def
   ${PROJECT_SOURCE_DIR}/include/upc_ops.def)
-add_custom_command(OUTPUT ${lib_upc_atomic}
+add_custom_command(OUTPUT ${lib_upc_atomic_builtin}
   COMMAND cd ${PROJECT_SOURCE_DIR}/smp &&
-          ${AUTOGEN_EXECUTABLE} -L ../include upc_atomic.def
+          ${AUTOGEN_EXECUTABLE} -DHAVE_BUILTIN_ATOMICS -bupc_atomic_builtin -L ../include upc_atomic.def
   DEPENDS ${lib_upc_atomic_sources}
   VERBATIM)
-add_custom_target(upc-atomic ALL DEPENDS ${lib_upc_atomic})
+add_custom_target(upc-atomic-builtin ALL DEPENDS ${lib_upc_atomic_builtin})
+add_custom_command(OUTPUT ${lib_upc_atomic_generic}
+  COMMAND cd ${PROJECT_SOURCE_DIR}/smp &&
+          ${AUTOGEN_EXECUTABLE} -bupc_atomic_generic -L ../include upc_atomic.def
+  DEPENDS ${lib_upc_atomic_sources}
+  VERBATIM)
+add_custom_target(upc-atomic-generic ALL DEPENDS ${lib_upc_atomic_generic})
 
 set(upc_headers clang-upc.h upc.h upc_atomic.h upc_castable.h
   upc_collective.h upc_nb.h upc_strict.h upc_tick.h upc_types.h
