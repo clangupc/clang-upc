@@ -11,6 +11,7 @@
 #include "upc_sysdep.h"
 #include "upc_defs.h"
 #include "upc_sup.h"
+#include "upc_sync.h"
 
 void
 __upc_atomic_lock ()
