@@ -8,9 +8,11 @@
 |* See LICENSE-INTREPID.TXT for details.
 |*
 |*===---------------------------------------------------------------------===*/
-/* Process the definitions file with autogen to produce upc_atomic.upc:
+/* Process the definitions file with autogen to produce tow UPC atomic files,
+   optimized and generic versions:
 
-   autogen -L ../include upc_atomic.def
+   autogen -DHAVE_BUILTIN_ATOMICS -bupc_atomic_builtin -L ../include upc_atomic.def
+   autogen -bupc_atomic_generic -L ../include upc_atomic.def
 
 */
 
@@ -21,7 +23,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <upc_atomic.h>
-#include "upc_config.h"
+#include "upc_config.h"[=
+IF (not (exist? "have_builtin_atomics")) =]
+#include "upc_atomic_sup.h"[=
+ENDIF =]
 
 /**
  * @file __upc_atomic.upc
@@ -272,110 +277,12 @@ __upc_atomic_[=type_abbrev=] (
   [=IF (= (get "type_abbrev") "PTS") =]
   int op_ok __attribute__((unused));[=
   ENDIF =]
-  [= (. abbrev-type) =] *target_ptr = __cvtaddr (*(upc_shared_ptr_t *)&target);
-  switch (op_num)
-    {[=
-  FOR upc_op =][=
-    IF (exist? "op_atomic_ok") =][=
-      IF (= (get "op_mode") "access") =]
-      case [=op_upc_name=]_OP:[=
-        CASE op_upc_name =][=
-        = 'UPC_GET'    =]
-        __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);[=
-        = 'UPC_SET'    =]
-	if (fetch_ptr == NULL)
-	  __atomic_store (target_ptr, operand1, __ATOMIC_SEQ_CST);
-	else
-	  __atomic_exchange (target_ptr, operand1, &orig_value,
-			     /* memmodel */ __ATOMIC_SEQ_CST);[=
-        = 'UPC_CSWAP'  =]
-	orig_value = *operand1;
-	/* __atomic_compare_exchange will return the previous value
-	   in &orig_value independent of whether operand2 is written
-	   to the target location.  */[=
-	IF (= (get "type_abbrev") "PTS") =]
-	op_ok = __atomic_compare_exchange (target_ptr, &orig_value, operand2,
-				/* weak */ 0,
-				/* success_memmodel */ __ATOMIC_SEQ_CST,
-				/* failure_memmodel */ __ATOMIC_SEQ_CST);
-	/* If the previous compare exchange operation failed, check
-	   for UPC PTS equality (which ignores phase).  If the pointers
-	   compare as equal, try again.  */
-	if (!op_ok && (orig_value == *operand1))
-	  {
-            (void) __atomic_compare_exchange (target_ptr,
-	                        &orig_value, operand2,
-				/* weak */ 0,
-				/* success_memmodel */ __ATOMIC_SEQ_CST,
-				/* failure_memmodel */ __ATOMIC_SEQ_CST);
-	  }[=
-        ELSE =]
-	(void) __atomic_compare_exchange (target_ptr,
-			    &orig_value, operand2,
-			    /* weak */ 0,
-			    /* success_memmodel */ __ATOMIC_SEQ_CST,
-			    /* failure_memmodel */ __ATOMIC_SEQ_CST);[=
-        ENDIF =][=
-        ESAC =]
-        break;[=
-      ENDIF =][=
-      IF (or (and (exist? "type_numeric_op_ok")
-                  (= (get "op_mode") "numeric"))
-	     (and (exist? "type_bit_op_ok")
-                  (= (get "op_mode") "logical"))) =]
-      case [=op_upc_name=]_OP:[=
-        IF (and (not (exist? "type_floating_point"))
-	        (~* (get "op_upc_name")
-	            "UPC_(ADD|SUB|INC|DEC|AND|OR|XOR)$")) =][=
-          CASE op_upc_name =][=
-          ~* 'UPC_(ADD|SUB|AND|OR|XOR)$' =]
-	orig_value = __atomic_fetch_[=op_name=] (target_ptr, *operand1,
-				__ATOMIC_SEQ_CST);[=
-          = 'UPC_INC' =]
-	orig_value = __atomic_fetch_add (target_ptr, ([=type_c_name=]) 1,
-				__ATOMIC_SEQ_CST);[=
-          = 'UPC_DEC' =]
-	orig_value = __atomic_fetch_sub (target_ptr, ([=type_c_name=]) 1,
-				__ATOMIC_SEQ_CST);[=
-          ESAC =][=
-        ELSE =][=
-	  (define op_calc "") =][=
-          CASE op_upc_name =][=
-          ~* 'UPC_(ADD|SUB|AND|OR|XOR)$' =][=
-	    (set! op_calc
-	      (string-append "orig_value "
-	                     (get "op_op")
-	  		     " *operand1")) =][=
-          ~* 'UPC_(INC|DEC)$' =][=
-	    (set! op_calc
-	      (string-append "orig_value "
-			     (get "op_op")
-			     " (" (get "type_c_name") ") 1")) =][=
-	  = 'UPC_MULT' =][=
-	    (set! op_calc "orig_value * *operand1") =][=
-	  = 'UPC_MIN' =][=
-	    (set! op_calc
-	      "(*operand1 < orig_value) ? *operand1 : orig_value") =][=
-	  = 'UPC_MAX' =][=
-	    (set! op_calc
-	      "(*operand1 > orig_value) ? *operand1 : orig_value") =][=
-	  ESAC =]
-	do
-	  {
-            __atomic_load (target_ptr, &orig_value, __ATOMIC_SEQ_CST);
-	    new_value = [= (. op_calc) =];
-	  }
-	while (!__atomic_compare_exchange (target_ptr, &orig_value, &new_value,
-				/* weak */ 0,
-				/* success_memmodel */ __ATOMIC_SEQ_CST,
-				/* failure_memmodel */ __ATOMIC_SEQ_CST));[=
-        ENDIF =]
-        break;[=
-      ENDIF =][=
-    ENDIF =][=
-  ENDFOR =]
-      default: break;
-    }
+  [= (. abbrev-type) =] *target_ptr = __cvtaddr (*(upc_shared_ptr_t *)&target);[=
+  IF (exist? "have_builtin_atomics") =][=
+    INCLUDE "upc_atomic_builtin.tpl" =][=
+  ELSE =][=
+    INCLUDE "upc_atomic_generic.tpl" =][=
+  ENDIF =]
   if (fetch_ptr != NULL)
     *fetch_ptr = orig_value;
 }[=
@@ -529,12 +436,16 @@ int
 upc_atomic_isfast (__attribute__((unused)) upc_type_t optype,
 	 	   __attribute__((unused)) upc_op_t ops,
 		   __attribute__((unused)) shared void *addr)
-{
+{[=
+IF (exist? "have_builtin_atomics") =]
   /* We could make the distinction that only operations
      directly supported by the builtin atomics are "fast",
      but for now ... everything in the SMP runtime is
      defined to be fast.  */
-  return UPC_ATOMIC_PERFORMANCE_FAST;
+  return UPC_ATOMIC_PERFORMANCE_FAST;[=
+ELSE =]
+  return UPC_ATOMIC_PERFORMANCE_NOT_FAST;[=
+ENDIF =]
 }
 
 /** @} */

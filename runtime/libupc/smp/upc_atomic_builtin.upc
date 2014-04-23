@@ -7,9 +7,11 @@
 |* See LICENSE-INTREPID.TXT for details.
 |*
 |*===---------------------------------------------------------------------===*/
-/* Process the definitions file with autogen to produce upc_atomic.upc:
+/* Process the definitions file with autogen to produce tow UPC atomic files,
+   optimized and generic versions:
 
-   autogen -L ../include upc_atomic.def
+   autogen -DHAVE_BUILTIN_ATOMICS -bupc_atomic_builtin -L ../include upc_atomic.def
+   autogen -bupc_atomic_generic -L ../include upc_atomic.def
 
 */
 

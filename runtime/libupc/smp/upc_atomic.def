@@ -3,3 +3,6 @@ Autogen Definitions upc_atomic;
 #include upc_types.def
 #include upc_ops.def
 
+#ifdef HAVE_BUILTIN_ATOMICS
+have_builtin_atomics;
+#endif
