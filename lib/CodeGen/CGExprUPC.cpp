@@ -453,8 +453,8 @@ llvm::Value *CodeGenFunction::EmitUPCPointer(llvm::Value *Phase, llvm::Value *Th
     Result = Builder.CreateInsertValue(Result, Val, 0);
   } else {
     if (getContext().getTargetInfo().getPointerWidth(0) == 64) {
-      Phase = Builder.CreateZExtOrTrunc(Phase, Int16Ty);
-      Thread = Builder.CreateZExtOrTrunc(Thread, Int16Ty);
+      Phase = Builder.CreateZExtOrTrunc(Phase, Int32Ty);
+      Thread = Builder.CreateZExtOrTrunc(Thread, Int32Ty);
     } else {
       Phase = Builder.CreateZExtOrTrunc(Phase, Int16Ty);
       Thread = Builder.CreateZExtOrTrunc(Thread, Int16Ty);

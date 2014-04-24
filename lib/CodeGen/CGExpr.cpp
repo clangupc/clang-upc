@@ -1726,9 +1726,6 @@ EmitBitCastOfLValueToProperType(CodeGenFunction &CGF,
 
 LValue CodeGenFunction::EmitSharedVarDeclLValue(llvm::Value *V, CharUnits Alignment, QualType T) {
   const LangOptions& LangOpts = getContext().getLangOpts();
-  unsigned PhaseBits = LangOpts.UPCPhaseBits;
-  unsigned ThreadBits = LangOpts.UPCThreadBits;
-  unsigned AddrBits = LangOpts.UPCAddrBits;
   if (LangOpts.UPCPtsRep) {
     llvm::Value *SectionStart = CGM.getModule().getOrInsertGlobal("__upc_shared_start", Int8Ty);
     llvm::Value *StartInt = Builder.CreatePtrToInt(SectionStart, PtrDiffTy, "sect.cast");

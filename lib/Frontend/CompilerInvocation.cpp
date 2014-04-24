@@ -1395,6 +1395,11 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
         << Args.getLastArg(OPT_fupc_pts_EQ)->getAsString(Args) << PackedBits;
     Opts.UPCPtsRep = 1;
   } else if(UPCPts == "struct") {
+    // Default options for struct (might change depending on the target
+    // options (e.g. -m32 on 64 bits host, or 32 bits host)
+    Opts.UPCPhaseBits = 32;
+    Opts.UPCThreadBits = 32;
+    Opts.UPCAddrBits = 64;
     if (Args.hasArg(OPT_fupc_packed_bits_EQ))
       Diags.Report(diag::err_drv_argument_not_allowed_with)
         << Args.getLastArg(OPT_fupc_packed_bits_EQ)->getAsString(Args)
@@ -1757,6 +1762,22 @@ bool CompilerInvocation::CreateFromArgs(CompilerInvocation &Res,
   ParsePreprocessorOutputArgs(Res.getPreprocessorOutputOpts(), *Args,
                               Res.getFrontendOpts().ProgramAction);
   ParseTargetArgs(Res.getTargetOpts(), *Args);
+
+  // For UPC struct representation fields sizes depend on the
+  // target configuration (e.g. -m32 option on 64 bits host).
+  // Check for X86 or PPC target is done similarly to the code
+  // in InitHeaderSearch.cpp.  This check must be done only after
+  // the target options have been processed.
+  if (Res.getLangOpts()->UPCPtsRep == 0) {
+    std::string triple = Res.getTargetOpts().Triple;
+    bool is64bit = (triple.find("x86_64") != std::string::npos) ||
+                   (triple.find("ppc64") != std::string::npos);
+    if (!is64bit) {
+      Res.getLangOpts()->UPCPhaseBits = 16;
+      Res.getLangOpts()->UPCThreadBits = 16;
+      Res.getLangOpts()->UPCAddrBits = 32;
+    }
+  }  
 
   return Success;
 }
