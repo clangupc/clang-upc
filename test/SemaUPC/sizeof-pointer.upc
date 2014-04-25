@@ -7,11 +7,11 @@
 #define TEST(expr) char CAT(test, __LINE__)[(expr)? 1 : -1]
 
 #if __SIZEOF_POINTER__ == 4
-#TEST(sizeof(shared void *) == 8);
-##else
-##if __UPC_PTS_PACKED_REP__
-#TEST(sizeof(shared void *) == 8);
-##else
-#TEST(sizeof(shared void *) == 16);
-##endif
-##endif
+TEST(sizeof(shared void *) == 8);
+#else
+#if __UPC_PTS_PACKED_REP__
+TEST(sizeof(shared void *) == 8);
+#else
+TEST(sizeof(shared void *) == 16);
+#endif
+#endif
