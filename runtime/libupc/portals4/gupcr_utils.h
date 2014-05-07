@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
@@ -30,9 +30,9 @@
 
 /* Give up control of the CPU for a small time interval.  */
 #ifdef _POSIX_PRIORITY_SCHEDULING
-#define gupcr_yield_cpu() do { sched_yield(); } while (0)
+#define gupcr_yield_cpu() do { sched_yield (); } while (0)
 #else
-#define gupcr_yield_cpu() do { usleep(1000L); } while (0)
+#define gupcr_yield_cpu() do { usleep (1000L); } while (0)
 #endif
 
 /* Give up control of the CPU for specified amount of time.  */
@@ -62,7 +62,7 @@
 #ifdef GUPCR_HAVE_CHECKS
 #define gupcr_assert(expr) (expr) ? (void)(0)				\
    : gupcr_fatal_error ("UPC runtime assertion `%s' failed",		\
-                        __STRING(expr))
+                        __STRING (expr))
 #else
 #define gupcr_assert(expr)
 #endif
@@ -74,7 +74,7 @@
         status = syscall args;						\
 	if (status < 0)					        	\
 	  gupcr_fatal_error ("UPC runtime system call `%s' failed: %s",	\
-	                     __STRING(syscall),				\
+	                     __STRING (syscall),				\
 	                     gupcr_strerror ());			\
       }									\
     while (0)
@@ -96,7 +96,7 @@
         status = mkdir (dir, 0755);					\
 	if (status < 0 && errno != EEXIST)		        	\
 	  gupcr_fatal_error ("UPC runtime `mkdir' of `%s' failed: %s",	\
-	                     dir, __STRING(syscall));			\
+	                     dir, __STRING (syscall));			\
       }									\
     while (0)
 
@@ -139,16 +139,16 @@
           (((facility) & gupcr_debug_facility_mask) != 0)
 #define gupcr_debug(facility, fmt, args...)				\
           if (gupcr_debug_enabled (facility))				\
-            gupcr_debug_print("%s: " fmt "\n", __func__ , ##args)
+            gupcr_debug_print ("%s: " fmt "\n", __func__ , ##args)
 #define gupcr_log(facility, fmt, args...)				\
           if (facility & gupcr_log_facility_mask)			\
-            gupcr_log_print(fmt "\n", ##args)
+            gupcr_log_print (fmt "\n", ##args)
 #define gupcr_stats(facility, fmt, args...)				\
           if (facility & gupcr_stats_facility_mask)			\
-            gupcr_stats_print(fmt "\n", ##args)
+            gupcr_stats_print (fmt "\n", ##args)
 #define gupcr_trace(facility, fmt, args...)				\
           if (facility & gupcr_trace_facility_mask)			\
-            gupcr_trace_print(fmt "\n", ##args)
+            gupcr_trace_print (fmt "\n", ##args)
 #else
 #define gupcr_debug_enabled(facility) (0)
 #define gupcr_debug(facility, fmt, args...)
@@ -159,19 +159,21 @@
 
 typedef enum
 {
-  FC_NONE = 0b00000000000,
-  FC_ADDR = 0b00000000001,
-  FC_ALLOC = 0b00000000010,
-  FC_BARRIER = 0b00000000100,
-  FC_BROADCAST = 0b00000001000,
-  FC_COLL = 0b00000010000,
-  FC_INFO = 0b00000100000,
-  FC_LOCK = 0b00001000000,
-  FC_MEM = 0b00010000000,
-  FC_MISC = 0b00100000000,
-  FC_PORTALS = 0b01000000000,
-  FC_SYSTEM = 0b10000000000,
-  FC_ALL = 0b11111111111
+  FC_NONE      = 0b0000000000000,
+  FC_ADDR      = 0b0000000000001,
+  FC_ALLOC     = 0b0000000000010,
+  FC_ATOMIC    = 0b0000000000100,
+  FC_BARRIER   = 0b0000000001000,
+  FC_BROADCAST = 0b0000000010000,
+  FC_COLL      = 0b0000000100000,
+  FC_INFO      = 0b0000001000000,
+  FC_LOCK      = 0b0000010000000,
+  FC_MEM       = 0b0000100000000,
+  FC_MISC      = 0b0001000000000,
+  FC_NB        = 0b0010000000000,
+  FC_PORTALS   = 0b0100000000000,
+  FC_SYSTEM    = 0b1000000000000,
+  FC_ALL       = 0b1111111111111
 } gupcr_facility_t;
 
 #ifndef LONG_LONG_BITS
@@ -225,28 +227,6 @@ gupcr_log2 (unsigned long long v)
   return gupcr_floor_log2 (v) + !gupcr_is_pow_2 (v);
 }
 
-#ifdef __UPC__
-
-/* For ptrdiff_t definition */
-#include <stddef.h>
-
-/** Increment a shared pointer, by 'nbytes'.  */
-static inline shared void *
-gupcr_pts_add_offset (shared void *ptr, ptrdiff_t nbytes)
-{
-  return (shared void *) (((shared [] char *) ptr) + nbytes);
-}
-
-/** Return the difference between 'ptr1' and 'ptr2'. Both
-    pointers must be non-NULL and have affinity to the same thread.  */
-static inline ptrdiff_t
-gupcr_pts_diff (shared void *ptr1, shared void *ptr2)
-{
-  return (ptrdiff_t) (((shared [] char *) ptr1) - ((shared [] char *) ptr2));
-}
-
-#endif /* __UPC__ */
-
 extern gupcr_facility_t gupcr_debug_facility_mask;
 extern gupcr_facility_t gupcr_log_facility_mask;
 extern gupcr_facility_t gupcr_stats_facility_mask;
@@ -273,9 +253,13 @@ extern long long gupcr_strtoll (const char *const,
 extern void gupcr_strtoll_error (const char *const str,
 				 long long int, long long int val_max, int);
 extern void gupcr_size_cvt_error (const char *const str, int);
+extern const char *gupcr_get_buf_as_hex (char *bufstr,
+					 const void *buf, size_t size);
 extern const char *gupcr_get_pid_as_string (void);
 extern size_t gupcr_get_shared_heap_size (void);
-extern int gupcr_is_node_local_mem_enabled (void);
+extern int gupcr_is_node_local_memory_enabled (void);
+extern int gupcr_is_forcetouch_enabled (void);
+extern int gupcr_is_backtrace_enabled (void);
 extern void gupcr_unique_local_name (char *, const char *, int, int);
 extern void gupcr_log_print (const char *fmt, ...)
   __attribute__ ((__format__ (__printf__, 1, 2)));
@@ -289,14 +273,18 @@ extern void gupcr_trace_print (const char *fmt, ...)
   __attribute__ ((__format__ (__printf__, 1, 2)));
 extern void gupcr_warn_print (const char *fmt, ...)
   __attribute__ ((__format__ (__printf__, 1, 2)));
+extern int gupcr_create_temp_file (const char *, char *,
+				   const char **);
 extern void gupcr_utils_init (void);
 extern void gupcr_utils_fini (void);
 
-/* Called from: gupcr_env.c */
+/* Called from: gupcr_env.c.  */
 extern void gupcr_be_quiet (void);
 extern void gupcr_no_warn (void);
 extern void gupcr_set_shared_heap_size (size_t heap_size);
-extern void gupcr_set_node_local_mem_enabled (int value);
+extern void gupcr_set_node_local_memory (int value);
+extern void gupcr_set_forcetouch (int value);
+extern void gupcr_set_backtrace (int value);
 extern void gupcr_set_debug_facility (gupcr_facility_t);
 extern void gupcr_set_debug_filename (const char *);
 extern void gupcr_set_log_facility (gupcr_facility_t);
@@ -306,15 +294,15 @@ extern void gupcr_set_stats_filename (const char *);
 extern void gupcr_set_trace_facility (gupcr_facility_t);
 extern void gupcr_set_trace_filename (const char *);
 
-/* See: gupcr_clock.c */
+/* See: gupcr_clock.c.  */
 extern double gupcr_clock (void);
 extern double gupcr_clock_resolution (void);
 extern void gupcr_clock_init (void);
 
-/* See: gupcr_env.c  */
+/* See: gupcr_env.c.  */
 extern void gupcr_env_init (void);
 
-/* See: gupcr_pgm_info.c  */
+/* See: gupcr_pgm_info.c.  */
 extern void gupcr_validate_pgm_info (void);
 
 //end lib_utils_api

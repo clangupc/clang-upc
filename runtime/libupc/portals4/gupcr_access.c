@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
@@ -59,7 +59,7 @@ __getqi2 (upc_shared_ptr_t p)
     {
       gupcr_trace (FC_MEM, "GET ENTER R QI REMOTE");
       gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%x",
@@ -96,7 +96,7 @@ __gethi2 (upc_shared_ptr_t p)
     {
       gupcr_trace (FC_MEM, "GET ENTER R HI REMOTE");
       gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%x",
@@ -133,7 +133,7 @@ __getsi2 (upc_shared_ptr_t p)
     {
       gupcr_trace (FC_MEM, "GET ENTER R SI REMOTE");
       gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%x",
@@ -170,7 +170,7 @@ __getdi2 (upc_shared_ptr_t p)
     {
       gupcr_trace (FC_MEM, "GET ENTER R DI REMOTE");
       gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%llx",
@@ -208,7 +208,7 @@ __getti2 (upc_shared_ptr_t p)
     {
       gupcr_trace (FC_MEM, "GET ENTER R TI REMOTE");
       gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%llx",
@@ -245,7 +245,7 @@ __getsf2 (upc_shared_ptr_t p)
     {
       gupcr_trace (FC_MEM, "GET ENTER R SF REMOTE");
       gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx %6g",
@@ -282,7 +282,7 @@ __getdf2 (upc_shared_ptr_t p)
     {
       gupcr_trace (FC_MEM, "GET ENTER R DF REMOTE");
       gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx %6g",
@@ -319,7 +319,7 @@ __gettf2 (upc_shared_ptr_t p)
     {
       gupcr_trace (FC_MEM, "GET ENTER R TF REMOTE");
       gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx %6Lg",
@@ -356,7 +356,7 @@ __getxf2 (upc_shared_ptr_t p)
     {
       gupcr_trace (FC_MEM, "GET ENTER R XF REMOTE");
       gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx %6Lg",
@@ -395,7 +395,7 @@ __getblk3 (void *dest, upc_shared_ptr_t src, size_t n)
   else
     {
       gupcr_gmem_get (dest, thread, offset, n);
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GETBLK EXIT R %d:0x%lx 0x%lx %lu",
@@ -439,7 +439,7 @@ __putqi2 (upc_shared_ptr_t p, u_intQI_t v)
 	}
       else
 	{
-	  /* Wait for any outstanding 'put' operation. */
+	  /* Wait for any outstanding 'put' operation.  */
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
 	  /* There can be only one outstanding unordered put.  */
@@ -485,7 +485,7 @@ __puthi2 (upc_shared_ptr_t p, u_intHI_t v)
 	}
       else
 	{
-	  /* Wait for any outstanding 'put' operation. */
+	  /* Wait for any outstanding 'put' operation.  */
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
 	  /* There can be only one outstanding unordered put.  */
@@ -531,7 +531,7 @@ __putsi2 (upc_shared_ptr_t p, u_intSI_t v)
 	}
       else
 	{
-	  /* Wait for any outstanding 'put' operation. */
+	  /* Wait for any outstanding 'put' operation.  */
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
 	  /* There can be only one outstanding unordered put.  */
@@ -579,7 +579,7 @@ __putdi2 (upc_shared_ptr_t p, u_intDI_t v)
 	}
       else
 	{
-	  /* Wait for any outstanding 'put' operation. */
+	  /* Wait for any outstanding 'put' operation.  */
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
 	  /* There can be only one outstanding unordered put.  */
@@ -628,7 +628,7 @@ __putti2 (upc_shared_ptr_t p, u_intTI_t v)
 	}
       else
 	{
-	  /* Wait for any outstanding 'put' operation. */
+	  /* Wait for any outstanding 'put' operation.  */
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
 	  /* There can be only one outstanding unordered put.  */
@@ -674,7 +674,7 @@ __putsf2 (upc_shared_ptr_t p, float v)
 	}
       else
 	{
-	  /* Wait for any outstanding 'put' operation. */
+	  /* Wait for any outstanding 'put' operation.  */
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
 	  /* There can be only one outstanding unordered put.  */
@@ -720,7 +720,7 @@ __putdf2 (upc_shared_ptr_t p, double v)
 	}
       else
 	{
-	  /* Wait for any outstanding 'put' operation. */
+	  /* Wait for any outstanding 'put' operation.  */
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
 	  /* There can be only one outstanding unordered put.  */
@@ -766,7 +766,7 @@ __puttf2 (upc_shared_ptr_t p, long double v)
 	}
       else
 	{
-	  /* Wait for any outstanding 'put' operation. */
+	  /* Wait for any outstanding 'put' operation.  */
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
 	  /* There can be only one outstanding unordered put.  */
@@ -812,7 +812,7 @@ __putxf2 (upc_shared_ptr_t p, long double v)
 	}
       else
 	{
-	  /* Wait for any outstanding 'put' operation. */
+	  /* Wait for any outstanding 'put' operation.  */
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
 	  /* There can be only one outstanding unordered put.  */
@@ -939,7 +939,7 @@ __getsqi2 (upc_shared_ptr_t p)
     {
       gupcr_trace (FC_MEM, "GET ENTER S QI REMOTE");
       gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%x",
@@ -978,7 +978,7 @@ __getshi2 (upc_shared_ptr_t p)
     {
       gupcr_trace (FC_MEM, "GET ENTER S HI REMOTE");
       gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%x",
@@ -1017,7 +1017,7 @@ __getssi2 (upc_shared_ptr_t p)
     {
       gupcr_trace (FC_MEM, "GET ENTER S SI REMOTE");
       gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%x",
@@ -1056,7 +1056,7 @@ __getsdi2 (upc_shared_ptr_t p)
     {
       gupcr_trace (FC_MEM, "GET ENTER S DI REMOTE");
       gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%llx",
@@ -1096,7 +1096,7 @@ __getsti2 (upc_shared_ptr_t p)
     {
       gupcr_trace (FC_MEM, "GET ENTER S TI REMOTE");
       gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%llx",
@@ -1135,7 +1135,7 @@ __getssf2 (upc_shared_ptr_t p)
     {
       gupcr_trace (FC_MEM, "GET ENTER S SF REMOTE");
       gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx %6g",
@@ -1174,7 +1174,7 @@ __getsdf2 (upc_shared_ptr_t p)
     {
       gupcr_trace (FC_MEM, "GET ENTER S DF REMOTE");
       gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx %6g",
@@ -1213,7 +1213,7 @@ __getstf2 (upc_shared_ptr_t p)
     {
       gupcr_trace (FC_MEM, "GET ENTER S TF REMOTE");
       gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx %6Lg",
@@ -1252,7 +1252,7 @@ __getsxf2 (upc_shared_ptr_t p)
     {
       gupcr_trace (FC_MEM, "GET ENTER S XF REMOTE");
       gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx %6Lg",
@@ -1291,7 +1291,7 @@ __getsblk3 (void *dest, upc_shared_ptr_t src, size_t n)
   else
     {
       gupcr_gmem_get (dest, thread, offset, n);
-      /* All 'get' operations are synchronous. */
+      /* All 'get' operations are synchronous.  */
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GETBLK EXIT S %d:0x%lx 0x%lx %lu",
@@ -1337,7 +1337,7 @@ __putsqi2 (upc_shared_ptr_t p, u_intQI_t v)
 	}
       else
 	{
-	  /* Wait for any outstanding 'put' operation. */
+	  /* Wait for any outstanding 'put' operation.  */
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
 	}
@@ -1384,7 +1384,7 @@ __putshi2 (upc_shared_ptr_t p, u_intHI_t v)
 	}
       else
 	{
-	  /* Wait for any outstanding 'put' operation. */
+	  /* Wait for any outstanding 'put' operation.  */
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
 	}
@@ -1431,7 +1431,7 @@ __putssi2 (upc_shared_ptr_t p, u_intSI_t v)
 	}
       else
 	{
-	  /* Wait for any outstanding 'put' operation. */
+	  /* Wait for any outstanding 'put' operation.  */
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
 	}
@@ -1480,7 +1480,7 @@ __putsdi2 (upc_shared_ptr_t p, u_intDI_t v)
 	}
       else
 	{
-	  /* Wait for any outstanding 'put' operation. */
+	  /* Wait for any outstanding 'put' operation.  */
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
 	}
@@ -1530,7 +1530,7 @@ __putsti2 (upc_shared_ptr_t p, u_intTI_t v)
 	}
       else
 	{
-	  /* Wait for any outstanding 'put' operation. */
+	  /* Wait for any outstanding 'put' operation.  */
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
 	}
@@ -1577,7 +1577,7 @@ __putssf2 (upc_shared_ptr_t p, float v)
 	}
       else
 	{
-	  /* Wait for any outstanding 'put' operation. */
+	  /* Wait for any outstanding 'put' operation.  */
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
 	}
@@ -1624,7 +1624,7 @@ __putsdf2 (upc_shared_ptr_t p, double v)
 	}
       else
 	{
-	  /* Wait for any outstanding 'put' operation. */
+	  /* Wait for any outstanding 'put' operation.  */
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
 	}
@@ -1671,7 +1671,7 @@ __putstf2 (upc_shared_ptr_t p, long double v)
 	}
       else
 	{
-	  /* Wait for any outstanding 'put' operation. */
+	  /* Wait for any outstanding 'put' operation.  */
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
 	}
@@ -1718,7 +1718,7 @@ __putsxf2 (upc_shared_ptr_t p, long double v)
 	}
       else
 	{
-	  /* Wait for any outstanding 'put' operation. */
+	  /* Wait for any outstanding 'put' operation.  */
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
 	}

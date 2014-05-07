@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intel Corporation.  All rights reserved.
+|* Copyright 2012-2014, Intel Corporation.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTEL.TXT for details.
 |*

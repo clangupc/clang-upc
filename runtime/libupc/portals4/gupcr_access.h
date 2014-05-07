@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
@@ -17,7 +17,7 @@
  */
 
 //begin lib_access_prototypes
-/* relaxed accesses */
+/* Relaxed accesses.  */
 
 extern u_intQI_t __getqi2 (upc_shared_ptr_t);
 extern u_intHI_t __gethi2 (upc_shared_ptr_t);
@@ -46,7 +46,7 @@ extern void __putxf2 (upc_shared_ptr_t, long double);
 extern void __putblk3 (upc_shared_ptr_t, void *, size_t);
 extern void __copyblk3 (upc_shared_ptr_t, upc_shared_ptr_t, size_t);
 
-/* strict accesses */
+/* Strict accesses.  */
 
 extern u_intQI_t __getsqi2 (upc_shared_ptr_t);
 extern u_intHI_t __getshi2 (upc_shared_ptr_t);
@@ -75,7 +75,7 @@ extern void __putsxf2 (upc_shared_ptr_t, long double);
 extern void __putsblk3 (upc_shared_ptr_t, void *, size_t);
 extern void __copysblk3 (upc_shared_ptr_t, upc_shared_ptr_t, size_t);
 
-/* relaxed accesses (profiled) */
+/* Relaxed accesses (profiled).  */
 
 extern u_intQI_t __getgqi3 (upc_shared_ptr_t, const char *file, int line);
 extern u_intHI_t __getghi3 (upc_shared_ptr_t, const char *file, int line);
@@ -114,7 +114,7 @@ extern void __putgblk5 (upc_shared_ptr_t, void *, size_t, const char *file,
 extern void __copygblk5 (upc_shared_ptr_t, upc_shared_ptr_t, size_t,
 			 const char *file, int line);
 
-/* strict accesses (profiled) */
+/* Strict accesses (profiled).  */
 
 extern u_intQI_t __getsgqi3 (upc_shared_ptr_t, const char *file, int line);
 extern u_intHI_t __getsghi3 (upc_shared_ptr_t, const char *file, int line);

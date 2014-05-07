@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intel Corporation.  All rights reserved.
+|* Copyright 2012-2014, Intel Corporation.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTEL.TXT for details.
 |*
@@ -19,7 +19,7 @@
 #include "gupcr_portals.h"
 #include "gupcr_runtime.h"
 
-/* Portals network interface handle/limits/rank */
+/* Portals network interface handle/limits/rank.  */
 ptl_handle_ni_t gupcr_ptl_ni;
 ptl_ni_limits_t gupcr_ptl_ni_limits;
 ptl_rank_t gupcr_ptl_rank;
@@ -33,6 +33,7 @@ int gupcr_parent_thread;
 
 size_t gupcr_max_ordered_size;
 size_t gupcr_max_msg_size;
+size_t gupcr_max_volatile_size;
 
 /** Mapping to nid/pid for each rank */
 static ptl_process_t *gupcr_ptl_proc_map;
@@ -291,6 +292,49 @@ gupcr_get_atomic_datatype (int size)
 }
 
 /**
+ * Return Portals data size from the specified atomic type.
+ *
+ * @param [in] type Portals atomic data type
+ * @retval Portals atomic data type size
+ */
+size_t
+gupcr_get_atomic_size (ptl_datatype_t type)
+{
+  switch (type)
+    {
+    case PTL_INT8_T:
+    case PTL_UINT8_T:
+      return 1;
+    case PTL_INT16_T:
+    case PTL_UINT16_T:
+      return 2;
+    case PTL_INT32_T:
+    case PTL_UINT32_T:
+      return 4;
+    case PTL_INT64_T:
+    case PTL_UINT64_T:
+      return 8;
+    case PTL_FLOAT:
+      return __SIZEOF_FLOAT__;
+    case PTL_FLOAT_COMPLEX:
+      return 2 * __SIZEOF_FLOAT__;
+    case PTL_DOUBLE:
+      return __SIZEOF_DOUBLE__;
+    case PTL_DOUBLE_COMPLEX:
+      return 2 * __SIZEOF_DOUBLE__;
+#ifdef __SIZEOF_LONG_DOUBLE__
+    case PTL_LONG_DOUBLE:
+      return __SIZEOF_LONG_DOUBLE__;
+    case PTL_LONG_DOUBLE_COMPLEX:
+      return 2 * __SIZEOF_LONG_DOUBLE__;
+#endif
+    default:
+      gupcr_fatal_error ("unknown atomic type %d", (int) type);
+    }
+  return -1;
+}
+
+/**
  * @fn gupcr_process_fail_events (ptl_handle_eq_t eq)
  * Show information on failed events.
  *
@@ -311,7 +355,7 @@ gupcr_process_fail_events (ptl_handle_eq_t eq)
     {
       const char *eqerr = gupcr_streqtype (ev.type);
       const char *nierr = gupcr_nifailtype (ev.ni_fail_type);
-      gupcr_error_print ("Event failure %s (%s (%x))", eqerr, nierr,
+      gupcr_error_print ("event failure %s (%s (%x))", eqerr, nierr,
 			 ev.ni_fail_type);
     }
 }
@@ -413,6 +457,7 @@ gupcr_portals_ni_init (void)
   /* Initialize limits used by GMEM.  */
   gupcr_max_ordered_size = gupcr_ptl_ni_limits.max_waw_ordered_size;
   gupcr_max_msg_size = gupcr_ptl_ni_limits.max_msg_size;
+  gupcr_max_volatile_size = gupcr_ptl_ni_limits.max_volatile_size;
 
   /* Initialize the mapping from rank -> nid/pid.  */
   gupcr_ptl_proc_map = gupcr_runtime_get_mapping (gupcr_ptl_ni);

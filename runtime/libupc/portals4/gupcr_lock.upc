@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
@@ -25,12 +25,12 @@
  *
  * The GUPC lock functions use MCS locks as described in the
  * Mellor-Crummey and Scott paper: Algorithms for Scalable Synchronization
- * on Shared-Memory Multiprocessors. ACM Transaction on Computer Systems,
+ * on Shared-Memory Multiprocessors, ACM Transaction on Computer Systems,
  * February 1991.
  *
  * A lock is a simple data structure that lives in the shared memory space.
  * A pointer is used to point to the last thread on the waiting list.
- * A lock is available if this pointer is NULL. The following Portals
+ * A lock is available if this pointer is NULL.  The following Portals
  * atomic operations are used:
  * - SWAP - determine if the lock is available
  * - CSWAP - determine if the lock can be released
@@ -99,7 +99,7 @@ upc_lock_t *gupcr_local_heap_lock;
 
 /**
  * Initialize the heap allocator locks.
- * 
+ *
  * All shared references must be local due to the fact
  * this is called before Portals has been initialized.
  */
@@ -193,7 +193,7 @@ gupcr_lock_link_alloc (void)
 	}
       link = gupcr_lock_links;
       if (!link)
-	gupcr_fatal_error ("Cannot allocate a UPC lock link. "
+	gupcr_fatal_error ("cannot allocate a UPC lock link. "
 			   "The number of allocated per thread lock links "
 			   "exceeds the configuration defined "
 			   "maximum of %d entries.",
@@ -231,8 +231,7 @@ upc_global_lock_alloc (void)
          affinity to the calling thread.  */
       lock = upc_alloc (sizeof (upc_lock_t));
       if (lock == NULL)
-	gupcr_fatal_error ("[%d]: Cannot allocate memory for the lock",
-			   MYTHREAD);
+	gupcr_fatal_error ("cannot allocate memory for the lock");
     }
   lock->last = NULL;
   lock->owner_link = NULL;
@@ -298,7 +297,7 @@ upc_lock_free (upc_lock_t *lock)
  * Allocate a lock and return a pointer to it on all threads.
  *
  * The 'upc_all_lock_alloc' function dynamically allocates a lock
- * and returns a pointer to it. The lock is created in an unlocked state.
+ * and returns a pointer to it.  The lock is created in an unlocked state.
  * 'upc_all_lock_alloc' is a collective function.
  * The return value on every thread points to the same lock object.
  *
@@ -322,8 +321,7 @@ upc_all_lock_alloc (void)
 	{
 	  lock = upc_alloc (sizeof (upc_lock_t));
 	  if (lock == NULL)
-	    gupcr_fatal_error ("[%d]: Cannot allocate memory for the lock",
-			       MYTHREAD);
+	    gupcr_fatal_error ("cannot allocate memory for the lock");
 	}
       lock->last = NULL;
       lock->owner_link = NULL;
@@ -360,13 +358,12 @@ upc_lock (upc_lock_t *lock)
 	       (long unsigned) upc_threadof (lock),
 	       (long unsigned) upc_addrfield (lock));
   if (lock == NULL)
-    gupcr_fatal_error ("[%d]: NULL lock pointer", MYTHREAD);
+    gupcr_fatal_error ("NULL lock pointer");
   /* Allocate space for the lock waiting queue link.
      It will have affinity to the calling thread.  */
   link = gupcr_lock_link_alloc ();
   if (link == NULL)
-    gupcr_fatal_error ("[%d]: Cannot allocate memory for the lock link",
-		       MYTHREAD);
+    gupcr_fatal_error ("cannot allocate memory for the lock link");
   link->next = NULL;
   link->signal = 0;
   /* Atomically set the lock value to point to the
@@ -381,7 +378,7 @@ upc_lock (upc_lock_t *lock)
     {
       shared [] gupcr_lock_link_ref *old_link_next_addr;
       size_t old_link_next_thread, old_link_next_offset;
-      /* We have to wait. Clear the ownership signal field
+      /* We have to wait.  Clear the ownership signal field
          and insert our pointer into the predecessor's link.  */
       link->signal = 0;
       old_link_next_addr = &old_link->next;
@@ -390,7 +387,7 @@ upc_lock (upc_lock_t *lock)
       gupcr_lock_put (old_link_next_thread, old_link_next_offset,
 		      &link, sizeof (link));
       /* At this point the thread has to wait until the lock is
-         is released. Process counting events one by one until
+         is released.  Process counting events one by one until
          the value of the signal word changes.  */
       do
 	{
@@ -432,13 +429,12 @@ upc_lock_attempt (upc_lock_t *lock)
 	       (long unsigned) upc_threadof (lock),
 	       (long unsigned) upc_addrfield (lock));
   if (lock == NULL)
-    gupcr_fatal_error ("[%d]: NULL lock pointer", MYTHREAD);
+    gupcr_fatal_error ("NULL lock pointer");
   /* Allocate space for the lock waiting queue with affinity
      to the calling thread.  */
   link = gupcr_lock_link_alloc ();
   if (link == NULL)
-    gupcr_fatal_error ("[%d]: Cannot allocate memory for the lock link",
-		       MYTHREAD);
+    gupcr_fatal_error ("cannot allocate memory for the lock link");
   link->next = NULL;
   link->signal = 0;
   /* Atomically set the lock value to the link entry and
@@ -486,9 +482,10 @@ upc_unlock (upc_lock_t *lock)
 	       (long unsigned) upc_threadof (lock),
 	       (long unsigned) upc_addrfield (lock));
   if (lock == NULL)
-    gupcr_fatal_error ("[%d]: NULL lock pointer", MYTHREAD);
+    gupcr_fatal_error ("NULL lock pointer");
+  upc_fence;
   /* Try to release the lock: write NULL into lock->last
-     if it contains a pointer to our own link block. If it fails then
+     if it contains a pointer to our own link block.  If it fails then
      some other thread is on the waiting list.  */
   lock->owner_link = NULL;
   compare_ok = gupcr_lock_cswap (lock_last_thread, lock_last_offset,

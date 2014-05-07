@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intel Corporation.  All rights reserved.
+|* Copyright 2012-2014, Intel Corporation.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTEL.TXT for details.
 |*
@@ -21,7 +21,7 @@
  * @{
  */
 
-/* Configuration-defined limits */
+/* Configuration-defined limits.  */
 /** Maximum size of the message that uses put bounce buffer.  */
 #define GUPCR_GMEM_MAX_SAFE_PUT_SIZE 1*KILOBYTE
 
@@ -71,6 +71,8 @@ typedef struct gupcr_gmem_xfer_info_struct
   ptl_handle_ct_t ct_handle;
   /** Memory descriptor handle */
   ptl_handle_md_t md;
+  /** Volatile memory descriptor handle */
+  ptl_handle_md_t md_volatile;
 } gupcr_gmem_xfer_info_t;
 /** GET/PUT information tracking pointer type */
 typedef gupcr_gmem_xfer_info_t *gupcr_gmem_xfer_info_p;

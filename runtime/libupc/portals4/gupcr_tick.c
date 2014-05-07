@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
@@ -14,9 +14,9 @@
 
 #if HAVE_CLOCK_GETTIME
 #ifdef CLOCK_MONOTONIC_RAW
-/* System clock id passed to clock_gettime. CLOCK_MONOTONIC_RAW
+/* System clock id passed to clock_gettime.  CLOCK_MONOTONIC_RAW
    is preferred.  It has been available in the Linux kernel
-   since version 2.6.28 */
+   since version 2.6.28.  */
 #define SYS_RT_CLOCK_ID CLOCK_MONOTONIC_RAW
 #else
 #define SYS_RT_CLOCK_ID CLOCK_MONOTONIC
@@ -36,7 +36,7 @@ upc_ticks_now (void)
   return t;
 }
 
-#else /* !HAVE_CLOCK_GETTIME */
+#else /* not HAVE_CLOCK_GETTIME */
 
 upc_tick_t
 upc_ticks_now (void)

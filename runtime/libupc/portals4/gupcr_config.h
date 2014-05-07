@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
@@ -69,7 +69,7 @@
 #endif
 
 //begin detect_target64
-#if (defined(_LP64) && _LP64)
+#if (defined (_LP64) && _LP64)
 #define GUPCR_TARGET64 1
 #else
 #define GUPCR_TARGET64 0
@@ -88,7 +88,7 @@ typedef unsigned int u_intTI_t __attribute__ ((__mode__ (__TI__)));
 
 //begin lib_min_max
 
-/* helper functions */
+/* Helper functions.  */
 #define GUPCR_MIN(x,y) (((x) < (y)) ? (x): (y))
 #define GUPCR_MAX(x,y) (((x) > (y)) ? (x): (y))
 #define GUPCR_ABS(x) (((x) > 0) ? (x): -(x))

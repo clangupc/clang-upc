@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intel Corporation.  All rights reserved.
+|* Copyright 2012-2014, Intel Corporation.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTEL.TXT for details.
 |*
@@ -107,10 +107,11 @@ static int gupcr_barrier_active = 0;
 #define INNER_THREAD ((gupcr_child_cnt != 0) && (gupcr_parent_thread != -1))
 
 /** Thread's current barrier ID */
-static int gupcr_barrier_id;
+int gupcr_barrier_id;
 
-/** Memory storage for notify barrier ID. Mapped by
-    LE for external access, and MD for internal access. */
+/** Memory storage for notify barrier ID.  Mapped by
+    LE for external access, and MD for internal access.  */
+
 static int gupcr_notify_value;
 /** Barrier notify LE handle (appended to GUPCR_PTL_PTE_BARRIER_UP) */
 static ptl_handle_le_t gupcr_notify_le;
@@ -196,7 +197,7 @@ __upc_notify (int barrier_id)
   gupcr_trace (FC_BARRIER, "BARRIER NOTIFY ENTER %d", barrier_id);
 
   if (gupcr_barrier_active)
-    gupcr_error ("Two successive upc_notify statements executed "
+    gupcr_error ("two successive upc_notify statements executed "
 		 "without an intervening upc_wait");
   gupcr_barrier_active = 1;
   gupcr_barrier_id = barrier_id;
@@ -355,7 +356,7 @@ __upc_notify (int barrier_id)
   /* The UPC runtime barrier implementation that does not use
      Portals triggered operations does not support split phase barriers.
      In this case, all Portals actions related to the barrier
-     are performed in the __upc_wait() function. */
+     are performed in the __upc_wait() function.  */
 #endif
   gupcr_trace (FC_BARRIER, "BARRIER NOTIFY EXIT %d", barrier_id);
 }
@@ -410,8 +411,7 @@ __upc_wait (int barrier_id)
       if (ct.failure)
 	{
 	  gupcr_process_fail_events (gupcr_wait_md_eq);
-	  gupcr_fatal_error ("Thread %d: Received an error on wait MD",
-			     MYTHREAD);
+	  gupcr_fatal_error ("received an error on wait MD");
 	}
     }
   else
@@ -422,15 +422,14 @@ __upc_wait (int barrier_id)
       if (ct.failure)
 	{
 	  gupcr_process_fail_events (gupcr_wait_le_eq);
-	  gupcr_fatal_error ("Thread %d: Received an error on wait LE",
-			     MYTHREAD);
+	  gupcr_fatal_error ("received an error on wait LE");
 	}
     }
   received_barrier_id = *gupcr_wait_ptr;
 #else
   /* UPC Barrier implementation without Portals Triggered Functions.  */
 
-  /* NOTIFY - Propagate minimal barrier ID to the root thread. */
+  /* NOTIFY - Propagate minimal barrier ID to the root thread.  */
 
   /* Use the barrier maximum ID number if the barrier ID is "match all".
      This effectively excludes the thread from setting the minimum ID
@@ -460,9 +459,8 @@ __upc_wait (int barrier_id)
 			  (gupcr_notify_le_ct, gupcr_notify_le_count, &ct));
       if (ct.failure)
 	{
-	  gupcr_process_fail_events (gupcr_wait_le_eq);
-	  gupcr_fatal_error ("Thread %d: Received an error on notify LE",
-			     MYTHREAD);
+	  gupcr_process_fail_events (gupcr_notify_le_eq);
+	  gupcr_fatal_error ("received an error on notify LE");
 	}
     }
 
@@ -473,7 +471,7 @@ __upc_wait (int barrier_id)
       /* This step is performed by leaf threads and inner threads.  */
       /* Send the barrier ID to the parent - use atomic PTL_MIN on the value
          in the parents notify LE (derived minimal ID for the parent and its
-         children. */
+         children.  */
       gupcr_debug (FC_BARRIER, "Send atomic PTL_MIN %d to (%d)",
 		   gupcr_barrier_value, gupcr_parent_thread);
       if (LEAF_THREAD)
@@ -505,8 +503,7 @@ __upc_wait (int barrier_id)
       if (ct.failure)
 	{
 	  gupcr_process_fail_events (gupcr_wait_le_eq);
-	  gupcr_fatal_error ("Thread %d: Received an error on wait LE",
-			     MYTHREAD);
+	  gupcr_fatal_error ("received an error on wait LE");
 	}
     }
 
@@ -541,8 +538,7 @@ __upc_wait (int barrier_id)
       if (ct.failure)
 	{
 	  gupcr_process_fail_events (gupcr_wait_md_eq);
-	  gupcr_fatal_error ("Thread %d: Received an error on wait MD",
-			     MYTHREAD);
+	  gupcr_fatal_error ("received an error on wait MD");
 	}
     }
 
@@ -552,7 +548,7 @@ __upc_wait (int barrier_id)
   if (barrier_id != INT_MIN &&
       barrier_id != received_barrier_id &&
       received_barrier_id != BARRIER_ID_MAX)
-    gupcr_error ("Thread %d: UPC barrier identifier mismatch among threads - "
+    gupcr_error ("thread %d: UPC barrier identifier mismatch among threads - "
 		 "expected %d, received %d",
 		 MYTHREAD, barrier_id, received_barrier_id);
 
@@ -587,7 +583,7 @@ __upc_barrier (int barrier_id)
  * Send broadcast message to all thread's children.
  *
  * The broadcast is a collective operation where thread 0 (root thread)
- * sends a message to all other threads. This function must be
+ * sends a message to all other threads.  This function must be
  * called by the thread 0 only from a public function
  * "gupcr_broadcast_put".
  *
@@ -620,9 +616,7 @@ gupcr_bcast_send (void *value, size_t nbytes)
   if (ct.failure)
     {
       gupcr_process_fail_events (gupcr_notify_le_eq);
-      gupcr_fatal_error
-	("Error on thread %d while waiting for children notifications",
-	 MYTHREAD);
+      gupcr_fatal_error ("received an error on notify LE");
     }
 
   /* Send broadcast to this thread's children.  */
@@ -647,9 +641,7 @@ gupcr_bcast_send (void *value, size_t nbytes)
   if (ct.failure)
     {
       gupcr_process_fail_events (gupcr_wait_md_eq);
-      gupcr_fatal_error
-	("Thread %d: Error while waiting for children notifications",
-	 MYTHREAD);
+      gupcr_fatal_error ("received an error on wait MD");
     }
   gupcr_trace (FC_BROADCAST, "BROADCAST SEND EXIT");
 }
@@ -727,9 +719,7 @@ gupcr_bcast_recv (void *value, size_t nbytes)
       if (ct.failure)
 	{
 	  gupcr_process_fail_events (gupcr_wait_md_eq);
-	  gupcr_fatal_error
-	    ("Error on thread %d while waiting for children delivery",
-	     MYTHREAD);
+	  gupcr_fatal_error ("received an error on wait MD");
 	}
       gupcr_debug (FC_BROADCAST, "Received PtlPut acks: %lu",
                    (long unsigned) ct.success);
@@ -754,10 +744,8 @@ gupcr_bcast_recv (void *value, size_t nbytes)
 			  (gupcr_wait_le_ct, gupcr_wait_le_count, &ct));
       if (ct.failure)
 	{
-	  gupcr_process_fail_events (gupcr_barrier_max_md_eq);
-	  gupcr_fatal_error
-	    ("Error on thread %d while waiting for message from parent",
-	     MYTHREAD);
+	  gupcr_process_fail_events (gupcr_wait_le_eq);
+	  gupcr_fatal_error ("received an error on wait LE");
 	}
     }
   memcpy (value, gupcr_wait_ptr, nbytes);
@@ -773,9 +761,7 @@ gupcr_bcast_recv (void *value, size_t nbytes)
       if (ct.failure)
 	{
 	  gupcr_process_fail_events (gupcr_notify_le_eq);
-	  gupcr_fatal_error
-	    ("Thread %d: Error (%lu) while waiting for children notifications",
-	     MYTHREAD, (long unsigned) ct.failure);
+	  gupcr_fatal_error ("received an error on notify LE");
 	}
       gupcr_debug (FC_BROADCAST, "Received %lu broadcast notifications",
 		   (long unsigned) ct.success);
@@ -800,9 +786,7 @@ gupcr_bcast_recv (void *value, size_t nbytes)
   if (ct.failure)
     {
       gupcr_process_fail_events (gupcr_wait_le_eq);
-      gupcr_fatal_error
-	("Thread %d: Error (%d) while receiving broadcast message", MYTHREAD,
-	 (int) ct.failure);
+      gupcr_fatal_error ("received an error on wait LE");
     }
 
   /* Copy the received message.  */
@@ -829,8 +813,7 @@ gupcr_bcast_recv (void *value, size_t nbytes)
       if (ct.failure)
 	{
 	  gupcr_process_fail_events (gupcr_wait_md_eq);
-	  gupcr_fatal_error ("Error on thread %d while waiting for "
-			     "children delivery", MYTHREAD);
+          gupcr_fatal_error ("received an error on wait MD");
 	}
     }
 #endif
@@ -865,7 +848,7 @@ gupcr_barrier_init (void)
   gupcr_portals_call (PtlCTAlloc, (gupcr_ptl_ni, &gupcr_barrier_max_md_ct));
   gupcr_barrier_max_md_count = 0;
 
-  /* Create necessary EQ handles. Allocate only one event queue entry
+  /* Create necessary EQ handles.  Allocate only one event queue entry
      as we abort on any error.  */
   gupcr_portals_call (PtlEQAlloc, (gupcr_ptl_ni, 1, &gupcr_notify_le_eq));
   gupcr_portals_call (PtlEQAlloc, (gupcr_ptl_ni, 1, &gupcr_notify_md_eq));

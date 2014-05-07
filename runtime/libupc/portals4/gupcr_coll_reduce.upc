@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
@@ -77,7 +77,7 @@ gupcr_portals_reduce_op (upc_op_t op)
     case UPC_MAX:
       return PTL_MAX;
     default:
-      gupcr_fatal_error ("Cannot convert UPC reduce operation %d.", op);
+      gupcr_fatal_error ("cannot convert UPC reduce operation 0x%lx.", op);
     }
 }
 
@@ -113,8 +113,7 @@ void upc_all_reduceC
    upc_op_t op,
    size_t nelems,
    size_t blk_size,
-   signed char (*func) (signed char, signed char),
-                       upc_flag_t sync_mode)
+   signed char (*func) (signed char, signed char), upc_flag_t sync_mode)
 {
   int i, n_local, full_rows, last_row;
   int num_thr, tail_thr, extras, ph, src_thr, dst_thr, velems, start;
@@ -126,7 +125,7 @@ void upc_all_reduceC
     upc_coll_init ();
 
   gupcr_trace (FC_COLL, "COLL ALL_REDUCE ENTER signed char %lu %lu",
-               (long unsigned) nelems, (long unsigned) blk_size);
+	       (long unsigned) nelems, (long unsigned) blk_size);
 
   if (blk_size == 0)
     blk_size = nelems;
@@ -135,28 +134,28 @@ void upc_all_reduceC
   upc_coll_err (dst, src, NULL, 0, sync_mode, blk_size, nelems, op, UPC_RED);
 #endif
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_IN_MYSYNC & sync_mode || !(UPC_IN_NOSYNC & sync_mode))
     upc_barrier;
 
-  /* Compute n_local, the number of elements local to this thread. */
+  /* Compute n_local, the number of elements local to this thread.  */
   n_local = 0;
 
-  /* Also compute start, the starting index of src for each thread. */
+  /* Also compute start, the starting index of src for each thread.  */
 
   src_thr = upc_threadof ((shared void *) src);
   dst_thr = upc_threadof ((shared void *) dst);
   ph = upc_phaseof ((shared void *) src);
 
-  /* nelems plus the number of virtual elements in first row. */
+  /* nelems plus the number of virtual elements in first row.  */
   velems = nelems + src_thr * blk_size + ph;
 
-  /* Include virtual elements when computing num of local elems. */
+  /* Include virtual elements when computing number of local elements.  */
   full_rows = velems / (blk_size * THREADS);
   last_row = velems % (blk_size * THREADS);
   tail_thr = last_row / blk_size;
 
-  /* Calculate number of participating threads. */
+  /* Calculate number of participating threads.  */
   num_thr = (nelems + ph + blk_size - 1) / blk_size;
   if (num_thr > THREADS)
     num_thr = THREADS;
@@ -165,7 +164,7 @@ void upc_all_reduceC
 	       "src_thr: %d tail_thr: %d ph: %d num_thr: %d full_rows: %d",
 	       src_thr, tail_thr, ph, num_thr, full_rows);
 
-  /* Calculate number of local elements. */
+  /* Calculate number of local elements.  */
   if (blk_size > 0)
     {
       if (MYTHREAD <= tail_thr)
@@ -178,35 +177,35 @@ void upc_all_reduceC
 
       n_local = blk_size * full_rows + extras;
 
-      /* Adjust the number of elements in this thread, if necessary. */
+      /* Adjust the number of elements in this thread, if necessary.  */
       if (MYTHREAD < src_thr)
 	n_local -= blk_size;
       else if (MYTHREAD == src_thr)
 	n_local -= ph;
     }
-  else				/* blk_size == 0 */
+  else
     {
       n_local = 0;
-      if (src_thr == MYTHREAD)	/* revise the number of local elements */
+      if (src_thr == MYTHREAD)	/* Revise the number of local elements.  */
 	n_local = nelems;
     }
 
   /* Starting index for this thread
      Note: start is sometimes negative because src is
-     addressed here as if its block size is 1. */
+     addressed here as if its block size is 1.  */
 
   if (blk_size > 0)
     if (MYTHREAD > src_thr)
       start = MYTHREAD - src_thr - ph * THREADS;
     else if (MYTHREAD < src_thr)
       start = (blk_size - ph) * THREADS + MYTHREAD - src_thr;
-    else			/* This is the source thread */
+    else			/* This is the source thread.  */
       start = 0;
-  else				/* blk_size == 0 */
+  else
     start = 0;
 
 
-  /* Reduce the elements local to this thread. */
+  /* Reduce the elements local to this thread.  */
 
   if (n_local > 0)
     {
@@ -272,44 +271,44 @@ void upc_all_reduceC
 	    local_result = func (local_result, *l_src++);
 	  break;
 	default:
-	  gupcr_fatal_error ("Bad UPC collectives reduce operator %d.", op);
+	  gupcr_fatal_error ("bad UPC collectives reduce operator 0x%lx", op);
 	}
     }
 
   /* Note: local_result is undefined if n_local == 0.
-     Note: Only a proper subset of threads might have a meaningful local_result
-     Note: dst might be on a thread that does not have a local result */
+     Note: Only a proper subset of threads have a meaningful local_result.
+     Note: dst might be a thread that does not have a local result.  */
 
-  /* Global reduce on only participating threads. */
+  /* Global reduce on only participating threads.  */
   if (n_local)
     {
-      /* Local pointer where reduced values are written too. */
+      /* Local pointer where reduced values are written too.  */
       signed char *t_result =
 	(signed char *) & gupcr_reduce_storage[MYTHREAD].value[0];
 
-      /* Initialize collectives reduce tree. */
+      /* Initialize collectives reduce tree.  */
       gupcr_coll_tree_setup (dst_thr, src_thr, num_thr);
 
       /* Copy in local results into the area for reduce operation.
          NOTE: Not needed for the case of collective functions. However,
-         this covers the case of only one thread. */
+         this covers the case of only one thread.  */
       *t_result = local_result;
 
 #ifdef GUPCR_USE_PORTALS4_TRIGGERED_OPS
-/* Run reduce operation without triggered functions. */
+/* Run reduce operation without triggered functions.  */
 #undef GUPCR_USE_PORTALS4_TRIGGERED_OPS
 #endif
 #if GUPCR_USE_PORTALS4_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
-         function. */
+         function.  */
       if (gupcr_coll_child_cnt)
 	{
 	  if (IS_ROOT_THREAD)
 	    {
 	      /* ROOT THREAD */
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -319,13 +318,13 @@ void upc_all_reduceC
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for children to report their values. */
+	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
 
-	      /* Reduce local values with those of children if necessary. */
+	      /* Reduce local values with those of children if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result =
@@ -338,11 +337,11 @@ void upc_all_reduceC
 	  else
 	    {
 	      /* INNER THREAD */
-	      /* Prepare triggered atomic function. */
+	      /* Prepare triggered atomic function.  */
 	      if ((op != UPC_FUNC) && (op != UPC_NONCOMM_FUNC))
 		{
 		  /* Use triggered atomic operations once children sent
-		     their results and parent is ready to receive it. */
+		     their results and parent is ready to receive it.  */
 		  size_t offset = upc_addrfield ((shared void *)
 						 &(gupcr_reduce_storage
 						   [MYTHREAD].value[0]));
@@ -352,7 +351,7 @@ void upc_all_reduceC
 					     UPC_COLL_TO_PTL_CHAR,
 					     gupcr_coll_child_cnt + 1);
 		}
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -362,9 +361,9 @@ void upc_all_reduceC
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for completion - children reported and parent is ready. */
+	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
-	      /* Execute reduce functions if necessary. */
+	      /* Execute reduce functions if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -374,93 +373,95 @@ void upc_all_reduceC
 		    upc_addrfield ((shared void *)
 				   &(gupcr_reduce_storage[MYTHREAD].value
 				     [gupcr_coll_child_index]));
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result = func (local_result, *(signed char *)
-					   & gupcr_reduce_storage[MYTHREAD].
-					   value[i]);
+					   &
+					   gupcr_reduce_storage
+					   [MYTHREAD].value[i]);
 		    }
 		  *t_result = local_result;
 		  gupcr_coll_put (gupcr_coll_parent_thread, doffset, offset,
 				  sizeof (signed char));
 		}
-	      /* Wait for our value to go up the tree. */
+	      /* Wait for our value to go up the tree.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
       else
 	{
-	  /* Avoid the case where only one thread is available. */
+	  /* Avoid the case where only one thread is available.  */
 	  if (!IS_ROOT_THREAD)
 	    {
 	      /* LEAF THREAD */
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      switch (op)
 		{
 		case UPC_FUNC:
 		case UPC_NONCOMM_FUNC:
 		  {
-		    /* Schedule a triggered put once signal is received. */
+		    /* Schedule a triggered put once signal is received.  */
 		    size_t doffset = upc_addrfield ((shared void *)
 						    &(gupcr_reduce_storage
-						      [MYTHREAD].value
+						      [MYTHREAD].
+						      value
 						      [gupcr_coll_child_index]));
 		    gupcr_coll_trigput (gupcr_coll_parent_thread, doffset,
 					offset, sizeof (signed char), 1);
 		  }
 		  break;
 		default:
-		  /* Schedule a triggered atomic put once parent is ready. */
+		  /* Schedule a triggered atomic put once parent is ready.  */
 		  gupcr_coll_trigput_atomic (gupcr_coll_parent_thread, offset,
 					     offset, sizeof (signed char),
 					     gupcr_portals_reduce_op (op),
 					     UPC_COLL_TO_PTL_CHAR, 1);
 		  break;
 		}
-	      /* Wait for parent to be ready. */
+	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
-	      /* Wait for our value to leave. */
+	      /* Wait for our value to leave.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
 #else /* NO TRIGGERED OPS */
-      /* Send signal to all children. */
+      /* Send signal to all children.  */
       if (gupcr_coll_child_cnt)
 	{
 	  /* ROOT OR INNER THREAD */
 	  int wait_cnt = gupcr_coll_child_cnt;
 
 	  /* Signal that parent is ready to receive the locally reduced
-	     values from its children. Value that we send does not matter. */
+	     values from its children. Value that we send does not matter.  */
 	  for (i = 0; i < gupcr_coll_child_cnt; i++)
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       signal));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
 	  gupcr_coll_ack_wait (wait_cnt);
 
 	  /* Wait for children to report their local reduced values and
-	     parent to report it is ready to receive the reduced value. */
+	     parent to report it is ready to receive the reduced value.  */
 	  if (!IS_ROOT_THREAD)
 	    ++wait_cnt;
 	  gupcr_coll_signal_wait (wait_cnt);
 
-	  /* Compute result if reduce functions are used. */
+	  /* Compute result if reduce functions are used.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  local_result = func (local_result,
 				       *(signed char *) &
-				       gupcr_reduce_storage[MYTHREAD].
-				       value[i]);
+				       gupcr_reduce_storage[MYTHREAD].value
+				       [i]);
 		}
-	      /* Prepare reduced value for going up the tree. */
+	      /* Prepare reduced value for going up the tree.  */
 	      *t_result = local_result;
 	    }
 	}
@@ -470,20 +471,19 @@ void upc_all_reduceC
 	  gupcr_coll_signal_wait (1);
 	}
 
-      /* Send reduced value from the thread and its children to the parent. */
+      /* Send reduced value to the parent.  */
       if (!IS_ROOT_THREAD)
 	{
 	  /* LEAF OR INNER THREAD */
 	  /* Each child places its result into the parent memory slot
 	     dedicated for the child. The parent is responsible
 	     for creating the reduced result for itself and its
-	     children. */
+	     children.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      size_t doffset = upc_addrfield ((shared void *)
 					      &(gupcr_reduce_storage
-						[MYTHREAD].
-						value
+						[MYTHREAD].value
 						[gupcr_coll_child_index]));
 	      size_t soffset =
 		upc_addrfield ((shared void *)
@@ -494,8 +494,8 @@ void upc_all_reduceC
 	  else
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      gupcr_coll_put_atomic (gupcr_coll_parent_thread, offset, offset,
 				     sizeof (signed char),
 				     gupcr_portals_reduce_op (op),
@@ -505,14 +505,14 @@ void upc_all_reduceC
 	}
 #endif /* GUPCR_USE_PORTALS4_TRIGGERED_OPS */
 
-      /* Copy result into the caller's specified destination. */
+      /* Copy result into the caller's specified destination.  */
       if (IS_ROOT_THREAD)
 	{
 	  *(shared signed char *) dst = *t_result;
 	}
     }
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_OUT_MYSYNC & sync_mode || !(UPC_OUT_NOSYNC & sync_mode))
     upc_barrier;
 
@@ -550,8 +550,7 @@ void upc_all_reduceUC
    upc_op_t op,
    size_t nelems,
    size_t blk_size,
-   unsigned char (*func) (unsigned char, unsigned char),
-                       upc_flag_t sync_mode)
+   unsigned char (*func) (unsigned char, unsigned char), upc_flag_t sync_mode)
 {
   int i, n_local, full_rows, last_row;
   int num_thr, tail_thr, extras, ph, src_thr, dst_thr, velems, start;
@@ -563,7 +562,7 @@ void upc_all_reduceUC
     upc_coll_init ();
 
   gupcr_trace (FC_COLL, "COLL ALL_REDUCE ENTER unsigned char %lu %lu",
-               (long unsigned) nelems, (long unsigned) blk_size);
+	       (long unsigned) nelems, (long unsigned) blk_size);
 
   if (blk_size == 0)
     blk_size = nelems;
@@ -572,28 +571,28 @@ void upc_all_reduceUC
   upc_coll_err (dst, src, NULL, 0, sync_mode, blk_size, nelems, op, UPC_RED);
 #endif
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_IN_MYSYNC & sync_mode || !(UPC_IN_NOSYNC & sync_mode))
     upc_barrier;
 
-  /* Compute n_local, the number of elements local to this thread. */
+  /* Compute n_local, the number of elements local to this thread.  */
   n_local = 0;
 
-  /* Also compute start, the starting index of src for each thread. */
+  /* Also compute start, the starting index of src for each thread.  */
 
   src_thr = upc_threadof ((shared void *) src);
   dst_thr = upc_threadof ((shared void *) dst);
   ph = upc_phaseof ((shared void *) src);
 
-  /* nelems plus the number of virtual elements in first row. */
+  /* nelems plus the number of virtual elements in first row.  */
   velems = nelems + src_thr * blk_size + ph;
 
-  /* Include virtual elements when computing num of local elems. */
+  /* Include virtual elements when computing number of local elements.  */
   full_rows = velems / (blk_size * THREADS);
   last_row = velems % (blk_size * THREADS);
   tail_thr = last_row / blk_size;
 
-  /* Calculate number of participating threads. */
+  /* Calculate number of participating threads.  */
   num_thr = (nelems + ph + blk_size - 1) / blk_size;
   if (num_thr > THREADS)
     num_thr = THREADS;
@@ -602,7 +601,7 @@ void upc_all_reduceUC
 	       "src_thr: %d tail_thr: %d ph: %d num_thr: %d full_rows: %d",
 	       src_thr, tail_thr, ph, num_thr, full_rows);
 
-  /* Calculate number of local elements. */
+  /* Calculate number of local elements.  */
   if (blk_size > 0)
     {
       if (MYTHREAD <= tail_thr)
@@ -615,35 +614,35 @@ void upc_all_reduceUC
 
       n_local = blk_size * full_rows + extras;
 
-      /* Adjust the number of elements in this thread, if necessary. */
+      /* Adjust the number of elements in this thread, if necessary.  */
       if (MYTHREAD < src_thr)
 	n_local -= blk_size;
       else if (MYTHREAD == src_thr)
 	n_local -= ph;
     }
-  else				/* blk_size == 0 */
+  else
     {
       n_local = 0;
-      if (src_thr == MYTHREAD)	/* revise the number of local elements */
+      if (src_thr == MYTHREAD)	/* Revise the number of local elements.  */
 	n_local = nelems;
     }
 
   /* Starting index for this thread
      Note: start is sometimes negative because src is
-     addressed here as if its block size is 1. */
+     addressed here as if its block size is 1.  */
 
   if (blk_size > 0)
     if (MYTHREAD > src_thr)
       start = MYTHREAD - src_thr - ph * THREADS;
     else if (MYTHREAD < src_thr)
       start = (blk_size - ph) * THREADS + MYTHREAD - src_thr;
-    else			/* This is the source thread */
+    else			/* This is the source thread.  */
       start = 0;
-  else				/* blk_size == 0 */
+  else
     start = 0;
 
 
-  /* Reduce the elements local to this thread. */
+  /* Reduce the elements local to this thread.  */
 
   if (n_local > 0)
     {
@@ -709,44 +708,44 @@ void upc_all_reduceUC
 	    local_result = func (local_result, *l_src++);
 	  break;
 	default:
-	  gupcr_fatal_error ("Bad UPC collectives reduce operator %d.", op);
+	  gupcr_fatal_error ("bad UPC collectives reduce operator 0x%lx", op);
 	}
     }
 
   /* Note: local_result is undefined if n_local == 0.
-     Note: Only a proper subset of threads might have a meaningful local_result
-     Note: dst might be on a thread that does not have a local result */
+     Note: Only a proper subset of threads have a meaningful local_result.
+     Note: dst might be a thread that does not have a local result.  */
 
-  /* Global reduce on only participating threads. */
+  /* Global reduce on only participating threads.  */
   if (n_local)
     {
-      /* Local pointer where reduced values are written too. */
+      /* Local pointer where reduced values are written too.  */
       unsigned char *t_result =
 	(unsigned char *) & gupcr_reduce_storage[MYTHREAD].value[0];
 
-      /* Initialize collectives reduce tree. */
+      /* Initialize collectives reduce tree.  */
       gupcr_coll_tree_setup (dst_thr, src_thr, num_thr);
 
       /* Copy in local results into the area for reduce operation.
          NOTE: Not needed for the case of collective functions. However,
-         this covers the case of only one thread. */
+         this covers the case of only one thread.  */
       *t_result = local_result;
 
 #ifdef GUPCR_USE_PORTALS4_TRIGGERED_OPS
-/* Run reduce operation without triggered functions. */
+/* Run reduce operation without triggered functions.  */
 #undef GUPCR_USE_PORTALS4_TRIGGERED_OPS
 #endif
 #if GUPCR_USE_PORTALS4_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
-         function. */
+         function.  */
       if (gupcr_coll_child_cnt)
 	{
 	  if (IS_ROOT_THREAD)
 	    {
 	      /* ROOT THREAD */
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -756,13 +755,13 @@ void upc_all_reduceUC
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for children to report their values. */
+	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
 
-	      /* Reduce local values with those of children if necessary. */
+	      /* Reduce local values with those of children if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result =
@@ -775,11 +774,11 @@ void upc_all_reduceUC
 	  else
 	    {
 	      /* INNER THREAD */
-	      /* Prepare triggered atomic function. */
+	      /* Prepare triggered atomic function.  */
 	      if ((op != UPC_FUNC) && (op != UPC_NONCOMM_FUNC))
 		{
 		  /* Use triggered atomic operations once children sent
-		     their results and parent is ready to receive it. */
+		     their results and parent is ready to receive it.  */
 		  size_t offset = upc_addrfield ((shared void *)
 						 &(gupcr_reduce_storage
 						   [MYTHREAD].value[0]));
@@ -789,7 +788,7 @@ void upc_all_reduceUC
 					     UPC_COLL_TO_PTL_UCHAR,
 					     gupcr_coll_child_cnt + 1);
 		}
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -799,9 +798,9 @@ void upc_all_reduceUC
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for completion - children reported and parent is ready. */
+	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
-	      /* Execute reduce functions if necessary. */
+	      /* Execute reduce functions if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -811,93 +810,95 @@ void upc_all_reduceUC
 		    upc_addrfield ((shared void *)
 				   &(gupcr_reduce_storage[MYTHREAD].value
 				     [gupcr_coll_child_index]));
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result = func (local_result, *(unsigned char *)
-					   & gupcr_reduce_storage[MYTHREAD].
-					   value[i]);
+					   &
+					   gupcr_reduce_storage
+					   [MYTHREAD].value[i]);
 		    }
 		  *t_result = local_result;
 		  gupcr_coll_put (gupcr_coll_parent_thread, doffset, offset,
 				  sizeof (unsigned char));
 		}
-	      /* Wait for our value to go up the tree. */
+	      /* Wait for our value to go up the tree.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
       else
 	{
-	  /* Avoid the case where only one thread is available. */
+	  /* Avoid the case where only one thread is available.  */
 	  if (!IS_ROOT_THREAD)
 	    {
 	      /* LEAF THREAD */
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      switch (op)
 		{
 		case UPC_FUNC:
 		case UPC_NONCOMM_FUNC:
 		  {
-		    /* Schedule a triggered put once signal is received. */
+		    /* Schedule a triggered put once signal is received.  */
 		    size_t doffset = upc_addrfield ((shared void *)
 						    &(gupcr_reduce_storage
-						      [MYTHREAD].value
+						      [MYTHREAD].
+						      value
 						      [gupcr_coll_child_index]));
 		    gupcr_coll_trigput (gupcr_coll_parent_thread, doffset,
 					offset, sizeof (unsigned char), 1);
 		  }
 		  break;
 		default:
-		  /* Schedule a triggered atomic put once parent is ready. */
+		  /* Schedule a triggered atomic put once parent is ready.  */
 		  gupcr_coll_trigput_atomic (gupcr_coll_parent_thread, offset,
 					     offset, sizeof (unsigned char),
 					     gupcr_portals_reduce_op (op),
 					     UPC_COLL_TO_PTL_UCHAR, 1);
 		  break;
 		}
-	      /* Wait for parent to be ready. */
+	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
-	      /* Wait for our value to leave. */
+	      /* Wait for our value to leave.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
 #else /* NO TRIGGERED OPS */
-      /* Send signal to all children. */
+      /* Send signal to all children.  */
       if (gupcr_coll_child_cnt)
 	{
 	  /* ROOT OR INNER THREAD */
 	  int wait_cnt = gupcr_coll_child_cnt;
 
 	  /* Signal that parent is ready to receive the locally reduced
-	     values from its children. Value that we send does not matter. */
+	     values from its children. Value that we send does not matter.  */
 	  for (i = 0; i < gupcr_coll_child_cnt; i++)
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       signal));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
 	  gupcr_coll_ack_wait (wait_cnt);
 
 	  /* Wait for children to report their local reduced values and
-	     parent to report it is ready to receive the reduced value. */
+	     parent to report it is ready to receive the reduced value.  */
 	  if (!IS_ROOT_THREAD)
 	    ++wait_cnt;
 	  gupcr_coll_signal_wait (wait_cnt);
 
-	  /* Compute result if reduce functions are used. */
+	  /* Compute result if reduce functions are used.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  local_result = func (local_result,
 				       *(unsigned char *) &
-				       gupcr_reduce_storage[MYTHREAD].
-				       value[i]);
+				       gupcr_reduce_storage[MYTHREAD].value
+				       [i]);
 		}
-	      /* Prepare reduced value for going up the tree. */
+	      /* Prepare reduced value for going up the tree.  */
 	      *t_result = local_result;
 	    }
 	}
@@ -907,20 +908,19 @@ void upc_all_reduceUC
 	  gupcr_coll_signal_wait (1);
 	}
 
-      /* Send reduced value from the thread and its children to the parent. */
+      /* Send reduced value to the parent.  */
       if (!IS_ROOT_THREAD)
 	{
 	  /* LEAF OR INNER THREAD */
 	  /* Each child places its result into the parent memory slot
 	     dedicated for the child. The parent is responsible
 	     for creating the reduced result for itself and its
-	     children. */
+	     children.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      size_t doffset = upc_addrfield ((shared void *)
 					      &(gupcr_reduce_storage
-						[MYTHREAD].
-						value
+						[MYTHREAD].value
 						[gupcr_coll_child_index]));
 	      size_t soffset =
 		upc_addrfield ((shared void *)
@@ -931,8 +931,8 @@ void upc_all_reduceUC
 	  else
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      gupcr_coll_put_atomic (gupcr_coll_parent_thread, offset, offset,
 				     sizeof (unsigned char),
 				     gupcr_portals_reduce_op (op),
@@ -942,14 +942,14 @@ void upc_all_reduceUC
 	}
 #endif /* GUPCR_USE_PORTALS4_TRIGGERED_OPS */
 
-      /* Copy result into the caller's specified destination. */
+      /* Copy result into the caller's specified destination.  */
       if (IS_ROOT_THREAD)
 	{
 	  *(shared unsigned char *) dst = *t_result;
 	}
     }
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_OUT_MYSYNC & sync_mode || !(UPC_OUT_NOSYNC & sync_mode))
     upc_barrier;
 
@@ -987,8 +987,7 @@ void upc_all_reduceS
    upc_op_t op,
    size_t nelems,
    size_t blk_size,
-   signed short (*func) (signed short, signed short),
-                       upc_flag_t sync_mode)
+   signed short (*func) (signed short, signed short), upc_flag_t sync_mode)
 {
   int i, n_local, full_rows, last_row;
   int num_thr, tail_thr, extras, ph, src_thr, dst_thr, velems, start;
@@ -1000,7 +999,7 @@ void upc_all_reduceS
     upc_coll_init ();
 
   gupcr_trace (FC_COLL, "COLL ALL_REDUCE ENTER signed short %lu %lu",
-               (long unsigned) nelems, (long unsigned) blk_size);
+	       (long unsigned) nelems, (long unsigned) blk_size);
 
   if (blk_size == 0)
     blk_size = nelems;
@@ -1009,28 +1008,28 @@ void upc_all_reduceS
   upc_coll_err (dst, src, NULL, 0, sync_mode, blk_size, nelems, op, UPC_RED);
 #endif
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_IN_MYSYNC & sync_mode || !(UPC_IN_NOSYNC & sync_mode))
     upc_barrier;
 
-  /* Compute n_local, the number of elements local to this thread. */
+  /* Compute n_local, the number of elements local to this thread.  */
   n_local = 0;
 
-  /* Also compute start, the starting index of src for each thread. */
+  /* Also compute start, the starting index of src for each thread.  */
 
   src_thr = upc_threadof ((shared void *) src);
   dst_thr = upc_threadof ((shared void *) dst);
   ph = upc_phaseof ((shared void *) src);
 
-  /* nelems plus the number of virtual elements in first row. */
+  /* nelems plus the number of virtual elements in first row.  */
   velems = nelems + src_thr * blk_size + ph;
 
-  /* Include virtual elements when computing num of local elems. */
+  /* Include virtual elements when computing number of local elements.  */
   full_rows = velems / (blk_size * THREADS);
   last_row = velems % (blk_size * THREADS);
   tail_thr = last_row / blk_size;
 
-  /* Calculate number of participating threads. */
+  /* Calculate number of participating threads.  */
   num_thr = (nelems + ph + blk_size - 1) / blk_size;
   if (num_thr > THREADS)
     num_thr = THREADS;
@@ -1039,7 +1038,7 @@ void upc_all_reduceS
 	       "src_thr: %d tail_thr: %d ph: %d num_thr: %d full_rows: %d",
 	       src_thr, tail_thr, ph, num_thr, full_rows);
 
-  /* Calculate number of local elements. */
+  /* Calculate number of local elements.  */
   if (blk_size > 0)
     {
       if (MYTHREAD <= tail_thr)
@@ -1052,35 +1051,35 @@ void upc_all_reduceS
 
       n_local = blk_size * full_rows + extras;
 
-      /* Adjust the number of elements in this thread, if necessary. */
+      /* Adjust the number of elements in this thread, if necessary.  */
       if (MYTHREAD < src_thr)
 	n_local -= blk_size;
       else if (MYTHREAD == src_thr)
 	n_local -= ph;
     }
-  else				/* blk_size == 0 */
+  else
     {
       n_local = 0;
-      if (src_thr == MYTHREAD)	/* revise the number of local elements */
+      if (src_thr == MYTHREAD)	/* Revise the number of local elements.  */
 	n_local = nelems;
     }
 
   /* Starting index for this thread
      Note: start is sometimes negative because src is
-     addressed here as if its block size is 1. */
+     addressed here as if its block size is 1.  */
 
   if (blk_size > 0)
     if (MYTHREAD > src_thr)
       start = MYTHREAD - src_thr - ph * THREADS;
     else if (MYTHREAD < src_thr)
       start = (blk_size - ph) * THREADS + MYTHREAD - src_thr;
-    else			/* This is the source thread */
+    else			/* This is the source thread.  */
       start = 0;
-  else				/* blk_size == 0 */
+  else
     start = 0;
 
 
-  /* Reduce the elements local to this thread. */
+  /* Reduce the elements local to this thread.  */
 
   if (n_local > 0)
     {
@@ -1146,44 +1145,44 @@ void upc_all_reduceS
 	    local_result = func (local_result, *l_src++);
 	  break;
 	default:
-	  gupcr_fatal_error ("Bad UPC collectives reduce operator %d.", op);
+	  gupcr_fatal_error ("bad UPC collectives reduce operator 0x%lx", op);
 	}
     }
 
   /* Note: local_result is undefined if n_local == 0.
-     Note: Only a proper subset of threads might have a meaningful local_result
-     Note: dst might be on a thread that does not have a local result */
+     Note: Only a proper subset of threads have a meaningful local_result.
+     Note: dst might be a thread that does not have a local result.  */
 
-  /* Global reduce on only participating threads. */
+  /* Global reduce on only participating threads.  */
   if (n_local)
     {
-      /* Local pointer where reduced values are written too. */
+      /* Local pointer where reduced values are written too.  */
       signed short *t_result =
 	(signed short *) & gupcr_reduce_storage[MYTHREAD].value[0];
 
-      /* Initialize collectives reduce tree. */
+      /* Initialize collectives reduce tree.  */
       gupcr_coll_tree_setup (dst_thr, src_thr, num_thr);
 
       /* Copy in local results into the area for reduce operation.
          NOTE: Not needed for the case of collective functions. However,
-         this covers the case of only one thread. */
+         this covers the case of only one thread.  */
       *t_result = local_result;
 
 #ifdef GUPCR_USE_PORTALS4_TRIGGERED_OPS
-/* Run reduce operation without triggered functions. */
+/* Run reduce operation without triggered functions.  */
 #undef GUPCR_USE_PORTALS4_TRIGGERED_OPS
 #endif
 #if GUPCR_USE_PORTALS4_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
-         function. */
+         function.  */
       if (gupcr_coll_child_cnt)
 	{
 	  if (IS_ROOT_THREAD)
 	    {
 	      /* ROOT THREAD */
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -1193,13 +1192,13 @@ void upc_all_reduceS
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for children to report their values. */
+	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
 
-	      /* Reduce local values with those of children if necessary. */
+	      /* Reduce local values with those of children if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result =
@@ -1212,11 +1211,11 @@ void upc_all_reduceS
 	  else
 	    {
 	      /* INNER THREAD */
-	      /* Prepare triggered atomic function. */
+	      /* Prepare triggered atomic function.  */
 	      if ((op != UPC_FUNC) && (op != UPC_NONCOMM_FUNC))
 		{
 		  /* Use triggered atomic operations once children sent
-		     their results and parent is ready to receive it. */
+		     their results and parent is ready to receive it.  */
 		  size_t offset = upc_addrfield ((shared void *)
 						 &(gupcr_reduce_storage
 						   [MYTHREAD].value[0]));
@@ -1226,7 +1225,7 @@ void upc_all_reduceS
 					     UPC_COLL_TO_PTL_SHORT,
 					     gupcr_coll_child_cnt + 1);
 		}
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -1236,9 +1235,9 @@ void upc_all_reduceS
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for completion - children reported and parent is ready. */
+	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
-	      /* Execute reduce functions if necessary. */
+	      /* Execute reduce functions if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -1248,93 +1247,95 @@ void upc_all_reduceS
 		    upc_addrfield ((shared void *)
 				   &(gupcr_reduce_storage[MYTHREAD].value
 				     [gupcr_coll_child_index]));
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result = func (local_result, *(signed short *)
-					   & gupcr_reduce_storage[MYTHREAD].
-					   value[i]);
+					   &
+					   gupcr_reduce_storage
+					   [MYTHREAD].value[i]);
 		    }
 		  *t_result = local_result;
 		  gupcr_coll_put (gupcr_coll_parent_thread, doffset, offset,
 				  sizeof (signed short));
 		}
-	      /* Wait for our value to go up the tree. */
+	      /* Wait for our value to go up the tree.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
       else
 	{
-	  /* Avoid the case where only one thread is available. */
+	  /* Avoid the case where only one thread is available.  */
 	  if (!IS_ROOT_THREAD)
 	    {
 	      /* LEAF THREAD */
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      switch (op)
 		{
 		case UPC_FUNC:
 		case UPC_NONCOMM_FUNC:
 		  {
-		    /* Schedule a triggered put once signal is received. */
+		    /* Schedule a triggered put once signal is received.  */
 		    size_t doffset = upc_addrfield ((shared void *)
 						    &(gupcr_reduce_storage
-						      [MYTHREAD].value
+						      [MYTHREAD].
+						      value
 						      [gupcr_coll_child_index]));
 		    gupcr_coll_trigput (gupcr_coll_parent_thread, doffset,
 					offset, sizeof (signed short), 1);
 		  }
 		  break;
 		default:
-		  /* Schedule a triggered atomic put once parent is ready. */
+		  /* Schedule a triggered atomic put once parent is ready.  */
 		  gupcr_coll_trigput_atomic (gupcr_coll_parent_thread, offset,
 					     offset, sizeof (signed short),
 					     gupcr_portals_reduce_op (op),
 					     UPC_COLL_TO_PTL_SHORT, 1);
 		  break;
 		}
-	      /* Wait for parent to be ready. */
+	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
-	      /* Wait for our value to leave. */
+	      /* Wait for our value to leave.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
 #else /* NO TRIGGERED OPS */
-      /* Send signal to all children. */
+      /* Send signal to all children.  */
       if (gupcr_coll_child_cnt)
 	{
 	  /* ROOT OR INNER THREAD */
 	  int wait_cnt = gupcr_coll_child_cnt;
 
 	  /* Signal that parent is ready to receive the locally reduced
-	     values from its children. Value that we send does not matter. */
+	     values from its children. Value that we send does not matter.  */
 	  for (i = 0; i < gupcr_coll_child_cnt; i++)
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       signal));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
 	  gupcr_coll_ack_wait (wait_cnt);
 
 	  /* Wait for children to report their local reduced values and
-	     parent to report it is ready to receive the reduced value. */
+	     parent to report it is ready to receive the reduced value.  */
 	  if (!IS_ROOT_THREAD)
 	    ++wait_cnt;
 	  gupcr_coll_signal_wait (wait_cnt);
 
-	  /* Compute result if reduce functions are used. */
+	  /* Compute result if reduce functions are used.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  local_result = func (local_result,
 				       *(signed short *) &
-				       gupcr_reduce_storage[MYTHREAD].
-				       value[i]);
+				       gupcr_reduce_storage[MYTHREAD].value
+				       [i]);
 		}
-	      /* Prepare reduced value for going up the tree. */
+	      /* Prepare reduced value for going up the tree.  */
 	      *t_result = local_result;
 	    }
 	}
@@ -1344,20 +1345,19 @@ void upc_all_reduceS
 	  gupcr_coll_signal_wait (1);
 	}
 
-      /* Send reduced value from the thread and its children to the parent. */
+      /* Send reduced value to the parent.  */
       if (!IS_ROOT_THREAD)
 	{
 	  /* LEAF OR INNER THREAD */
 	  /* Each child places its result into the parent memory slot
 	     dedicated for the child. The parent is responsible
 	     for creating the reduced result for itself and its
-	     children. */
+	     children.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      size_t doffset = upc_addrfield ((shared void *)
 					      &(gupcr_reduce_storage
-						[MYTHREAD].
-						value
+						[MYTHREAD].value
 						[gupcr_coll_child_index]));
 	      size_t soffset =
 		upc_addrfield ((shared void *)
@@ -1368,8 +1368,8 @@ void upc_all_reduceS
 	  else
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      gupcr_coll_put_atomic (gupcr_coll_parent_thread, offset, offset,
 				     sizeof (signed short),
 				     gupcr_portals_reduce_op (op),
@@ -1379,14 +1379,14 @@ void upc_all_reduceS
 	}
 #endif /* GUPCR_USE_PORTALS4_TRIGGERED_OPS */
 
-      /* Copy result into the caller's specified destination. */
+      /* Copy result into the caller's specified destination.  */
       if (IS_ROOT_THREAD)
 	{
 	  *(shared signed short *) dst = *t_result;
 	}
     }
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_OUT_MYSYNC & sync_mode || !(UPC_OUT_NOSYNC & sync_mode))
     upc_barrier;
 
@@ -1424,8 +1424,7 @@ void upc_all_reduceUS
    upc_op_t op,
    size_t nelems,
    size_t blk_size,
-   unsigned short (*func) (unsigned short, unsigned short),
-                       upc_flag_t sync_mode)
+   unsigned short (*func) (unsigned short, unsigned short), upc_flag_t sync_mode)
 {
   int i, n_local, full_rows, last_row;
   int num_thr, tail_thr, extras, ph, src_thr, dst_thr, velems, start;
@@ -1437,7 +1436,7 @@ void upc_all_reduceUS
     upc_coll_init ();
 
   gupcr_trace (FC_COLL, "COLL ALL_REDUCE ENTER unsigned short %lu %lu",
-               (long unsigned) nelems, (long unsigned) blk_size);
+	       (long unsigned) nelems, (long unsigned) blk_size);
 
   if (blk_size == 0)
     blk_size = nelems;
@@ -1446,28 +1445,28 @@ void upc_all_reduceUS
   upc_coll_err (dst, src, NULL, 0, sync_mode, blk_size, nelems, op, UPC_RED);
 #endif
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_IN_MYSYNC & sync_mode || !(UPC_IN_NOSYNC & sync_mode))
     upc_barrier;
 
-  /* Compute n_local, the number of elements local to this thread. */
+  /* Compute n_local, the number of elements local to this thread.  */
   n_local = 0;
 
-  /* Also compute start, the starting index of src for each thread. */
+  /* Also compute start, the starting index of src for each thread.  */
 
   src_thr = upc_threadof ((shared void *) src);
   dst_thr = upc_threadof ((shared void *) dst);
   ph = upc_phaseof ((shared void *) src);
 
-  /* nelems plus the number of virtual elements in first row. */
+  /* nelems plus the number of virtual elements in first row.  */
   velems = nelems + src_thr * blk_size + ph;
 
-  /* Include virtual elements when computing num of local elems. */
+  /* Include virtual elements when computing number of local elements.  */
   full_rows = velems / (blk_size * THREADS);
   last_row = velems % (blk_size * THREADS);
   tail_thr = last_row / blk_size;
 
-  /* Calculate number of participating threads. */
+  /* Calculate number of participating threads.  */
   num_thr = (nelems + ph + blk_size - 1) / blk_size;
   if (num_thr > THREADS)
     num_thr = THREADS;
@@ -1476,7 +1475,7 @@ void upc_all_reduceUS
 	       "src_thr: %d tail_thr: %d ph: %d num_thr: %d full_rows: %d",
 	       src_thr, tail_thr, ph, num_thr, full_rows);
 
-  /* Calculate number of local elements. */
+  /* Calculate number of local elements.  */
   if (blk_size > 0)
     {
       if (MYTHREAD <= tail_thr)
@@ -1489,35 +1488,35 @@ void upc_all_reduceUS
 
       n_local = blk_size * full_rows + extras;
 
-      /* Adjust the number of elements in this thread, if necessary. */
+      /* Adjust the number of elements in this thread, if necessary.  */
       if (MYTHREAD < src_thr)
 	n_local -= blk_size;
       else if (MYTHREAD == src_thr)
 	n_local -= ph;
     }
-  else				/* blk_size == 0 */
+  else
     {
       n_local = 0;
-      if (src_thr == MYTHREAD)	/* revise the number of local elements */
+      if (src_thr == MYTHREAD)	/* Revise the number of local elements.  */
 	n_local = nelems;
     }
 
   /* Starting index for this thread
      Note: start is sometimes negative because src is
-     addressed here as if its block size is 1. */
+     addressed here as if its block size is 1.  */
 
   if (blk_size > 0)
     if (MYTHREAD > src_thr)
       start = MYTHREAD - src_thr - ph * THREADS;
     else if (MYTHREAD < src_thr)
       start = (blk_size - ph) * THREADS + MYTHREAD - src_thr;
-    else			/* This is the source thread */
+    else			/* This is the source thread.  */
       start = 0;
-  else				/* blk_size == 0 */
+  else
     start = 0;
 
 
-  /* Reduce the elements local to this thread. */
+  /* Reduce the elements local to this thread.  */
 
   if (n_local > 0)
     {
@@ -1583,44 +1582,44 @@ void upc_all_reduceUS
 	    local_result = func (local_result, *l_src++);
 	  break;
 	default:
-	  gupcr_fatal_error ("Bad UPC collectives reduce operator %d.", op);
+	  gupcr_fatal_error ("bad UPC collectives reduce operator 0x%lx", op);
 	}
     }
 
   /* Note: local_result is undefined if n_local == 0.
-     Note: Only a proper subset of threads might have a meaningful local_result
-     Note: dst might be on a thread that does not have a local result */
+     Note: Only a proper subset of threads have a meaningful local_result.
+     Note: dst might be a thread that does not have a local result.  */
 
-  /* Global reduce on only participating threads. */
+  /* Global reduce on only participating threads.  */
   if (n_local)
     {
-      /* Local pointer where reduced values are written too. */
+      /* Local pointer where reduced values are written too.  */
       unsigned short *t_result =
 	(unsigned short *) & gupcr_reduce_storage[MYTHREAD].value[0];
 
-      /* Initialize collectives reduce tree. */
+      /* Initialize collectives reduce tree.  */
       gupcr_coll_tree_setup (dst_thr, src_thr, num_thr);
 
       /* Copy in local results into the area for reduce operation.
          NOTE: Not needed for the case of collective functions. However,
-         this covers the case of only one thread. */
+         this covers the case of only one thread.  */
       *t_result = local_result;
 
 #ifdef GUPCR_USE_PORTALS4_TRIGGERED_OPS
-/* Run reduce operation without triggered functions. */
+/* Run reduce operation without triggered functions.  */
 #undef GUPCR_USE_PORTALS4_TRIGGERED_OPS
 #endif
 #if GUPCR_USE_PORTALS4_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
-         function. */
+         function.  */
       if (gupcr_coll_child_cnt)
 	{
 	  if (IS_ROOT_THREAD)
 	    {
 	      /* ROOT THREAD */
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -1630,13 +1629,13 @@ void upc_all_reduceUS
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for children to report their values. */
+	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
 
-	      /* Reduce local values with those of children if necessary. */
+	      /* Reduce local values with those of children if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result =
@@ -1649,11 +1648,11 @@ void upc_all_reduceUS
 	  else
 	    {
 	      /* INNER THREAD */
-	      /* Prepare triggered atomic function. */
+	      /* Prepare triggered atomic function.  */
 	      if ((op != UPC_FUNC) && (op != UPC_NONCOMM_FUNC))
 		{
 		  /* Use triggered atomic operations once children sent
-		     their results and parent is ready to receive it. */
+		     their results and parent is ready to receive it.  */
 		  size_t offset = upc_addrfield ((shared void *)
 						 &(gupcr_reduce_storage
 						   [MYTHREAD].value[0]));
@@ -1663,7 +1662,7 @@ void upc_all_reduceUS
 					     UPC_COLL_TO_PTL_USHORT,
 					     gupcr_coll_child_cnt + 1);
 		}
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -1673,9 +1672,9 @@ void upc_all_reduceUS
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for completion - children reported and parent is ready. */
+	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
-	      /* Execute reduce functions if necessary. */
+	      /* Execute reduce functions if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -1685,93 +1684,95 @@ void upc_all_reduceUS
 		    upc_addrfield ((shared void *)
 				   &(gupcr_reduce_storage[MYTHREAD].value
 				     [gupcr_coll_child_index]));
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result = func (local_result, *(unsigned short *)
-					   & gupcr_reduce_storage[MYTHREAD].
-					   value[i]);
+					   &
+					   gupcr_reduce_storage
+					   [MYTHREAD].value[i]);
 		    }
 		  *t_result = local_result;
 		  gupcr_coll_put (gupcr_coll_parent_thread, doffset, offset,
 				  sizeof (unsigned short));
 		}
-	      /* Wait for our value to go up the tree. */
+	      /* Wait for our value to go up the tree.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
       else
 	{
-	  /* Avoid the case where only one thread is available. */
+	  /* Avoid the case where only one thread is available.  */
 	  if (!IS_ROOT_THREAD)
 	    {
 	      /* LEAF THREAD */
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      switch (op)
 		{
 		case UPC_FUNC:
 		case UPC_NONCOMM_FUNC:
 		  {
-		    /* Schedule a triggered put once signal is received. */
+		    /* Schedule a triggered put once signal is received.  */
 		    size_t doffset = upc_addrfield ((shared void *)
 						    &(gupcr_reduce_storage
-						      [MYTHREAD].value
+						      [MYTHREAD].
+						      value
 						      [gupcr_coll_child_index]));
 		    gupcr_coll_trigput (gupcr_coll_parent_thread, doffset,
 					offset, sizeof (unsigned short), 1);
 		  }
 		  break;
 		default:
-		  /* Schedule a triggered atomic put once parent is ready. */
+		  /* Schedule a triggered atomic put once parent is ready.  */
 		  gupcr_coll_trigput_atomic (gupcr_coll_parent_thread, offset,
 					     offset, sizeof (unsigned short),
 					     gupcr_portals_reduce_op (op),
 					     UPC_COLL_TO_PTL_USHORT, 1);
 		  break;
 		}
-	      /* Wait for parent to be ready. */
+	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
-	      /* Wait for our value to leave. */
+	      /* Wait for our value to leave.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
 #else /* NO TRIGGERED OPS */
-      /* Send signal to all children. */
+      /* Send signal to all children.  */
       if (gupcr_coll_child_cnt)
 	{
 	  /* ROOT OR INNER THREAD */
 	  int wait_cnt = gupcr_coll_child_cnt;
 
 	  /* Signal that parent is ready to receive the locally reduced
-	     values from its children. Value that we send does not matter. */
+	     values from its children. Value that we send does not matter.  */
 	  for (i = 0; i < gupcr_coll_child_cnt; i++)
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       signal));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
 	  gupcr_coll_ack_wait (wait_cnt);
 
 	  /* Wait for children to report their local reduced values and
-	     parent to report it is ready to receive the reduced value. */
+	     parent to report it is ready to receive the reduced value.  */
 	  if (!IS_ROOT_THREAD)
 	    ++wait_cnt;
 	  gupcr_coll_signal_wait (wait_cnt);
 
-	  /* Compute result if reduce functions are used. */
+	  /* Compute result if reduce functions are used.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  local_result = func (local_result,
 				       *(unsigned short *) &
-				       gupcr_reduce_storage[MYTHREAD].
-				       value[i]);
+				       gupcr_reduce_storage[MYTHREAD].value
+				       [i]);
 		}
-	      /* Prepare reduced value for going up the tree. */
+	      /* Prepare reduced value for going up the tree.  */
 	      *t_result = local_result;
 	    }
 	}
@@ -1781,20 +1782,19 @@ void upc_all_reduceUS
 	  gupcr_coll_signal_wait (1);
 	}
 
-      /* Send reduced value from the thread and its children to the parent. */
+      /* Send reduced value to the parent.  */
       if (!IS_ROOT_THREAD)
 	{
 	  /* LEAF OR INNER THREAD */
 	  /* Each child places its result into the parent memory slot
 	     dedicated for the child. The parent is responsible
 	     for creating the reduced result for itself and its
-	     children. */
+	     children.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      size_t doffset = upc_addrfield ((shared void *)
 					      &(gupcr_reduce_storage
-						[MYTHREAD].
-						value
+						[MYTHREAD].value
 						[gupcr_coll_child_index]));
 	      size_t soffset =
 		upc_addrfield ((shared void *)
@@ -1805,8 +1805,8 @@ void upc_all_reduceUS
 	  else
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      gupcr_coll_put_atomic (gupcr_coll_parent_thread, offset, offset,
 				     sizeof (unsigned short),
 				     gupcr_portals_reduce_op (op),
@@ -1816,14 +1816,14 @@ void upc_all_reduceUS
 	}
 #endif /* GUPCR_USE_PORTALS4_TRIGGERED_OPS */
 
-      /* Copy result into the caller's specified destination. */
+      /* Copy result into the caller's specified destination.  */
       if (IS_ROOT_THREAD)
 	{
 	  *(shared unsigned short *) dst = *t_result;
 	}
     }
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_OUT_MYSYNC & sync_mode || !(UPC_OUT_NOSYNC & sync_mode))
     upc_barrier;
 
@@ -1861,8 +1861,7 @@ void upc_all_reduceI
    upc_op_t op,
    size_t nelems,
    size_t blk_size,
-   signed int (*func) (signed int, signed int),
-                       upc_flag_t sync_mode)
+   signed int (*func) (signed int, signed int), upc_flag_t sync_mode)
 {
   int i, n_local, full_rows, last_row;
   int num_thr, tail_thr, extras, ph, src_thr, dst_thr, velems, start;
@@ -1874,7 +1873,7 @@ void upc_all_reduceI
     upc_coll_init ();
 
   gupcr_trace (FC_COLL, "COLL ALL_REDUCE ENTER signed int %lu %lu",
-               (long unsigned) nelems, (long unsigned) blk_size);
+	       (long unsigned) nelems, (long unsigned) blk_size);
 
   if (blk_size == 0)
     blk_size = nelems;
@@ -1883,28 +1882,28 @@ void upc_all_reduceI
   upc_coll_err (dst, src, NULL, 0, sync_mode, blk_size, nelems, op, UPC_RED);
 #endif
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_IN_MYSYNC & sync_mode || !(UPC_IN_NOSYNC & sync_mode))
     upc_barrier;
 
-  /* Compute n_local, the number of elements local to this thread. */
+  /* Compute n_local, the number of elements local to this thread.  */
   n_local = 0;
 
-  /* Also compute start, the starting index of src for each thread. */
+  /* Also compute start, the starting index of src for each thread.  */
 
   src_thr = upc_threadof ((shared void *) src);
   dst_thr = upc_threadof ((shared void *) dst);
   ph = upc_phaseof ((shared void *) src);
 
-  /* nelems plus the number of virtual elements in first row. */
+  /* nelems plus the number of virtual elements in first row.  */
   velems = nelems + src_thr * blk_size + ph;
 
-  /* Include virtual elements when computing num of local elems. */
+  /* Include virtual elements when computing number of local elements.  */
   full_rows = velems / (blk_size * THREADS);
   last_row = velems % (blk_size * THREADS);
   tail_thr = last_row / blk_size;
 
-  /* Calculate number of participating threads. */
+  /* Calculate number of participating threads.  */
   num_thr = (nelems + ph + blk_size - 1) / blk_size;
   if (num_thr > THREADS)
     num_thr = THREADS;
@@ -1913,7 +1912,7 @@ void upc_all_reduceI
 	       "src_thr: %d tail_thr: %d ph: %d num_thr: %d full_rows: %d",
 	       src_thr, tail_thr, ph, num_thr, full_rows);
 
-  /* Calculate number of local elements. */
+  /* Calculate number of local elements.  */
   if (blk_size > 0)
     {
       if (MYTHREAD <= tail_thr)
@@ -1926,35 +1925,35 @@ void upc_all_reduceI
 
       n_local = blk_size * full_rows + extras;
 
-      /* Adjust the number of elements in this thread, if necessary. */
+      /* Adjust the number of elements in this thread, if necessary.  */
       if (MYTHREAD < src_thr)
 	n_local -= blk_size;
       else if (MYTHREAD == src_thr)
 	n_local -= ph;
     }
-  else				/* blk_size == 0 */
+  else
     {
       n_local = 0;
-      if (src_thr == MYTHREAD)	/* revise the number of local elements */
+      if (src_thr == MYTHREAD)	/* Revise the number of local elements.  */
 	n_local = nelems;
     }
 
   /* Starting index for this thread
      Note: start is sometimes negative because src is
-     addressed here as if its block size is 1. */
+     addressed here as if its block size is 1.  */
 
   if (blk_size > 0)
     if (MYTHREAD > src_thr)
       start = MYTHREAD - src_thr - ph * THREADS;
     else if (MYTHREAD < src_thr)
       start = (blk_size - ph) * THREADS + MYTHREAD - src_thr;
-    else			/* This is the source thread */
+    else			/* This is the source thread.  */
       start = 0;
-  else				/* blk_size == 0 */
+  else
     start = 0;
 
 
-  /* Reduce the elements local to this thread. */
+  /* Reduce the elements local to this thread.  */
 
   if (n_local > 0)
     {
@@ -2020,44 +2019,44 @@ void upc_all_reduceI
 	    local_result = func (local_result, *l_src++);
 	  break;
 	default:
-	  gupcr_fatal_error ("Bad UPC collectives reduce operator %d.", op);
+	  gupcr_fatal_error ("bad UPC collectives reduce operator 0x%lx", op);
 	}
     }
 
   /* Note: local_result is undefined if n_local == 0.
-     Note: Only a proper subset of threads might have a meaningful local_result
-     Note: dst might be on a thread that does not have a local result */
+     Note: Only a proper subset of threads have a meaningful local_result.
+     Note: dst might be a thread that does not have a local result.  */
 
-  /* Global reduce on only participating threads. */
+  /* Global reduce on only participating threads.  */
   if (n_local)
     {
-      /* Local pointer where reduced values are written too. */
+      /* Local pointer where reduced values are written too.  */
       signed int *t_result =
 	(signed int *) & gupcr_reduce_storage[MYTHREAD].value[0];
 
-      /* Initialize collectives reduce tree. */
+      /* Initialize collectives reduce tree.  */
       gupcr_coll_tree_setup (dst_thr, src_thr, num_thr);
 
       /* Copy in local results into the area for reduce operation.
          NOTE: Not needed for the case of collective functions. However,
-         this covers the case of only one thread. */
+         this covers the case of only one thread.  */
       *t_result = local_result;
 
 #ifdef GUPCR_USE_PORTALS4_TRIGGERED_OPS
-/* Run reduce operation without triggered functions. */
+/* Run reduce operation without triggered functions.  */
 #undef GUPCR_USE_PORTALS4_TRIGGERED_OPS
 #endif
 #if GUPCR_USE_PORTALS4_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
-         function. */
+         function.  */
       if (gupcr_coll_child_cnt)
 	{
 	  if (IS_ROOT_THREAD)
 	    {
 	      /* ROOT THREAD */
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -2067,13 +2066,13 @@ void upc_all_reduceI
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for children to report their values. */
+	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
 
-	      /* Reduce local values with those of children if necessary. */
+	      /* Reduce local values with those of children if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result =
@@ -2086,11 +2085,11 @@ void upc_all_reduceI
 	  else
 	    {
 	      /* INNER THREAD */
-	      /* Prepare triggered atomic function. */
+	      /* Prepare triggered atomic function.  */
 	      if ((op != UPC_FUNC) && (op != UPC_NONCOMM_FUNC))
 		{
 		  /* Use triggered atomic operations once children sent
-		     their results and parent is ready to receive it. */
+		     their results and parent is ready to receive it.  */
 		  size_t offset = upc_addrfield ((shared void *)
 						 &(gupcr_reduce_storage
 						   [MYTHREAD].value[0]));
@@ -2100,7 +2099,7 @@ void upc_all_reduceI
 					     UPC_COLL_TO_PTL_INT,
 					     gupcr_coll_child_cnt + 1);
 		}
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -2110,9 +2109,9 @@ void upc_all_reduceI
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for completion - children reported and parent is ready. */
+	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
-	      /* Execute reduce functions if necessary. */
+	      /* Execute reduce functions if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -2122,93 +2121,95 @@ void upc_all_reduceI
 		    upc_addrfield ((shared void *)
 				   &(gupcr_reduce_storage[MYTHREAD].value
 				     [gupcr_coll_child_index]));
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result = func (local_result, *(signed int *)
-					   & gupcr_reduce_storage[MYTHREAD].
-					   value[i]);
+					   &
+					   gupcr_reduce_storage
+					   [MYTHREAD].value[i]);
 		    }
 		  *t_result = local_result;
 		  gupcr_coll_put (gupcr_coll_parent_thread, doffset, offset,
 				  sizeof (signed int));
 		}
-	      /* Wait for our value to go up the tree. */
+	      /* Wait for our value to go up the tree.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
       else
 	{
-	  /* Avoid the case where only one thread is available. */
+	  /* Avoid the case where only one thread is available.  */
 	  if (!IS_ROOT_THREAD)
 	    {
 	      /* LEAF THREAD */
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      switch (op)
 		{
 		case UPC_FUNC:
 		case UPC_NONCOMM_FUNC:
 		  {
-		    /* Schedule a triggered put once signal is received. */
+		    /* Schedule a triggered put once signal is received.  */
 		    size_t doffset = upc_addrfield ((shared void *)
 						    &(gupcr_reduce_storage
-						      [MYTHREAD].value
+						      [MYTHREAD].
+						      value
 						      [gupcr_coll_child_index]));
 		    gupcr_coll_trigput (gupcr_coll_parent_thread, doffset,
 					offset, sizeof (signed int), 1);
 		  }
 		  break;
 		default:
-		  /* Schedule a triggered atomic put once parent is ready. */
+		  /* Schedule a triggered atomic put once parent is ready.  */
 		  gupcr_coll_trigput_atomic (gupcr_coll_parent_thread, offset,
 					     offset, sizeof (signed int),
 					     gupcr_portals_reduce_op (op),
 					     UPC_COLL_TO_PTL_INT, 1);
 		  break;
 		}
-	      /* Wait for parent to be ready. */
+	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
-	      /* Wait for our value to leave. */
+	      /* Wait for our value to leave.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
 #else /* NO TRIGGERED OPS */
-      /* Send signal to all children. */
+      /* Send signal to all children.  */
       if (gupcr_coll_child_cnt)
 	{
 	  /* ROOT OR INNER THREAD */
 	  int wait_cnt = gupcr_coll_child_cnt;
 
 	  /* Signal that parent is ready to receive the locally reduced
-	     values from its children. Value that we send does not matter. */
+	     values from its children. Value that we send does not matter.  */
 	  for (i = 0; i < gupcr_coll_child_cnt; i++)
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       signal));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
 	  gupcr_coll_ack_wait (wait_cnt);
 
 	  /* Wait for children to report their local reduced values and
-	     parent to report it is ready to receive the reduced value. */
+	     parent to report it is ready to receive the reduced value.  */
 	  if (!IS_ROOT_THREAD)
 	    ++wait_cnt;
 	  gupcr_coll_signal_wait (wait_cnt);
 
-	  /* Compute result if reduce functions are used. */
+	  /* Compute result if reduce functions are used.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  local_result = func (local_result,
 				       *(signed int *) &
-				       gupcr_reduce_storage[MYTHREAD].
-				       value[i]);
+				       gupcr_reduce_storage[MYTHREAD].value
+				       [i]);
 		}
-	      /* Prepare reduced value for going up the tree. */
+	      /* Prepare reduced value for going up the tree.  */
 	      *t_result = local_result;
 	    }
 	}
@@ -2218,20 +2219,19 @@ void upc_all_reduceI
 	  gupcr_coll_signal_wait (1);
 	}
 
-      /* Send reduced value from the thread and its children to the parent. */
+      /* Send reduced value to the parent.  */
       if (!IS_ROOT_THREAD)
 	{
 	  /* LEAF OR INNER THREAD */
 	  /* Each child places its result into the parent memory slot
 	     dedicated for the child. The parent is responsible
 	     for creating the reduced result for itself and its
-	     children. */
+	     children.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      size_t doffset = upc_addrfield ((shared void *)
 					      &(gupcr_reduce_storage
-						[MYTHREAD].
-						value
+						[MYTHREAD].value
 						[gupcr_coll_child_index]));
 	      size_t soffset =
 		upc_addrfield ((shared void *)
@@ -2242,8 +2242,8 @@ void upc_all_reduceI
 	  else
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      gupcr_coll_put_atomic (gupcr_coll_parent_thread, offset, offset,
 				     sizeof (signed int),
 				     gupcr_portals_reduce_op (op),
@@ -2253,14 +2253,14 @@ void upc_all_reduceI
 	}
 #endif /* GUPCR_USE_PORTALS4_TRIGGERED_OPS */
 
-      /* Copy result into the caller's specified destination. */
+      /* Copy result into the caller's specified destination.  */
       if (IS_ROOT_THREAD)
 	{
 	  *(shared signed int *) dst = *t_result;
 	}
     }
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_OUT_MYSYNC & sync_mode || !(UPC_OUT_NOSYNC & sync_mode))
     upc_barrier;
 
@@ -2298,8 +2298,7 @@ void upc_all_reduceUI
    upc_op_t op,
    size_t nelems,
    size_t blk_size,
-   unsigned int (*func) (unsigned int, unsigned int),
-                       upc_flag_t sync_mode)
+   unsigned int (*func) (unsigned int, unsigned int), upc_flag_t sync_mode)
 {
   int i, n_local, full_rows, last_row;
   int num_thr, tail_thr, extras, ph, src_thr, dst_thr, velems, start;
@@ -2311,7 +2310,7 @@ void upc_all_reduceUI
     upc_coll_init ();
 
   gupcr_trace (FC_COLL, "COLL ALL_REDUCE ENTER unsigned int %lu %lu",
-               (long unsigned) nelems, (long unsigned) blk_size);
+	       (long unsigned) nelems, (long unsigned) blk_size);
 
   if (blk_size == 0)
     blk_size = nelems;
@@ -2320,28 +2319,28 @@ void upc_all_reduceUI
   upc_coll_err (dst, src, NULL, 0, sync_mode, blk_size, nelems, op, UPC_RED);
 #endif
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_IN_MYSYNC & sync_mode || !(UPC_IN_NOSYNC & sync_mode))
     upc_barrier;
 
-  /* Compute n_local, the number of elements local to this thread. */
+  /* Compute n_local, the number of elements local to this thread.  */
   n_local = 0;
 
-  /* Also compute start, the starting index of src for each thread. */
+  /* Also compute start, the starting index of src for each thread.  */
 
   src_thr = upc_threadof ((shared void *) src);
   dst_thr = upc_threadof ((shared void *) dst);
   ph = upc_phaseof ((shared void *) src);
 
-  /* nelems plus the number of virtual elements in first row. */
+  /* nelems plus the number of virtual elements in first row.  */
   velems = nelems + src_thr * blk_size + ph;
 
-  /* Include virtual elements when computing num of local elems. */
+  /* Include virtual elements when computing number of local elements.  */
   full_rows = velems / (blk_size * THREADS);
   last_row = velems % (blk_size * THREADS);
   tail_thr = last_row / blk_size;
 
-  /* Calculate number of participating threads. */
+  /* Calculate number of participating threads.  */
   num_thr = (nelems + ph + blk_size - 1) / blk_size;
   if (num_thr > THREADS)
     num_thr = THREADS;
@@ -2350,7 +2349,7 @@ void upc_all_reduceUI
 	       "src_thr: %d tail_thr: %d ph: %d num_thr: %d full_rows: %d",
 	       src_thr, tail_thr, ph, num_thr, full_rows);
 
-  /* Calculate number of local elements. */
+  /* Calculate number of local elements.  */
   if (blk_size > 0)
     {
       if (MYTHREAD <= tail_thr)
@@ -2363,35 +2362,35 @@ void upc_all_reduceUI
 
       n_local = blk_size * full_rows + extras;
 
-      /* Adjust the number of elements in this thread, if necessary. */
+      /* Adjust the number of elements in this thread, if necessary.  */
       if (MYTHREAD < src_thr)
 	n_local -= blk_size;
       else if (MYTHREAD == src_thr)
 	n_local -= ph;
     }
-  else				/* blk_size == 0 */
+  else
     {
       n_local = 0;
-      if (src_thr == MYTHREAD)	/* revise the number of local elements */
+      if (src_thr == MYTHREAD)	/* Revise the number of local elements.  */
 	n_local = nelems;
     }
 
   /* Starting index for this thread
      Note: start is sometimes negative because src is
-     addressed here as if its block size is 1. */
+     addressed here as if its block size is 1.  */
 
   if (blk_size > 0)
     if (MYTHREAD > src_thr)
       start = MYTHREAD - src_thr - ph * THREADS;
     else if (MYTHREAD < src_thr)
       start = (blk_size - ph) * THREADS + MYTHREAD - src_thr;
-    else			/* This is the source thread */
+    else			/* This is the source thread.  */
       start = 0;
-  else				/* blk_size == 0 */
+  else
     start = 0;
 
 
-  /* Reduce the elements local to this thread. */
+  /* Reduce the elements local to this thread.  */
 
   if (n_local > 0)
     {
@@ -2457,44 +2456,44 @@ void upc_all_reduceUI
 	    local_result = func (local_result, *l_src++);
 	  break;
 	default:
-	  gupcr_fatal_error ("Bad UPC collectives reduce operator %d.", op);
+	  gupcr_fatal_error ("bad UPC collectives reduce operator 0x%lx", op);
 	}
     }
 
   /* Note: local_result is undefined if n_local == 0.
-     Note: Only a proper subset of threads might have a meaningful local_result
-     Note: dst might be on a thread that does not have a local result */
+     Note: Only a proper subset of threads have a meaningful local_result.
+     Note: dst might be a thread that does not have a local result.  */
 
-  /* Global reduce on only participating threads. */
+  /* Global reduce on only participating threads.  */
   if (n_local)
     {
-      /* Local pointer where reduced values are written too. */
+      /* Local pointer where reduced values are written too.  */
       unsigned int *t_result =
 	(unsigned int *) & gupcr_reduce_storage[MYTHREAD].value[0];
 
-      /* Initialize collectives reduce tree. */
+      /* Initialize collectives reduce tree.  */
       gupcr_coll_tree_setup (dst_thr, src_thr, num_thr);
 
       /* Copy in local results into the area for reduce operation.
          NOTE: Not needed for the case of collective functions. However,
-         this covers the case of only one thread. */
+         this covers the case of only one thread.  */
       *t_result = local_result;
 
 #ifdef GUPCR_USE_PORTALS4_TRIGGERED_OPS
-/* Run reduce operation without triggered functions. */
+/* Run reduce operation without triggered functions.  */
 #undef GUPCR_USE_PORTALS4_TRIGGERED_OPS
 #endif
 #if GUPCR_USE_PORTALS4_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
-         function. */
+         function.  */
       if (gupcr_coll_child_cnt)
 	{
 	  if (IS_ROOT_THREAD)
 	    {
 	      /* ROOT THREAD */
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -2504,13 +2503,13 @@ void upc_all_reduceUI
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for children to report their values. */
+	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
 
-	      /* Reduce local values with those of children if necessary. */
+	      /* Reduce local values with those of children if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result =
@@ -2523,11 +2522,11 @@ void upc_all_reduceUI
 	  else
 	    {
 	      /* INNER THREAD */
-	      /* Prepare triggered atomic function. */
+	      /* Prepare triggered atomic function.  */
 	      if ((op != UPC_FUNC) && (op != UPC_NONCOMM_FUNC))
 		{
 		  /* Use triggered atomic operations once children sent
-		     their results and parent is ready to receive it. */
+		     their results and parent is ready to receive it.  */
 		  size_t offset = upc_addrfield ((shared void *)
 						 &(gupcr_reduce_storage
 						   [MYTHREAD].value[0]));
@@ -2537,7 +2536,7 @@ void upc_all_reduceUI
 					     UPC_COLL_TO_PTL_UINT,
 					     gupcr_coll_child_cnt + 1);
 		}
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -2547,9 +2546,9 @@ void upc_all_reduceUI
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for completion - children reported and parent is ready. */
+	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
-	      /* Execute reduce functions if necessary. */
+	      /* Execute reduce functions if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -2559,93 +2558,95 @@ void upc_all_reduceUI
 		    upc_addrfield ((shared void *)
 				   &(gupcr_reduce_storage[MYTHREAD].value
 				     [gupcr_coll_child_index]));
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result = func (local_result, *(unsigned int *)
-					   & gupcr_reduce_storage[MYTHREAD].
-					   value[i]);
+					   &
+					   gupcr_reduce_storage
+					   [MYTHREAD].value[i]);
 		    }
 		  *t_result = local_result;
 		  gupcr_coll_put (gupcr_coll_parent_thread, doffset, offset,
 				  sizeof (unsigned int));
 		}
-	      /* Wait for our value to go up the tree. */
+	      /* Wait for our value to go up the tree.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
       else
 	{
-	  /* Avoid the case where only one thread is available. */
+	  /* Avoid the case where only one thread is available.  */
 	  if (!IS_ROOT_THREAD)
 	    {
 	      /* LEAF THREAD */
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      switch (op)
 		{
 		case UPC_FUNC:
 		case UPC_NONCOMM_FUNC:
 		  {
-		    /* Schedule a triggered put once signal is received. */
+		    /* Schedule a triggered put once signal is received.  */
 		    size_t doffset = upc_addrfield ((shared void *)
 						    &(gupcr_reduce_storage
-						      [MYTHREAD].value
+						      [MYTHREAD].
+						      value
 						      [gupcr_coll_child_index]));
 		    gupcr_coll_trigput (gupcr_coll_parent_thread, doffset,
 					offset, sizeof (unsigned int), 1);
 		  }
 		  break;
 		default:
-		  /* Schedule a triggered atomic put once parent is ready. */
+		  /* Schedule a triggered atomic put once parent is ready.  */
 		  gupcr_coll_trigput_atomic (gupcr_coll_parent_thread, offset,
 					     offset, sizeof (unsigned int),
 					     gupcr_portals_reduce_op (op),
 					     UPC_COLL_TO_PTL_UINT, 1);
 		  break;
 		}
-	      /* Wait for parent to be ready. */
+	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
-	      /* Wait for our value to leave. */
+	      /* Wait for our value to leave.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
 #else /* NO TRIGGERED OPS */
-      /* Send signal to all children. */
+      /* Send signal to all children.  */
       if (gupcr_coll_child_cnt)
 	{
 	  /* ROOT OR INNER THREAD */
 	  int wait_cnt = gupcr_coll_child_cnt;
 
 	  /* Signal that parent is ready to receive the locally reduced
-	     values from its children. Value that we send does not matter. */
+	     values from its children. Value that we send does not matter.  */
 	  for (i = 0; i < gupcr_coll_child_cnt; i++)
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       signal));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
 	  gupcr_coll_ack_wait (wait_cnt);
 
 	  /* Wait for children to report their local reduced values and
-	     parent to report it is ready to receive the reduced value. */
+	     parent to report it is ready to receive the reduced value.  */
 	  if (!IS_ROOT_THREAD)
 	    ++wait_cnt;
 	  gupcr_coll_signal_wait (wait_cnt);
 
-	  /* Compute result if reduce functions are used. */
+	  /* Compute result if reduce functions are used.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  local_result = func (local_result,
 				       *(unsigned int *) &
-				       gupcr_reduce_storage[MYTHREAD].
-				       value[i]);
+				       gupcr_reduce_storage[MYTHREAD].value
+				       [i]);
 		}
-	      /* Prepare reduced value for going up the tree. */
+	      /* Prepare reduced value for going up the tree.  */
 	      *t_result = local_result;
 	    }
 	}
@@ -2655,20 +2656,19 @@ void upc_all_reduceUI
 	  gupcr_coll_signal_wait (1);
 	}
 
-      /* Send reduced value from the thread and its children to the parent. */
+      /* Send reduced value to the parent.  */
       if (!IS_ROOT_THREAD)
 	{
 	  /* LEAF OR INNER THREAD */
 	  /* Each child places its result into the parent memory slot
 	     dedicated for the child. The parent is responsible
 	     for creating the reduced result for itself and its
-	     children. */
+	     children.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      size_t doffset = upc_addrfield ((shared void *)
 					      &(gupcr_reduce_storage
-						[MYTHREAD].
-						value
+						[MYTHREAD].value
 						[gupcr_coll_child_index]));
 	      size_t soffset =
 		upc_addrfield ((shared void *)
@@ -2679,8 +2679,8 @@ void upc_all_reduceUI
 	  else
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      gupcr_coll_put_atomic (gupcr_coll_parent_thread, offset, offset,
 				     sizeof (unsigned int),
 				     gupcr_portals_reduce_op (op),
@@ -2690,14 +2690,14 @@ void upc_all_reduceUI
 	}
 #endif /* GUPCR_USE_PORTALS4_TRIGGERED_OPS */
 
-      /* Copy result into the caller's specified destination. */
+      /* Copy result into the caller's specified destination.  */
       if (IS_ROOT_THREAD)
 	{
 	  *(shared unsigned int *) dst = *t_result;
 	}
     }
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_OUT_MYSYNC & sync_mode || !(UPC_OUT_NOSYNC & sync_mode))
     upc_barrier;
 
@@ -2735,8 +2735,7 @@ void upc_all_reduceL
    upc_op_t op,
    size_t nelems,
    size_t blk_size,
-   signed long (*func) (signed long, signed long),
-                       upc_flag_t sync_mode)
+   signed long (*func) (signed long, signed long), upc_flag_t sync_mode)
 {
   int i, n_local, full_rows, last_row;
   int num_thr, tail_thr, extras, ph, src_thr, dst_thr, velems, start;
@@ -2748,7 +2747,7 @@ void upc_all_reduceL
     upc_coll_init ();
 
   gupcr_trace (FC_COLL, "COLL ALL_REDUCE ENTER signed long %lu %lu",
-               (long unsigned) nelems, (long unsigned) blk_size);
+	       (long unsigned) nelems, (long unsigned) blk_size);
 
   if (blk_size == 0)
     blk_size = nelems;
@@ -2757,28 +2756,28 @@ void upc_all_reduceL
   upc_coll_err (dst, src, NULL, 0, sync_mode, blk_size, nelems, op, UPC_RED);
 #endif
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_IN_MYSYNC & sync_mode || !(UPC_IN_NOSYNC & sync_mode))
     upc_barrier;
 
-  /* Compute n_local, the number of elements local to this thread. */
+  /* Compute n_local, the number of elements local to this thread.  */
   n_local = 0;
 
-  /* Also compute start, the starting index of src for each thread. */
+  /* Also compute start, the starting index of src for each thread.  */
 
   src_thr = upc_threadof ((shared void *) src);
   dst_thr = upc_threadof ((shared void *) dst);
   ph = upc_phaseof ((shared void *) src);
 
-  /* nelems plus the number of virtual elements in first row. */
+  /* nelems plus the number of virtual elements in first row.  */
   velems = nelems + src_thr * blk_size + ph;
 
-  /* Include virtual elements when computing num of local elems. */
+  /* Include virtual elements when computing number of local elements.  */
   full_rows = velems / (blk_size * THREADS);
   last_row = velems % (blk_size * THREADS);
   tail_thr = last_row / blk_size;
 
-  /* Calculate number of participating threads. */
+  /* Calculate number of participating threads.  */
   num_thr = (nelems + ph + blk_size - 1) / blk_size;
   if (num_thr > THREADS)
     num_thr = THREADS;
@@ -2787,7 +2786,7 @@ void upc_all_reduceL
 	       "src_thr: %d tail_thr: %d ph: %d num_thr: %d full_rows: %d",
 	       src_thr, tail_thr, ph, num_thr, full_rows);
 
-  /* Calculate number of local elements. */
+  /* Calculate number of local elements.  */
   if (blk_size > 0)
     {
       if (MYTHREAD <= tail_thr)
@@ -2800,35 +2799,35 @@ void upc_all_reduceL
 
       n_local = blk_size * full_rows + extras;
 
-      /* Adjust the number of elements in this thread, if necessary. */
+      /* Adjust the number of elements in this thread, if necessary.  */
       if (MYTHREAD < src_thr)
 	n_local -= blk_size;
       else if (MYTHREAD == src_thr)
 	n_local -= ph;
     }
-  else				/* blk_size == 0 */
+  else
     {
       n_local = 0;
-      if (src_thr == MYTHREAD)	/* revise the number of local elements */
+      if (src_thr == MYTHREAD)	/* Revise the number of local elements.  */
 	n_local = nelems;
     }
 
   /* Starting index for this thread
      Note: start is sometimes negative because src is
-     addressed here as if its block size is 1. */
+     addressed here as if its block size is 1.  */
 
   if (blk_size > 0)
     if (MYTHREAD > src_thr)
       start = MYTHREAD - src_thr - ph * THREADS;
     else if (MYTHREAD < src_thr)
       start = (blk_size - ph) * THREADS + MYTHREAD - src_thr;
-    else			/* This is the source thread */
+    else			/* This is the source thread.  */
       start = 0;
-  else				/* blk_size == 0 */
+  else
     start = 0;
 
 
-  /* Reduce the elements local to this thread. */
+  /* Reduce the elements local to this thread.  */
 
   if (n_local > 0)
     {
@@ -2894,44 +2893,44 @@ void upc_all_reduceL
 	    local_result = func (local_result, *l_src++);
 	  break;
 	default:
-	  gupcr_fatal_error ("Bad UPC collectives reduce operator %d.", op);
+	  gupcr_fatal_error ("bad UPC collectives reduce operator 0x%lx", op);
 	}
     }
 
   /* Note: local_result is undefined if n_local == 0.
-     Note: Only a proper subset of threads might have a meaningful local_result
-     Note: dst might be on a thread that does not have a local result */
+     Note: Only a proper subset of threads have a meaningful local_result.
+     Note: dst might be a thread that does not have a local result.  */
 
-  /* Global reduce on only participating threads. */
+  /* Global reduce on only participating threads.  */
   if (n_local)
     {
-      /* Local pointer where reduced values are written too. */
+      /* Local pointer where reduced values are written too.  */
       signed long *t_result =
 	(signed long *) & gupcr_reduce_storage[MYTHREAD].value[0];
 
-      /* Initialize collectives reduce tree. */
+      /* Initialize collectives reduce tree.  */
       gupcr_coll_tree_setup (dst_thr, src_thr, num_thr);
 
       /* Copy in local results into the area for reduce operation.
          NOTE: Not needed for the case of collective functions. However,
-         this covers the case of only one thread. */
+         this covers the case of only one thread.  */
       *t_result = local_result;
 
 #ifdef GUPCR_USE_PORTALS4_TRIGGERED_OPS
-/* Run reduce operation without triggered functions. */
+/* Run reduce operation without triggered functions.  */
 #undef GUPCR_USE_PORTALS4_TRIGGERED_OPS
 #endif
 #if GUPCR_USE_PORTALS4_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
-         function. */
+         function.  */
       if (gupcr_coll_child_cnt)
 	{
 	  if (IS_ROOT_THREAD)
 	    {
 	      /* ROOT THREAD */
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -2941,13 +2940,13 @@ void upc_all_reduceL
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for children to report their values. */
+	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
 
-	      /* Reduce local values with those of children if necessary. */
+	      /* Reduce local values with those of children if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result =
@@ -2960,11 +2959,11 @@ void upc_all_reduceL
 	  else
 	    {
 	      /* INNER THREAD */
-	      /* Prepare triggered atomic function. */
+	      /* Prepare triggered atomic function.  */
 	      if ((op != UPC_FUNC) && (op != UPC_NONCOMM_FUNC))
 		{
 		  /* Use triggered atomic operations once children sent
-		     their results and parent is ready to receive it. */
+		     their results and parent is ready to receive it.  */
 		  size_t offset = upc_addrfield ((shared void *)
 						 &(gupcr_reduce_storage
 						   [MYTHREAD].value[0]));
@@ -2974,7 +2973,7 @@ void upc_all_reduceL
 					     UPC_COLL_TO_PTL_LONG,
 					     gupcr_coll_child_cnt + 1);
 		}
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -2984,9 +2983,9 @@ void upc_all_reduceL
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for completion - children reported and parent is ready. */
+	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
-	      /* Execute reduce functions if necessary. */
+	      /* Execute reduce functions if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -2996,93 +2995,95 @@ void upc_all_reduceL
 		    upc_addrfield ((shared void *)
 				   &(gupcr_reduce_storage[MYTHREAD].value
 				     [gupcr_coll_child_index]));
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result = func (local_result, *(signed long *)
-					   & gupcr_reduce_storage[MYTHREAD].
-					   value[i]);
+					   &
+					   gupcr_reduce_storage
+					   [MYTHREAD].value[i]);
 		    }
 		  *t_result = local_result;
 		  gupcr_coll_put (gupcr_coll_parent_thread, doffset, offset,
 				  sizeof (signed long));
 		}
-	      /* Wait for our value to go up the tree. */
+	      /* Wait for our value to go up the tree.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
       else
 	{
-	  /* Avoid the case where only one thread is available. */
+	  /* Avoid the case where only one thread is available.  */
 	  if (!IS_ROOT_THREAD)
 	    {
 	      /* LEAF THREAD */
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      switch (op)
 		{
 		case UPC_FUNC:
 		case UPC_NONCOMM_FUNC:
 		  {
-		    /* Schedule a triggered put once signal is received. */
+		    /* Schedule a triggered put once signal is received.  */
 		    size_t doffset = upc_addrfield ((shared void *)
 						    &(gupcr_reduce_storage
-						      [MYTHREAD].value
+						      [MYTHREAD].
+						      value
 						      [gupcr_coll_child_index]));
 		    gupcr_coll_trigput (gupcr_coll_parent_thread, doffset,
 					offset, sizeof (signed long), 1);
 		  }
 		  break;
 		default:
-		  /* Schedule a triggered atomic put once parent is ready. */
+		  /* Schedule a triggered atomic put once parent is ready.  */
 		  gupcr_coll_trigput_atomic (gupcr_coll_parent_thread, offset,
 					     offset, sizeof (signed long),
 					     gupcr_portals_reduce_op (op),
 					     UPC_COLL_TO_PTL_LONG, 1);
 		  break;
 		}
-	      /* Wait for parent to be ready. */
+	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
-	      /* Wait for our value to leave. */
+	      /* Wait for our value to leave.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
 #else /* NO TRIGGERED OPS */
-      /* Send signal to all children. */
+      /* Send signal to all children.  */
       if (gupcr_coll_child_cnt)
 	{
 	  /* ROOT OR INNER THREAD */
 	  int wait_cnt = gupcr_coll_child_cnt;
 
 	  /* Signal that parent is ready to receive the locally reduced
-	     values from its children. Value that we send does not matter. */
+	     values from its children. Value that we send does not matter.  */
 	  for (i = 0; i < gupcr_coll_child_cnt; i++)
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       signal));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
 	  gupcr_coll_ack_wait (wait_cnt);
 
 	  /* Wait for children to report their local reduced values and
-	     parent to report it is ready to receive the reduced value. */
+	     parent to report it is ready to receive the reduced value.  */
 	  if (!IS_ROOT_THREAD)
 	    ++wait_cnt;
 	  gupcr_coll_signal_wait (wait_cnt);
 
-	  /* Compute result if reduce functions are used. */
+	  /* Compute result if reduce functions are used.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  local_result = func (local_result,
 				       *(signed long *) &
-				       gupcr_reduce_storage[MYTHREAD].
-				       value[i]);
+				       gupcr_reduce_storage[MYTHREAD].value
+				       [i]);
 		}
-	      /* Prepare reduced value for going up the tree. */
+	      /* Prepare reduced value for going up the tree.  */
 	      *t_result = local_result;
 	    }
 	}
@@ -3092,20 +3093,19 @@ void upc_all_reduceL
 	  gupcr_coll_signal_wait (1);
 	}
 
-      /* Send reduced value from the thread and its children to the parent. */
+      /* Send reduced value to the parent.  */
       if (!IS_ROOT_THREAD)
 	{
 	  /* LEAF OR INNER THREAD */
 	  /* Each child places its result into the parent memory slot
 	     dedicated for the child. The parent is responsible
 	     for creating the reduced result for itself and its
-	     children. */
+	     children.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      size_t doffset = upc_addrfield ((shared void *)
 					      &(gupcr_reduce_storage
-						[MYTHREAD].
-						value
+						[MYTHREAD].value
 						[gupcr_coll_child_index]));
 	      size_t soffset =
 		upc_addrfield ((shared void *)
@@ -3116,8 +3116,8 @@ void upc_all_reduceL
 	  else
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      gupcr_coll_put_atomic (gupcr_coll_parent_thread, offset, offset,
 				     sizeof (signed long),
 				     gupcr_portals_reduce_op (op),
@@ -3127,14 +3127,14 @@ void upc_all_reduceL
 	}
 #endif /* GUPCR_USE_PORTALS4_TRIGGERED_OPS */
 
-      /* Copy result into the caller's specified destination. */
+      /* Copy result into the caller's specified destination.  */
       if (IS_ROOT_THREAD)
 	{
 	  *(shared signed long *) dst = *t_result;
 	}
     }
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_OUT_MYSYNC & sync_mode || !(UPC_OUT_NOSYNC & sync_mode))
     upc_barrier;
 
@@ -3172,8 +3172,7 @@ void upc_all_reduceUL
    upc_op_t op,
    size_t nelems,
    size_t blk_size,
-   unsigned long (*func) (unsigned long, unsigned long),
-                       upc_flag_t sync_mode)
+   unsigned long (*func) (unsigned long, unsigned long), upc_flag_t sync_mode)
 {
   int i, n_local, full_rows, last_row;
   int num_thr, tail_thr, extras, ph, src_thr, dst_thr, velems, start;
@@ -3185,7 +3184,7 @@ void upc_all_reduceUL
     upc_coll_init ();
 
   gupcr_trace (FC_COLL, "COLL ALL_REDUCE ENTER unsigned long %lu %lu",
-               (long unsigned) nelems, (long unsigned) blk_size);
+	       (long unsigned) nelems, (long unsigned) blk_size);
 
   if (blk_size == 0)
     blk_size = nelems;
@@ -3194,28 +3193,28 @@ void upc_all_reduceUL
   upc_coll_err (dst, src, NULL, 0, sync_mode, blk_size, nelems, op, UPC_RED);
 #endif
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_IN_MYSYNC & sync_mode || !(UPC_IN_NOSYNC & sync_mode))
     upc_barrier;
 
-  /* Compute n_local, the number of elements local to this thread. */
+  /* Compute n_local, the number of elements local to this thread.  */
   n_local = 0;
 
-  /* Also compute start, the starting index of src for each thread. */
+  /* Also compute start, the starting index of src for each thread.  */
 
   src_thr = upc_threadof ((shared void *) src);
   dst_thr = upc_threadof ((shared void *) dst);
   ph = upc_phaseof ((shared void *) src);
 
-  /* nelems plus the number of virtual elements in first row. */
+  /* nelems plus the number of virtual elements in first row.  */
   velems = nelems + src_thr * blk_size + ph;
 
-  /* Include virtual elements when computing num of local elems. */
+  /* Include virtual elements when computing number of local elements.  */
   full_rows = velems / (blk_size * THREADS);
   last_row = velems % (blk_size * THREADS);
   tail_thr = last_row / blk_size;
 
-  /* Calculate number of participating threads. */
+  /* Calculate number of participating threads.  */
   num_thr = (nelems + ph + blk_size - 1) / blk_size;
   if (num_thr > THREADS)
     num_thr = THREADS;
@@ -3224,7 +3223,7 @@ void upc_all_reduceUL
 	       "src_thr: %d tail_thr: %d ph: %d num_thr: %d full_rows: %d",
 	       src_thr, tail_thr, ph, num_thr, full_rows);
 
-  /* Calculate number of local elements. */
+  /* Calculate number of local elements.  */
   if (blk_size > 0)
     {
       if (MYTHREAD <= tail_thr)
@@ -3237,35 +3236,35 @@ void upc_all_reduceUL
 
       n_local = blk_size * full_rows + extras;
 
-      /* Adjust the number of elements in this thread, if necessary. */
+      /* Adjust the number of elements in this thread, if necessary.  */
       if (MYTHREAD < src_thr)
 	n_local -= blk_size;
       else if (MYTHREAD == src_thr)
 	n_local -= ph;
     }
-  else				/* blk_size == 0 */
+  else
     {
       n_local = 0;
-      if (src_thr == MYTHREAD)	/* revise the number of local elements */
+      if (src_thr == MYTHREAD)	/* Revise the number of local elements.  */
 	n_local = nelems;
     }
 
   /* Starting index for this thread
      Note: start is sometimes negative because src is
-     addressed here as if its block size is 1. */
+     addressed here as if its block size is 1.  */
 
   if (blk_size > 0)
     if (MYTHREAD > src_thr)
       start = MYTHREAD - src_thr - ph * THREADS;
     else if (MYTHREAD < src_thr)
       start = (blk_size - ph) * THREADS + MYTHREAD - src_thr;
-    else			/* This is the source thread */
+    else			/* This is the source thread.  */
       start = 0;
-  else				/* blk_size == 0 */
+  else
     start = 0;
 
 
-  /* Reduce the elements local to this thread. */
+  /* Reduce the elements local to this thread.  */
 
   if (n_local > 0)
     {
@@ -3331,44 +3330,44 @@ void upc_all_reduceUL
 	    local_result = func (local_result, *l_src++);
 	  break;
 	default:
-	  gupcr_fatal_error ("Bad UPC collectives reduce operator %d.", op);
+	  gupcr_fatal_error ("bad UPC collectives reduce operator 0x%lx", op);
 	}
     }
 
   /* Note: local_result is undefined if n_local == 0.
-     Note: Only a proper subset of threads might have a meaningful local_result
-     Note: dst might be on a thread that does not have a local result */
+     Note: Only a proper subset of threads have a meaningful local_result.
+     Note: dst might be a thread that does not have a local result.  */
 
-  /* Global reduce on only participating threads. */
+  /* Global reduce on only participating threads.  */
   if (n_local)
     {
-      /* Local pointer where reduced values are written too. */
+      /* Local pointer where reduced values are written too.  */
       unsigned long *t_result =
 	(unsigned long *) & gupcr_reduce_storage[MYTHREAD].value[0];
 
-      /* Initialize collectives reduce tree. */
+      /* Initialize collectives reduce tree.  */
       gupcr_coll_tree_setup (dst_thr, src_thr, num_thr);
 
       /* Copy in local results into the area for reduce operation.
          NOTE: Not needed for the case of collective functions. However,
-         this covers the case of only one thread. */
+         this covers the case of only one thread.  */
       *t_result = local_result;
 
 #ifdef GUPCR_USE_PORTALS4_TRIGGERED_OPS
-/* Run reduce operation without triggered functions. */
+/* Run reduce operation without triggered functions.  */
 #undef GUPCR_USE_PORTALS4_TRIGGERED_OPS
 #endif
 #if GUPCR_USE_PORTALS4_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
-         function. */
+         function.  */
       if (gupcr_coll_child_cnt)
 	{
 	  if (IS_ROOT_THREAD)
 	    {
 	      /* ROOT THREAD */
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -3378,13 +3377,13 @@ void upc_all_reduceUL
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for children to report their values. */
+	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
 
-	      /* Reduce local values with those of children if necessary. */
+	      /* Reduce local values with those of children if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result =
@@ -3397,11 +3396,11 @@ void upc_all_reduceUL
 	  else
 	    {
 	      /* INNER THREAD */
-	      /* Prepare triggered atomic function. */
+	      /* Prepare triggered atomic function.  */
 	      if ((op != UPC_FUNC) && (op != UPC_NONCOMM_FUNC))
 		{
 		  /* Use triggered atomic operations once children sent
-		     their results and parent is ready to receive it. */
+		     their results and parent is ready to receive it.  */
 		  size_t offset = upc_addrfield ((shared void *)
 						 &(gupcr_reduce_storage
 						   [MYTHREAD].value[0]));
@@ -3411,7 +3410,7 @@ void upc_all_reduceUL
 					     UPC_COLL_TO_PTL_ULONG,
 					     gupcr_coll_child_cnt + 1);
 		}
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -3421,9 +3420,9 @@ void upc_all_reduceUL
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for completion - children reported and parent is ready. */
+	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
-	      /* Execute reduce functions if necessary. */
+	      /* Execute reduce functions if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -3433,93 +3432,95 @@ void upc_all_reduceUL
 		    upc_addrfield ((shared void *)
 				   &(gupcr_reduce_storage[MYTHREAD].value
 				     [gupcr_coll_child_index]));
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result = func (local_result, *(unsigned long *)
-					   & gupcr_reduce_storage[MYTHREAD].
-					   value[i]);
+					   &
+					   gupcr_reduce_storage
+					   [MYTHREAD].value[i]);
 		    }
 		  *t_result = local_result;
 		  gupcr_coll_put (gupcr_coll_parent_thread, doffset, offset,
 				  sizeof (unsigned long));
 		}
-	      /* Wait for our value to go up the tree. */
+	      /* Wait for our value to go up the tree.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
       else
 	{
-	  /* Avoid the case where only one thread is available. */
+	  /* Avoid the case where only one thread is available.  */
 	  if (!IS_ROOT_THREAD)
 	    {
 	      /* LEAF THREAD */
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      switch (op)
 		{
 		case UPC_FUNC:
 		case UPC_NONCOMM_FUNC:
 		  {
-		    /* Schedule a triggered put once signal is received. */
+		    /* Schedule a triggered put once signal is received.  */
 		    size_t doffset = upc_addrfield ((shared void *)
 						    &(gupcr_reduce_storage
-						      [MYTHREAD].value
+						      [MYTHREAD].
+						      value
 						      [gupcr_coll_child_index]));
 		    gupcr_coll_trigput (gupcr_coll_parent_thread, doffset,
 					offset, sizeof (unsigned long), 1);
 		  }
 		  break;
 		default:
-		  /* Schedule a triggered atomic put once parent is ready. */
+		  /* Schedule a triggered atomic put once parent is ready.  */
 		  gupcr_coll_trigput_atomic (gupcr_coll_parent_thread, offset,
 					     offset, sizeof (unsigned long),
 					     gupcr_portals_reduce_op (op),
 					     UPC_COLL_TO_PTL_ULONG, 1);
 		  break;
 		}
-	      /* Wait for parent to be ready. */
+	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
-	      /* Wait for our value to leave. */
+	      /* Wait for our value to leave.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
 #else /* NO TRIGGERED OPS */
-      /* Send signal to all children. */
+      /* Send signal to all children.  */
       if (gupcr_coll_child_cnt)
 	{
 	  /* ROOT OR INNER THREAD */
 	  int wait_cnt = gupcr_coll_child_cnt;
 
 	  /* Signal that parent is ready to receive the locally reduced
-	     values from its children. Value that we send does not matter. */
+	     values from its children. Value that we send does not matter.  */
 	  for (i = 0; i < gupcr_coll_child_cnt; i++)
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       signal));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
 	  gupcr_coll_ack_wait (wait_cnt);
 
 	  /* Wait for children to report their local reduced values and
-	     parent to report it is ready to receive the reduced value. */
+	     parent to report it is ready to receive the reduced value.  */
 	  if (!IS_ROOT_THREAD)
 	    ++wait_cnt;
 	  gupcr_coll_signal_wait (wait_cnt);
 
-	  /* Compute result if reduce functions are used. */
+	  /* Compute result if reduce functions are used.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  local_result = func (local_result,
 				       *(unsigned long *) &
-				       gupcr_reduce_storage[MYTHREAD].
-				       value[i]);
+				       gupcr_reduce_storage[MYTHREAD].value
+				       [i]);
 		}
-	      /* Prepare reduced value for going up the tree. */
+	      /* Prepare reduced value for going up the tree.  */
 	      *t_result = local_result;
 	    }
 	}
@@ -3529,20 +3530,19 @@ void upc_all_reduceUL
 	  gupcr_coll_signal_wait (1);
 	}
 
-      /* Send reduced value from the thread and its children to the parent. */
+      /* Send reduced value to the parent.  */
       if (!IS_ROOT_THREAD)
 	{
 	  /* LEAF OR INNER THREAD */
 	  /* Each child places its result into the parent memory slot
 	     dedicated for the child. The parent is responsible
 	     for creating the reduced result for itself and its
-	     children. */
+	     children.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      size_t doffset = upc_addrfield ((shared void *)
 					      &(gupcr_reduce_storage
-						[MYTHREAD].
-						value
+						[MYTHREAD].value
 						[gupcr_coll_child_index]));
 	      size_t soffset =
 		upc_addrfield ((shared void *)
@@ -3553,8 +3553,8 @@ void upc_all_reduceUL
 	  else
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      gupcr_coll_put_atomic (gupcr_coll_parent_thread, offset, offset,
 				     sizeof (unsigned long),
 				     gupcr_portals_reduce_op (op),
@@ -3564,14 +3564,14 @@ void upc_all_reduceUL
 	}
 #endif /* GUPCR_USE_PORTALS4_TRIGGERED_OPS */
 
-      /* Copy result into the caller's specified destination. */
+      /* Copy result into the caller's specified destination.  */
       if (IS_ROOT_THREAD)
 	{
 	  *(shared unsigned long *) dst = *t_result;
 	}
     }
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_OUT_MYSYNC & sync_mode || !(UPC_OUT_NOSYNC & sync_mode))
     upc_barrier;
 
@@ -3633,8 +3633,7 @@ void upc_all_reduceF
    upc_op_t op,
    size_t nelems,
    size_t blk_size,
-   float (*func) (float, float),
-                       upc_flag_t sync_mode)
+   float (*func) (float, float), upc_flag_t sync_mode)
 {
   int i, n_local, full_rows, last_row;
   int num_thr, tail_thr, extras, ph, src_thr, dst_thr, velems, start;
@@ -3646,7 +3645,7 @@ void upc_all_reduceF
     upc_coll_init ();
 
   gupcr_trace (FC_COLL, "COLL ALL_REDUCE ENTER float %lu %lu",
-               (long unsigned) nelems, (long unsigned) blk_size);
+	       (long unsigned) nelems, (long unsigned) blk_size);
 
   if (blk_size == 0)
     blk_size = nelems;
@@ -3655,28 +3654,28 @@ void upc_all_reduceF
   upc_coll_err (dst, src, NULL, 0, sync_mode, blk_size, nelems, op, UPC_RED);
 #endif
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_IN_MYSYNC & sync_mode || !(UPC_IN_NOSYNC & sync_mode))
     upc_barrier;
 
-  /* Compute n_local, the number of elements local to this thread. */
+  /* Compute n_local, the number of elements local to this thread.  */
   n_local = 0;
 
-  /* Also compute start, the starting index of src for each thread. */
+  /* Also compute start, the starting index of src for each thread.  */
 
   src_thr = upc_threadof ((shared void *) src);
   dst_thr = upc_threadof ((shared void *) dst);
   ph = upc_phaseof ((shared void *) src);
 
-  /* nelems plus the number of virtual elements in first row. */
+  /* nelems plus the number of virtual elements in first row.  */
   velems = nelems + src_thr * blk_size + ph;
 
-  /* Include virtual elements when computing num of local elems. */
+  /* Include virtual elements when computing number of local elements.  */
   full_rows = velems / (blk_size * THREADS);
   last_row = velems % (blk_size * THREADS);
   tail_thr = last_row / blk_size;
 
-  /* Calculate number of participating threads. */
+  /* Calculate number of participating threads.  */
   num_thr = (nelems + ph + blk_size - 1) / blk_size;
   if (num_thr > THREADS)
     num_thr = THREADS;
@@ -3685,7 +3684,7 @@ void upc_all_reduceF
 	       "src_thr: %d tail_thr: %d ph: %d num_thr: %d full_rows: %d",
 	       src_thr, tail_thr, ph, num_thr, full_rows);
 
-  /* Calculate number of local elements. */
+  /* Calculate number of local elements.  */
   if (blk_size > 0)
     {
       if (MYTHREAD <= tail_thr)
@@ -3698,35 +3697,35 @@ void upc_all_reduceF
 
       n_local = blk_size * full_rows + extras;
 
-      /* Adjust the number of elements in this thread, if necessary. */
+      /* Adjust the number of elements in this thread, if necessary.  */
       if (MYTHREAD < src_thr)
 	n_local -= blk_size;
       else if (MYTHREAD == src_thr)
 	n_local -= ph;
     }
-  else				/* blk_size == 0 */
+  else
     {
       n_local = 0;
-      if (src_thr == MYTHREAD)	/* revise the number of local elements */
+      if (src_thr == MYTHREAD)	/* Revise the number of local elements.  */
 	n_local = nelems;
     }
 
   /* Starting index for this thread
      Note: start is sometimes negative because src is
-     addressed here as if its block size is 1. */
+     addressed here as if its block size is 1.  */
 
   if (blk_size > 0)
     if (MYTHREAD > src_thr)
       start = MYTHREAD - src_thr - ph * THREADS;
     else if (MYTHREAD < src_thr)
       start = (blk_size - ph) * THREADS + MYTHREAD - src_thr;
-    else			/* This is the source thread */
+    else			/* This is the source thread.  */
       start = 0;
-  else				/* blk_size == 0 */
+  else
     start = 0;
 
   /* Logical operations on floating point types must execute as
-     functions as Portals4 does not have support for them. */
+     functions as Portals4 does not have support for them.  */
   switch (op)
     {
     case UPC_LOGAND:
@@ -3739,7 +3738,7 @@ void upc_all_reduceF
       break;
     }
 
-  /* Reduce the elements local to this thread. */
+  /* Reduce the elements local to this thread.  */
 
   if (n_local > 0)
     {
@@ -3783,44 +3782,44 @@ void upc_all_reduceF
 	    local_result = func (local_result, *l_src++);
 	  break;
 	default:
-	  gupcr_fatal_error ("Bad UPC collectives reduce operator %d.", op);
+	  gupcr_fatal_error ("bad UPC collectives reduce operator 0x%lx", op);
 	}
     }
 
   /* Note: local_result is undefined if n_local == 0.
-     Note: Only a proper subset of threads might have a meaningful local_result
-     Note: dst might be on a thread that does not have a local result */
+     Note: Only a proper subset of threads have a meaningful local_result.
+     Note: dst might be a thread that does not have a local result.  */
 
-  /* Global reduce on only participating threads. */
+  /* Global reduce on only participating threads.  */
   if (n_local)
     {
-      /* Local pointer where reduced values are written too. */
+      /* Local pointer where reduced values are written too.  */
       float *t_result =
 	(float *) & gupcr_reduce_storage[MYTHREAD].value[0];
 
-      /* Initialize collectives reduce tree. */
+      /* Initialize collectives reduce tree.  */
       gupcr_coll_tree_setup (dst_thr, src_thr, num_thr);
 
       /* Copy in local results into the area for reduce operation.
          NOTE: Not needed for the case of collective functions. However,
-         this covers the case of only one thread. */
+         this covers the case of only one thread.  */
       *t_result = local_result;
 
 #ifdef GUPCR_USE_PORTALS4_TRIGGERED_OPS
-/* Run reduce operation without triggered functions. */
+/* Run reduce operation without triggered functions.  */
 #undef GUPCR_USE_PORTALS4_TRIGGERED_OPS
 #endif
 #if GUPCR_USE_PORTALS4_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
-         function. */
+         function.  */
       if (gupcr_coll_child_cnt)
 	{
 	  if (IS_ROOT_THREAD)
 	    {
 	      /* ROOT THREAD */
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -3830,13 +3829,13 @@ void upc_all_reduceF
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for children to report their values. */
+	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
 
-	      /* Reduce local values with those of children if necessary. */
+	      /* Reduce local values with those of children if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result =
@@ -3849,11 +3848,11 @@ void upc_all_reduceF
 	  else
 	    {
 	      /* INNER THREAD */
-	      /* Prepare triggered atomic function. */
+	      /* Prepare triggered atomic function.  */
 	      if ((op != UPC_FUNC) && (op != UPC_NONCOMM_FUNC))
 		{
 		  /* Use triggered atomic operations once children sent
-		     their results and parent is ready to receive it. */
+		     their results and parent is ready to receive it.  */
 		  size_t offset = upc_addrfield ((shared void *)
 						 &(gupcr_reduce_storage
 						   [MYTHREAD].value[0]));
@@ -3863,7 +3862,7 @@ void upc_all_reduceF
 					     UPC_COLL_TO_PTL_FLOAT,
 					     gupcr_coll_child_cnt + 1);
 		}
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -3873,9 +3872,9 @@ void upc_all_reduceF
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for completion - children reported and parent is ready. */
+	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
-	      /* Execute reduce functions if necessary. */
+	      /* Execute reduce functions if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -3885,93 +3884,95 @@ void upc_all_reduceF
 		    upc_addrfield ((shared void *)
 				   &(gupcr_reduce_storage[MYTHREAD].value
 				     [gupcr_coll_child_index]));
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result = func (local_result, *(float *)
-					   & gupcr_reduce_storage[MYTHREAD].
-					   value[i]);
+					   &
+					   gupcr_reduce_storage
+					   [MYTHREAD].value[i]);
 		    }
 		  *t_result = local_result;
 		  gupcr_coll_put (gupcr_coll_parent_thread, doffset, offset,
 				  sizeof (float));
 		}
-	      /* Wait for our value to go up the tree. */
+	      /* Wait for our value to go up the tree.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
       else
 	{
-	  /* Avoid the case where only one thread is available. */
+	  /* Avoid the case where only one thread is available.  */
 	  if (!IS_ROOT_THREAD)
 	    {
 	      /* LEAF THREAD */
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      switch (op)
 		{
 		case UPC_FUNC:
 		case UPC_NONCOMM_FUNC:
 		  {
-		    /* Schedule a triggered put once signal is received. */
+		    /* Schedule a triggered put once signal is received.  */
 		    size_t doffset = upc_addrfield ((shared void *)
 						    &(gupcr_reduce_storage
-						      [MYTHREAD].value
+						      [MYTHREAD].
+						      value
 						      [gupcr_coll_child_index]));
 		    gupcr_coll_trigput (gupcr_coll_parent_thread, doffset,
 					offset, sizeof (float), 1);
 		  }
 		  break;
 		default:
-		  /* Schedule a triggered atomic put once parent is ready. */
+		  /* Schedule a triggered atomic put once parent is ready.  */
 		  gupcr_coll_trigput_atomic (gupcr_coll_parent_thread, offset,
 					     offset, sizeof (float),
 					     gupcr_portals_reduce_op (op),
 					     UPC_COLL_TO_PTL_FLOAT, 1);
 		  break;
 		}
-	      /* Wait for parent to be ready. */
+	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
-	      /* Wait for our value to leave. */
+	      /* Wait for our value to leave.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
 #else /* NO TRIGGERED OPS */
-      /* Send signal to all children. */
+      /* Send signal to all children.  */
       if (gupcr_coll_child_cnt)
 	{
 	  /* ROOT OR INNER THREAD */
 	  int wait_cnt = gupcr_coll_child_cnt;
 
 	  /* Signal that parent is ready to receive the locally reduced
-	     values from its children. Value that we send does not matter. */
+	     values from its children. Value that we send does not matter.  */
 	  for (i = 0; i < gupcr_coll_child_cnt; i++)
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       signal));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
 	  gupcr_coll_ack_wait (wait_cnt);
 
 	  /* Wait for children to report their local reduced values and
-	     parent to report it is ready to receive the reduced value. */
+	     parent to report it is ready to receive the reduced value.  */
 	  if (!IS_ROOT_THREAD)
 	    ++wait_cnt;
 	  gupcr_coll_signal_wait (wait_cnt);
 
-	  /* Compute result if reduce functions are used. */
+	  /* Compute result if reduce functions are used.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  local_result = func (local_result,
 				       *(float *) &
-				       gupcr_reduce_storage[MYTHREAD].
-				       value[i]);
+				       gupcr_reduce_storage[MYTHREAD].value
+				       [i]);
 		}
-	      /* Prepare reduced value for going up the tree. */
+	      /* Prepare reduced value for going up the tree.  */
 	      *t_result = local_result;
 	    }
 	}
@@ -3981,20 +3982,19 @@ void upc_all_reduceF
 	  gupcr_coll_signal_wait (1);
 	}
 
-      /* Send reduced value from the thread and its children to the parent. */
+      /* Send reduced value to the parent.  */
       if (!IS_ROOT_THREAD)
 	{
 	  /* LEAF OR INNER THREAD */
 	  /* Each child places its result into the parent memory slot
 	     dedicated for the child. The parent is responsible
 	     for creating the reduced result for itself and its
-	     children. */
+	     children.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      size_t doffset = upc_addrfield ((shared void *)
 					      &(gupcr_reduce_storage
-						[MYTHREAD].
-						value
+						[MYTHREAD].value
 						[gupcr_coll_child_index]));
 	      size_t soffset =
 		upc_addrfield ((shared void *)
@@ -4005,8 +4005,8 @@ void upc_all_reduceF
 	  else
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      gupcr_coll_put_atomic (gupcr_coll_parent_thread, offset, offset,
 				     sizeof (float),
 				     gupcr_portals_reduce_op (op),
@@ -4016,14 +4016,14 @@ void upc_all_reduceF
 	}
 #endif /* GUPCR_USE_PORTALS4_TRIGGERED_OPS */
 
-      /* Copy result into the caller's specified destination. */
+      /* Copy result into the caller's specified destination.  */
       if (IS_ROOT_THREAD)
 	{
 	  *(shared float *) dst = *t_result;
 	}
     }
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_OUT_MYSYNC & sync_mode || !(UPC_OUT_NOSYNC & sync_mode))
     upc_barrier;
 
@@ -4085,8 +4085,7 @@ void upc_all_reduceD
    upc_op_t op,
    size_t nelems,
    size_t blk_size,
-   double (*func) (double, double),
-                       upc_flag_t sync_mode)
+   double (*func) (double, double), upc_flag_t sync_mode)
 {
   int i, n_local, full_rows, last_row;
   int num_thr, tail_thr, extras, ph, src_thr, dst_thr, velems, start;
@@ -4098,7 +4097,7 @@ void upc_all_reduceD
     upc_coll_init ();
 
   gupcr_trace (FC_COLL, "COLL ALL_REDUCE ENTER double %lu %lu",
-               (long unsigned) nelems, (long unsigned) blk_size);
+	       (long unsigned) nelems, (long unsigned) blk_size);
 
   if (blk_size == 0)
     blk_size = nelems;
@@ -4107,28 +4106,28 @@ void upc_all_reduceD
   upc_coll_err (dst, src, NULL, 0, sync_mode, blk_size, nelems, op, UPC_RED);
 #endif
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_IN_MYSYNC & sync_mode || !(UPC_IN_NOSYNC & sync_mode))
     upc_barrier;
 
-  /* Compute n_local, the number of elements local to this thread. */
+  /* Compute n_local, the number of elements local to this thread.  */
   n_local = 0;
 
-  /* Also compute start, the starting index of src for each thread. */
+  /* Also compute start, the starting index of src for each thread.  */
 
   src_thr = upc_threadof ((shared void *) src);
   dst_thr = upc_threadof ((shared void *) dst);
   ph = upc_phaseof ((shared void *) src);
 
-  /* nelems plus the number of virtual elements in first row. */
+  /* nelems plus the number of virtual elements in first row.  */
   velems = nelems + src_thr * blk_size + ph;
 
-  /* Include virtual elements when computing num of local elems. */
+  /* Include virtual elements when computing number of local elements.  */
   full_rows = velems / (blk_size * THREADS);
   last_row = velems % (blk_size * THREADS);
   tail_thr = last_row / blk_size;
 
-  /* Calculate number of participating threads. */
+  /* Calculate number of participating threads.  */
   num_thr = (nelems + ph + blk_size - 1) / blk_size;
   if (num_thr > THREADS)
     num_thr = THREADS;
@@ -4137,7 +4136,7 @@ void upc_all_reduceD
 	       "src_thr: %d tail_thr: %d ph: %d num_thr: %d full_rows: %d",
 	       src_thr, tail_thr, ph, num_thr, full_rows);
 
-  /* Calculate number of local elements. */
+  /* Calculate number of local elements.  */
   if (blk_size > 0)
     {
       if (MYTHREAD <= tail_thr)
@@ -4150,35 +4149,35 @@ void upc_all_reduceD
 
       n_local = blk_size * full_rows + extras;
 
-      /* Adjust the number of elements in this thread, if necessary. */
+      /* Adjust the number of elements in this thread, if necessary.  */
       if (MYTHREAD < src_thr)
 	n_local -= blk_size;
       else if (MYTHREAD == src_thr)
 	n_local -= ph;
     }
-  else				/* blk_size == 0 */
+  else
     {
       n_local = 0;
-      if (src_thr == MYTHREAD)	/* revise the number of local elements */
+      if (src_thr == MYTHREAD)	/* Revise the number of local elements.  */
 	n_local = nelems;
     }
 
   /* Starting index for this thread
      Note: start is sometimes negative because src is
-     addressed here as if its block size is 1. */
+     addressed here as if its block size is 1.  */
 
   if (blk_size > 0)
     if (MYTHREAD > src_thr)
       start = MYTHREAD - src_thr - ph * THREADS;
     else if (MYTHREAD < src_thr)
       start = (blk_size - ph) * THREADS + MYTHREAD - src_thr;
-    else			/* This is the source thread */
+    else			/* This is the source thread.  */
       start = 0;
-  else				/* blk_size == 0 */
+  else
     start = 0;
 
   /* Logical operations on floating point types must execute as
-     functions as Portals4 does not have support for them. */
+     functions as Portals4 does not have support for them.  */
   switch (op)
     {
     case UPC_LOGAND:
@@ -4191,7 +4190,7 @@ void upc_all_reduceD
       break;
     }
 
-  /* Reduce the elements local to this thread. */
+  /* Reduce the elements local to this thread.  */
 
   if (n_local > 0)
     {
@@ -4235,44 +4234,44 @@ void upc_all_reduceD
 	    local_result = func (local_result, *l_src++);
 	  break;
 	default:
-	  gupcr_fatal_error ("Bad UPC collectives reduce operator %d.", op);
+	  gupcr_fatal_error ("bad UPC collectives reduce operator 0x%lx", op);
 	}
     }
 
   /* Note: local_result is undefined if n_local == 0.
-     Note: Only a proper subset of threads might have a meaningful local_result
-     Note: dst might be on a thread that does not have a local result */
+     Note: Only a proper subset of threads have a meaningful local_result.
+     Note: dst might be a thread that does not have a local result.  */
 
-  /* Global reduce on only participating threads. */
+  /* Global reduce on only participating threads.  */
   if (n_local)
     {
-      /* Local pointer where reduced values are written too. */
+      /* Local pointer where reduced values are written too.  */
       double *t_result =
 	(double *) & gupcr_reduce_storage[MYTHREAD].value[0];
 
-      /* Initialize collectives reduce tree. */
+      /* Initialize collectives reduce tree.  */
       gupcr_coll_tree_setup (dst_thr, src_thr, num_thr);
 
       /* Copy in local results into the area for reduce operation.
          NOTE: Not needed for the case of collective functions. However,
-         this covers the case of only one thread. */
+         this covers the case of only one thread.  */
       *t_result = local_result;
 
 #ifdef GUPCR_USE_PORTALS4_TRIGGERED_OPS
-/* Run reduce operation without triggered functions. */
+/* Run reduce operation without triggered functions.  */
 #undef GUPCR_USE_PORTALS4_TRIGGERED_OPS
 #endif
 #if GUPCR_USE_PORTALS4_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
-         function. */
+         function.  */
       if (gupcr_coll_child_cnt)
 	{
 	  if (IS_ROOT_THREAD)
 	    {
 	      /* ROOT THREAD */
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -4282,13 +4281,13 @@ void upc_all_reduceD
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for children to report their values. */
+	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
 
-	      /* Reduce local values with those of children if necessary. */
+	      /* Reduce local values with those of children if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result =
@@ -4301,11 +4300,11 @@ void upc_all_reduceD
 	  else
 	    {
 	      /* INNER THREAD */
-	      /* Prepare triggered atomic function. */
+	      /* Prepare triggered atomic function.  */
 	      if ((op != UPC_FUNC) && (op != UPC_NONCOMM_FUNC))
 		{
 		  /* Use triggered atomic operations once children sent
-		     their results and parent is ready to receive it. */
+		     their results and parent is ready to receive it.  */
 		  size_t offset = upc_addrfield ((shared void *)
 						 &(gupcr_reduce_storage
 						   [MYTHREAD].value[0]));
@@ -4315,7 +4314,7 @@ void upc_all_reduceD
 					     UPC_COLL_TO_PTL_DOUBLE,
 					     gupcr_coll_child_cnt + 1);
 		}
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -4325,9 +4324,9 @@ void upc_all_reduceD
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for completion - children reported and parent is ready. */
+	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
-	      /* Execute reduce functions if necessary. */
+	      /* Execute reduce functions if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -4337,93 +4336,95 @@ void upc_all_reduceD
 		    upc_addrfield ((shared void *)
 				   &(gupcr_reduce_storage[MYTHREAD].value
 				     [gupcr_coll_child_index]));
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result = func (local_result, *(double *)
-					   & gupcr_reduce_storage[MYTHREAD].
-					   value[i]);
+					   &
+					   gupcr_reduce_storage
+					   [MYTHREAD].value[i]);
 		    }
 		  *t_result = local_result;
 		  gupcr_coll_put (gupcr_coll_parent_thread, doffset, offset,
 				  sizeof (double));
 		}
-	      /* Wait for our value to go up the tree. */
+	      /* Wait for our value to go up the tree.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
       else
 	{
-	  /* Avoid the case where only one thread is available. */
+	  /* Avoid the case where only one thread is available.  */
 	  if (!IS_ROOT_THREAD)
 	    {
 	      /* LEAF THREAD */
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      switch (op)
 		{
 		case UPC_FUNC:
 		case UPC_NONCOMM_FUNC:
 		  {
-		    /* Schedule a triggered put once signal is received. */
+		    /* Schedule a triggered put once signal is received.  */
 		    size_t doffset = upc_addrfield ((shared void *)
 						    &(gupcr_reduce_storage
-						      [MYTHREAD].value
+						      [MYTHREAD].
+						      value
 						      [gupcr_coll_child_index]));
 		    gupcr_coll_trigput (gupcr_coll_parent_thread, doffset,
 					offset, sizeof (double), 1);
 		  }
 		  break;
 		default:
-		  /* Schedule a triggered atomic put once parent is ready. */
+		  /* Schedule a triggered atomic put once parent is ready.  */
 		  gupcr_coll_trigput_atomic (gupcr_coll_parent_thread, offset,
 					     offset, sizeof (double),
 					     gupcr_portals_reduce_op (op),
 					     UPC_COLL_TO_PTL_DOUBLE, 1);
 		  break;
 		}
-	      /* Wait for parent to be ready. */
+	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
-	      /* Wait for our value to leave. */
+	      /* Wait for our value to leave.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
 #else /* NO TRIGGERED OPS */
-      /* Send signal to all children. */
+      /* Send signal to all children.  */
       if (gupcr_coll_child_cnt)
 	{
 	  /* ROOT OR INNER THREAD */
 	  int wait_cnt = gupcr_coll_child_cnt;
 
 	  /* Signal that parent is ready to receive the locally reduced
-	     values from its children. Value that we send does not matter. */
+	     values from its children. Value that we send does not matter.  */
 	  for (i = 0; i < gupcr_coll_child_cnt; i++)
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       signal));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
 	  gupcr_coll_ack_wait (wait_cnt);
 
 	  /* Wait for children to report their local reduced values and
-	     parent to report it is ready to receive the reduced value. */
+	     parent to report it is ready to receive the reduced value.  */
 	  if (!IS_ROOT_THREAD)
 	    ++wait_cnt;
 	  gupcr_coll_signal_wait (wait_cnt);
 
-	  /* Compute result if reduce functions are used. */
+	  /* Compute result if reduce functions are used.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  local_result = func (local_result,
 				       *(double *) &
-				       gupcr_reduce_storage[MYTHREAD].
-				       value[i]);
+				       gupcr_reduce_storage[MYTHREAD].value
+				       [i]);
 		}
-	      /* Prepare reduced value for going up the tree. */
+	      /* Prepare reduced value for going up the tree.  */
 	      *t_result = local_result;
 	    }
 	}
@@ -4433,20 +4434,19 @@ void upc_all_reduceD
 	  gupcr_coll_signal_wait (1);
 	}
 
-      /* Send reduced value from the thread and its children to the parent. */
+      /* Send reduced value to the parent.  */
       if (!IS_ROOT_THREAD)
 	{
 	  /* LEAF OR INNER THREAD */
 	  /* Each child places its result into the parent memory slot
 	     dedicated for the child. The parent is responsible
 	     for creating the reduced result for itself and its
-	     children. */
+	     children.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      size_t doffset = upc_addrfield ((shared void *)
 					      &(gupcr_reduce_storage
-						[MYTHREAD].
-						value
+						[MYTHREAD].value
 						[gupcr_coll_child_index]));
 	      size_t soffset =
 		upc_addrfield ((shared void *)
@@ -4457,8 +4457,8 @@ void upc_all_reduceD
 	  else
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      gupcr_coll_put_atomic (gupcr_coll_parent_thread, offset, offset,
 				     sizeof (double),
 				     gupcr_portals_reduce_op (op),
@@ -4468,14 +4468,14 @@ void upc_all_reduceD
 	}
 #endif /* GUPCR_USE_PORTALS4_TRIGGERED_OPS */
 
-      /* Copy result into the caller's specified destination. */
+      /* Copy result into the caller's specified destination.  */
       if (IS_ROOT_THREAD)
 	{
 	  *(shared double *) dst = *t_result;
 	}
     }
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_OUT_MYSYNC & sync_mode || !(UPC_OUT_NOSYNC & sync_mode))
     upc_barrier;
 
@@ -4537,8 +4537,7 @@ void upc_all_reduceLD
    upc_op_t op,
    size_t nelems,
    size_t blk_size,
-   long double (*func) (long double, long double),
-                       upc_flag_t sync_mode)
+   long double (*func) (long double, long double), upc_flag_t sync_mode)
 {
   int i, n_local, full_rows, last_row;
   int num_thr, tail_thr, extras, ph, src_thr, dst_thr, velems, start;
@@ -4550,7 +4549,7 @@ void upc_all_reduceLD
     upc_coll_init ();
 
   gupcr_trace (FC_COLL, "COLL ALL_REDUCE ENTER long double %lu %lu",
-               (long unsigned) nelems, (long unsigned) blk_size);
+	       (long unsigned) nelems, (long unsigned) blk_size);
 
   if (blk_size == 0)
     blk_size = nelems;
@@ -4559,28 +4558,28 @@ void upc_all_reduceLD
   upc_coll_err (dst, src, NULL, 0, sync_mode, blk_size, nelems, op, UPC_RED);
 #endif
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_IN_MYSYNC & sync_mode || !(UPC_IN_NOSYNC & sync_mode))
     upc_barrier;
 
-  /* Compute n_local, the number of elements local to this thread. */
+  /* Compute n_local, the number of elements local to this thread.  */
   n_local = 0;
 
-  /* Also compute start, the starting index of src for each thread. */
+  /* Also compute start, the starting index of src for each thread.  */
 
   src_thr = upc_threadof ((shared void *) src);
   dst_thr = upc_threadof ((shared void *) dst);
   ph = upc_phaseof ((shared void *) src);
 
-  /* nelems plus the number of virtual elements in first row. */
+  /* nelems plus the number of virtual elements in first row.  */
   velems = nelems + src_thr * blk_size + ph;
 
-  /* Include virtual elements when computing num of local elems. */
+  /* Include virtual elements when computing number of local elements.  */
   full_rows = velems / (blk_size * THREADS);
   last_row = velems % (blk_size * THREADS);
   tail_thr = last_row / blk_size;
 
-  /* Calculate number of participating threads. */
+  /* Calculate number of participating threads.  */
   num_thr = (nelems + ph + blk_size - 1) / blk_size;
   if (num_thr > THREADS)
     num_thr = THREADS;
@@ -4589,7 +4588,7 @@ void upc_all_reduceLD
 	       "src_thr: %d tail_thr: %d ph: %d num_thr: %d full_rows: %d",
 	       src_thr, tail_thr, ph, num_thr, full_rows);
 
-  /* Calculate number of local elements. */
+  /* Calculate number of local elements.  */
   if (blk_size > 0)
     {
       if (MYTHREAD <= tail_thr)
@@ -4602,35 +4601,35 @@ void upc_all_reduceLD
 
       n_local = blk_size * full_rows + extras;
 
-      /* Adjust the number of elements in this thread, if necessary. */
+      /* Adjust the number of elements in this thread, if necessary.  */
       if (MYTHREAD < src_thr)
 	n_local -= blk_size;
       else if (MYTHREAD == src_thr)
 	n_local -= ph;
     }
-  else				/* blk_size == 0 */
+  else
     {
       n_local = 0;
-      if (src_thr == MYTHREAD)	/* revise the number of local elements */
+      if (src_thr == MYTHREAD)	/* Revise the number of local elements.  */
 	n_local = nelems;
     }
 
   /* Starting index for this thread
      Note: start is sometimes negative because src is
-     addressed here as if its block size is 1. */
+     addressed here as if its block size is 1.  */
 
   if (blk_size > 0)
     if (MYTHREAD > src_thr)
       start = MYTHREAD - src_thr - ph * THREADS;
     else if (MYTHREAD < src_thr)
       start = (blk_size - ph) * THREADS + MYTHREAD - src_thr;
-    else			/* This is the source thread */
+    else			/* This is the source thread.  */
       start = 0;
-  else				/* blk_size == 0 */
+  else
     start = 0;
 
   /* Logical operations on floating point types must execute as
-     functions as Portals4 does not have support for them. */
+     functions as Portals4 does not have support for them.  */
   switch (op)
     {
     case UPC_LOGAND:
@@ -4643,7 +4642,7 @@ void upc_all_reduceLD
       break;
     }
 
-  /* Reduce the elements local to this thread. */
+  /* Reduce the elements local to this thread.  */
 
   if (n_local > 0)
     {
@@ -4687,44 +4686,44 @@ void upc_all_reduceLD
 	    local_result = func (local_result, *l_src++);
 	  break;
 	default:
-	  gupcr_fatal_error ("Bad UPC collectives reduce operator %d.", op);
+	  gupcr_fatal_error ("bad UPC collectives reduce operator 0x%lx", op);
 	}
     }
 
   /* Note: local_result is undefined if n_local == 0.
-     Note: Only a proper subset of threads might have a meaningful local_result
-     Note: dst might be on a thread that does not have a local result */
+     Note: Only a proper subset of threads have a meaningful local_result.
+     Note: dst might be a thread that does not have a local result.  */
 
-  /* Global reduce on only participating threads. */
+  /* Global reduce on only participating threads.  */
   if (n_local)
     {
-      /* Local pointer where reduced values are written too. */
+      /* Local pointer where reduced values are written too.  */
       long double *t_result =
 	(long double *) & gupcr_reduce_storage[MYTHREAD].value[0];
 
-      /* Initialize collectives reduce tree. */
+      /* Initialize collectives reduce tree.  */
       gupcr_coll_tree_setup (dst_thr, src_thr, num_thr);
 
       /* Copy in local results into the area for reduce operation.
          NOTE: Not needed for the case of collective functions. However,
-         this covers the case of only one thread. */
+         this covers the case of only one thread.  */
       *t_result = local_result;
 
 #ifdef GUPCR_USE_PORTALS4_TRIGGERED_OPS
-/* Run reduce operation without triggered functions. */
+/* Run reduce operation without triggered functions.  */
 #undef GUPCR_USE_PORTALS4_TRIGGERED_OPS
 #endif
 #if GUPCR_USE_PORTALS4_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
-         function. */
+         function.  */
       if (gupcr_coll_child_cnt)
 	{
 	  if (IS_ROOT_THREAD)
 	    {
 	      /* ROOT THREAD */
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -4734,13 +4733,13 @@ void upc_all_reduceLD
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for children to report their values. */
+	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
 
-	      /* Reduce local values with those of children if necessary. */
+	      /* Reduce local values with those of children if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result =
@@ -4753,11 +4752,11 @@ void upc_all_reduceLD
 	  else
 	    {
 	      /* INNER THREAD */
-	      /* Prepare triggered atomic function. */
+	      /* Prepare triggered atomic function.  */
 	      if ((op != UPC_FUNC) && (op != UPC_NONCOMM_FUNC))
 		{
 		  /* Use triggered atomic operations once children sent
-		     their results and parent is ready to receive it. */
+		     their results and parent is ready to receive it.  */
 		  size_t offset = upc_addrfield ((shared void *)
 						 &(gupcr_reduce_storage
 						   [MYTHREAD].value[0]));
@@ -4767,7 +4766,7 @@ void upc_all_reduceLD
 					     UPC_COLL_TO_PTL_LONG_DOUBLE,
 					     gupcr_coll_child_cnt + 1);
 		}
-	      /* Let children know that parent is ready. */
+	      /* Let children know that parent is ready.  */
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -4777,9 +4776,9 @@ void upc_all_reduceLD
 		}
 	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
 
-	      /* Wait for completion - children reported and parent is ready. */
+	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
-	      /* Execute reduce functions if necessary. */
+	      /* Execute reduce functions if necessary.  */
 	      if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 		{
 		  size_t offset = upc_addrfield ((shared void *)
@@ -4789,93 +4788,95 @@ void upc_all_reduceLD
 		    upc_addrfield ((shared void *)
 				   &(gupcr_reduce_storage[MYTHREAD].value
 				     [gupcr_coll_child_index]));
-		  /* Reduce local result with those of children. */
+		  /* Reduce local result with those of children.  */
 		  for (i = 0; i < gupcr_coll_child_cnt; i++)
 		    {
 		      local_result = func (local_result, *(long double *)
-					   & gupcr_reduce_storage[MYTHREAD].
-					   value[i]);
+					   &
+					   gupcr_reduce_storage
+					   [MYTHREAD].value[i]);
 		    }
 		  *t_result = local_result;
 		  gupcr_coll_put (gupcr_coll_parent_thread, doffset, offset,
 				  sizeof (long double));
 		}
-	      /* Wait for our value to go up the tree. */
+	      /* Wait for our value to go up the tree.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
       else
 	{
-	  /* Avoid the case where only one thread is available. */
+	  /* Avoid the case where only one thread is available.  */
 	  if (!IS_ROOT_THREAD)
 	    {
 	      /* LEAF THREAD */
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      switch (op)
 		{
 		case UPC_FUNC:
 		case UPC_NONCOMM_FUNC:
 		  {
-		    /* Schedule a triggered put once signal is received. */
+		    /* Schedule a triggered put once signal is received.  */
 		    size_t doffset = upc_addrfield ((shared void *)
 						    &(gupcr_reduce_storage
-						      [MYTHREAD].value
+						      [MYTHREAD].
+						      value
 						      [gupcr_coll_child_index]));
 		    gupcr_coll_trigput (gupcr_coll_parent_thread, doffset,
 					offset, sizeof (long double), 1);
 		  }
 		  break;
 		default:
-		  /* Schedule a triggered atomic put once parent is ready. */
+		  /* Schedule a triggered atomic put once parent is ready.  */
 		  gupcr_coll_trigput_atomic (gupcr_coll_parent_thread, offset,
 					     offset, sizeof (long double),
 					     gupcr_portals_reduce_op (op),
 					     UPC_COLL_TO_PTL_LONG_DOUBLE, 1);
 		  break;
 		}
-	      /* Wait for parent to be ready. */
+	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
-	      /* Wait for our value to leave. */
+	      /* Wait for our value to leave.  */
 	      gupcr_coll_ack_wait (1);
 	    }
 	}
 #else /* NO TRIGGERED OPS */
-      /* Send signal to all children. */
+      /* Send signal to all children.  */
       if (gupcr_coll_child_cnt)
 	{
 	  /* ROOT OR INNER THREAD */
 	  int wait_cnt = gupcr_coll_child_cnt;
 
 	  /* Signal that parent is ready to receive the locally reduced
-	     values from its children. Value that we send does not matter. */
+	     values from its children. Value that we send does not matter.  */
 	  for (i = 0; i < gupcr_coll_child_cnt; i++)
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       signal));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
 	  gupcr_coll_ack_wait (wait_cnt);
 
 	  /* Wait for children to report their local reduced values and
-	     parent to report it is ready to receive the reduced value. */
+	     parent to report it is ready to receive the reduced value.  */
 	  if (!IS_ROOT_THREAD)
 	    ++wait_cnt;
 	  gupcr_coll_signal_wait (wait_cnt);
 
-	  /* Compute result if reduce functions are used. */
+	  /* Compute result if reduce functions are used.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      for (i = 0; i < gupcr_coll_child_cnt; i++)
 		{
 		  local_result = func (local_result,
 				       *(long double *) &
-				       gupcr_reduce_storage[MYTHREAD].
-				       value[i]);
+				       gupcr_reduce_storage[MYTHREAD].value
+				       [i]);
 		}
-	      /* Prepare reduced value for going up the tree. */
+	      /* Prepare reduced value for going up the tree.  */
 	      *t_result = local_result;
 	    }
 	}
@@ -4885,20 +4886,19 @@ void upc_all_reduceLD
 	  gupcr_coll_signal_wait (1);
 	}
 
-      /* Send reduced value from the thread and its children to the parent. */
+      /* Send reduced value to the parent.  */
       if (!IS_ROOT_THREAD)
 	{
 	  /* LEAF OR INNER THREAD */
 	  /* Each child places its result into the parent memory slot
 	     dedicated for the child. The parent is responsible
 	     for creating the reduced result for itself and its
-	     children. */
+	     children.  */
 	  if ((op == UPC_FUNC) || (op == UPC_NONCOMM_FUNC))
 	    {
 	      size_t doffset = upc_addrfield ((shared void *)
 					      &(gupcr_reduce_storage
-						[MYTHREAD].
-						value
+						[MYTHREAD].value
 						[gupcr_coll_child_index]));
 	      size_t soffset =
 		upc_addrfield ((shared void *)
@@ -4909,8 +4909,8 @@ void upc_all_reduceLD
 	  else
 	    {
 	      size_t offset = upc_addrfield ((shared void *)
-					     &(gupcr_reduce_storage[MYTHREAD].
-					       value[0]));
+					     &(gupcr_reduce_storage
+					       [MYTHREAD].value[0]));
 	      gupcr_coll_put_atomic (gupcr_coll_parent_thread, offset, offset,
 				     sizeof (long double),
 				     gupcr_portals_reduce_op (op),
@@ -4920,14 +4920,14 @@ void upc_all_reduceLD
 	}
 #endif /* GUPCR_USE_PORTALS4_TRIGGERED_OPS */
 
-      /* Copy result into the caller's specified destination. */
+      /* Copy result into the caller's specified destination.  */
       if (IS_ROOT_THREAD)
 	{
 	  *(shared long double *) dst = *t_result;
 	}
     }
 
-  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC. */
+  /* Synchronize using barriers in the cases of MYSYNC and ALLSYNC.  */
   if (UPC_OUT_MYSYNC & sync_mode || !(UPC_OUT_NOSYNC & sync_mode))
     upc_barrier;
 

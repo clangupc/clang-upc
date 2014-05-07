@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intel Corporation.  All rights reserved.
+|* Copyright 2012-2014, Intel Corporation.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTEL.TXT for details.
 |*
@@ -159,8 +159,7 @@ upc_memput (upc_shared_ptr_t dest, const void *src, size_t n)
  * Set shared memory block.
  *
  * The upc_memset function copies the value of c, converted to an unsigned
- * char, to a shared object with affinity to any single thread. The number of
- * bytes set is n.
+ * char, to a shared object with affinity to any single thread.
  *
  * @param [in] dest Pointer-to-shared of the destination
  * @param [in] c Value to set the remote memory

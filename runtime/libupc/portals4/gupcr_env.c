@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
@@ -123,6 +123,7 @@ gupcr_facility_table[] =
   {"addr", FC_ADDR},
   {"all", FC_ALL},
   {"alloc", FC_ALLOC},
+  {"atomic", FC_ATOMIC},
   {"barrier", FC_BARRIER},
   {"broadcast", FC_BROADCAST},
   {"coll", FC_COLL},
@@ -130,6 +131,7 @@ gupcr_facility_table[] =
   {"locks", FC_LOCK},
   {"mem", FC_MEM},
   {"misc", FC_MISC},
+  {"nb", FC_NB},
   {"portals", FC_PORTALS},
   {"system", FC_SYSTEM}
 };
@@ -139,8 +141,11 @@ gupcr_facility_table[] =
 typedef enum
 {
   ENV_NONE = 0,
+  ENV_UPC_BACKTRACE,
   ENV_UPC_DEBUG,
   ENV_UPC_DEBUGFILE,
+  ENV_UPC_FIRSTTOUCH,
+  ENV_UPC_FORCETOUCH,
   ENV_UPC_LOG,
   ENV_UPC_LOGFILE,
   ENV_UPC_NO_WARN,
@@ -163,8 +168,11 @@ static const struct gupcr_env_var_struct
 }
 gupcr_env_var_table[] =
 {
+  {"UPC_BACKTRACE", ENV_UPC_BACKTRACE},
   {"UPC_DEBUG", ENV_UPC_DEBUG},
   {"UPC_DEBUGFILE", ENV_UPC_DEBUGFILE},
+  {"UPC_FIRSTTOUCH", ENV_UPC_FIRSTTOUCH},
+  {"UPC_FORCETOUCH", ENV_UPC_FORCETOUCH},
   {"UPC_LOG", ENV_UPC_LOG},
   {"UPC_LOGFILE", ENV_UPC_LOGFILE},
   {"UPC_NO_WARN", ENV_UPC_NO_WARN},
@@ -281,7 +289,7 @@ gupcr_env_filename (const char *const env_var_arg)
 		++filename_len;
 	    }
 	  /* Allocate the string; copy ENV_VAR_STR_ARG and
-	     make '%' substitutions.   */
+	     make '%' substitutions.  */
 	  gupcr_malloc (filename, filename_len + 1);
 	  for (fp = filename, cp = filename_arg; *cp; ++cp)
 	    {
@@ -336,7 +344,7 @@ gupcr_env_size (const char *const env_var_arg, long long int val_max)
 }
 
 static int
-gupcr_env_switch (const char *const env_var_arg)
+gupcr_env_boolean (const char *const env_var_arg)
 {
   int value = 0;
   char *env_var, *env_var_name, *switch_str;
@@ -345,18 +353,22 @@ gupcr_env_switch (const char *const env_var_arg)
     {
       if ((switch_str = strtok (NULL, "")))
 	{
-	  if (!strcmp (switch_str, "OFF") || !strcmp (switch_str, "off"))
+	  if (!strcmp (switch_str, "NO") || \
+	      !strcmp (switch_str, "no") || \
+	      !strcmp (switch_str, "0"))
 	    value = 0;
-	  else if (!strcmp (switch_str, "ON") || !strcmp (switch_str, "on"))
+	  else if (!strcmp (switch_str, "YES") || \
+		   !strcmp (switch_str, "yes") || \
+		   !strcmp (switch_str, "1"))
 	    value = 1;
 	  else
 	    {
-	      gupcr_error ("invalid option specifier in UPC environment "
+	      gupcr_error ("invalid value specifier in UPC environment "
 			   "variable: `%s'", env_var_arg);
 	    }
 	}
       else
-	gupcr_error ("missing option specifier in UPC environment "
+	gupcr_error ("missing value specifier in UPC environment "
 		     "variable: `%s'", env_var_arg);
     }
   else
@@ -387,6 +399,9 @@ gupcr_env_init (void)
 	  size_t heap_size;
 	  switch (env_kind)
 	    {
+	    case ENV_UPC_BACKTRACE:
+	      gupcr_set_backtrace (gupcr_env_boolean (env_var));
+	      break;
 	    case ENV_UPC_DEBUG:
 	      facility_mask = gupcr_env_facility_list (env_var);
 	      if (facility_mask)
@@ -396,6 +411,12 @@ gupcr_env_init (void)
 	      filename = gupcr_env_filename (env_var);
 	      if (filename)
 		gupcr_set_debug_filename (filename);
+	      break;
+	    case ENV_UPC_FIRSTTOUCH:
+	      /* no-op */
+	      break;
+	    case ENV_UPC_FORCETOUCH:
+	      gupcr_set_forcetouch (gupcr_env_boolean (env_var));
 	      break;
 	    case ENV_UPC_LOG:
 	      facility_mask = gupcr_env_facility_list (env_var);
@@ -411,7 +432,7 @@ gupcr_env_init (void)
 	      gupcr_no_warn ();
 	      break;
 	    case ENV_UPC_NODE_LOCAL_MEM:
-	      gupcr_set_node_local_mem_enabled (gupcr_env_switch (env_var));
+	      gupcr_set_node_local_memory (gupcr_env_boolean (env_var));
 	      break;
 	    case ENV_UPC_NODES:
 	      /* no-op */
@@ -452,7 +473,7 @@ gupcr_env_init (void)
 	      gupcr_warn ("unknown UPC environment variable: %s", env_var);
 	      break;
 	    default:
-	      gupcr_fatal_error ("env var. case value out of range");
+	      gupcr_fatal_error ("env variable case value out of range");
 	    }
 	}
     }

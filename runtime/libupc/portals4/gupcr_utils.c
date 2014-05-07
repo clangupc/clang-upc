@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
@@ -56,7 +56,9 @@ static char gupcr_pid_string[13];
 static int gupcr_inform_user = 1;
 static int gupcr_warn_user = 1;
 static size_t gupcr_shared_heap_size;
-static int gupcr_node_local_mem_enabled = 1;
+static int gupcr_node_local_memory = 1;
+static int gupcr_forcetouch = 1;
+static int gupcr_backtrace = 0;
 
 static gupcr_open_file_ref gupcr_open_files_list;
 static int gupcr_debug_enabled;
@@ -149,7 +151,7 @@ gupcr_abort (void)
   abort ();
 }
 
-/* NOTE: registered as an exit routine */
+/* NOTE: registered as an exit routine.  */
 void
 gupcr_exit ()
 {
@@ -230,15 +232,39 @@ gupcr_get_shared_heap_size (void)
 }
 
 void
-gupcr_set_node_local_mem_enabled (int value)
+gupcr_set_node_local_memory (int value)
 {
-  gupcr_node_local_mem_enabled = value;
+  gupcr_node_local_memory = value;
 }
 
 int
-gupcr_is_node_local_mem_enabled (void)
+gupcr_is_node_local_memory_enabled (void)
 {
-  return gupcr_node_local_mem_enabled;
+  return gupcr_node_local_memory;
+}
+
+void
+gupcr_set_forcetouch (int value)
+{
+  gupcr_forcetouch = value;
+}
+
+int
+gupcr_is_forcetouch_enabled (void)
+{
+  return gupcr_forcetouch;
+}
+
+void
+gupcr_set_backtrace (int value)
+{
+  gupcr_backtrace = value;
+}
+
+int
+gupcr_is_backtrace_enabled (void)
+{
+  return gupcr_backtrace;
 }
 
 /** Node local unique name.  */
@@ -274,6 +300,26 @@ gupcr_unique_local_name (char *fname, const char *prefix, int thread,
     gupcr_fatal_error ("unique local name too long");
   sprintf (n, "%s" GUPCR_LOCAL_NAME_FMT, prefix, thread,
 	   gupcr_get_rank_pid (thread));
+}
+
+/* Convert buffer to string (max of 16 characters) */
+const char *
+gupcr_get_buf_as_hex (char *bufstr, const void *buf, size_t size)
+{
+  size_t cnt = (size > 16) ? 16 : size;
+  bufstr[0] = 0;
+  if (cnt > 0)
+    {
+      char *tmp = bufstr;
+      size_t i;
+      for (i = 0; i < cnt - 1; ++i)
+	{
+	  sprintf (tmp, "%02x ", ((unsigned char *) buf)[i]);
+	  tmp += 3;
+	}
+      sprintf (tmp, "%02x", ((unsigned char *) buf)[cnt - 1]);
+    }
+  return bufstr;
 }
 
 void
@@ -550,7 +596,7 @@ gupcr_strtoll (const char *const str,
       errno = 0;
       result = strtoll (str, &suffix, 0);
       if (errno == ERANGE)
-	/* underflow/overflow */
+	/* Underflow/Overflow.  */
 	*status = -4;
       else if (suffix[0])
 	{
@@ -649,6 +695,37 @@ gupcr_strtoll_error (const char *const str,
       gupcr_fatal_error ("unreachable statement");
       break;
     }
+}
+
+/* Given a "tag" (a relative filename ending in XXXXXX),
+   create a temporary file using the tag.
+   Return a file descriptor associated with the newly
+   created temporary file.
+   [see: http://www.linux.com/howtos/Secure-Programs-HOWTO/avoid-race.shtml]  */
+
+int
+gupcr_create_temp_file (const char *tag, char *tmp_fname,
+                        const char **err_msg)
+{
+  const char *tmpdir = NULL;
+  mode_t old_mode;
+  int fd;
+  if ((getuid () == geteuid ()) && (getgid () == getegid ()))
+    {
+      tmpdir = getenv ("TMPDIR");
+      if (!tmpdir)
+        tmpdir = getenv ("TMP");
+    }
+  if (!tmpdir)
+    tmpdir = "/tmp";
+  sprintf (tmp_fname, "%s/%s", tmpdir, tag);
+  /* Create file with restrictive permissions */
+  old_mode = umask (077);
+  fd = mkstemp (tmp_fname);
+  (void) umask (old_mode);
+  if (fd < 0)
+    *err_msg = "Couldn't open temporary file";
+  return fd;
 }
 
 static void

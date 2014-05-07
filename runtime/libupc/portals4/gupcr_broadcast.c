@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intel Corporation.  All rights reserved.
+|* Copyright 2012-2014, Intel Corporation.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTEL.TXT for details.
 |*
@@ -50,11 +50,11 @@ void
 gupcr_broadcast_get (void *value, size_t nbytes)
 {
   if (!MYTHREAD)
-    gupcr_fatal_error ("Called from thread 0");
+    gupcr_fatal_error ("called from thread 0");
   if (nbytes > GUPCR_MAX_BROADCAST_SIZE)
-    gupcr_fatal_error ("Size of the broadcast message (%lld) is greater then "
+    gupcr_fatal_error ("size of broadcast message (%ld) is greater then "
 		       "the maximum allowed (%d)",
-		       (long long int) nbytes, GUPCR_MAX_BROADCAST_SIZE);
+		       (long int) nbytes, GUPCR_MAX_BROADCAST_SIZE);
   /* Wait to receive the broadcast message.  */
   gupcr_bcast_recv (value, nbytes);
 }
@@ -74,12 +74,11 @@ gupcr_broadcast_put (void *value, size_t nbytes)
   if (THREADS == 1)
     return;
   if (MYTHREAD)
-    gupcr_fatal_error ("Thread %d: called from thread other then 0",
-		       MYTHREAD);
+    gupcr_fatal_error ("called from thread other then 0");
   if (nbytes > GUPCR_MAX_BROADCAST_SIZE)
-    gupcr_fatal_error ("Size of the broadcast message (%lld) is greater then "
+    gupcr_fatal_error ("size of broadcast message (%ld) is greater then "
 		       "maximum allowed (%d)",
-		       (long long int) nbytes, GUPCR_MAX_BROADCAST_SIZE);
+		       (long int) nbytes, GUPCR_MAX_BROADCAST_SIZE);
   /* Send the broadcast message to the children of the root thread.  */
   gupcr_bcast_send (value, nbytes);
 }

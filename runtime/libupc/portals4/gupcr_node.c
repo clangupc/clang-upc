@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intel Corporation.  All rights reserved.
+|* Copyright 2012-2014, Intel Corporation.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTEL.TXT for details.
 |*
@@ -106,7 +106,7 @@ gupcr_mem_sigbus (int sig __attribute__ ((unused)))
 static void
 gupcr_mem_check (char *mem, size_t size, int thread)
 {
-  int temp;
+  char temp;
   struct sigaction action;
   struct sigaction old_action;
 
@@ -119,13 +119,26 @@ gupcr_mem_check (char *mem, size_t size, int thread)
   action.sa_flags = 0;
   sigaction (SIGBUS, &action, &old_action);
 
-  /* Only check the first and the last page.  */
-  temp = *(volatile int *) mem;
-  *(volatile int *) mem = temp;
-  temp = *(volatile int *) (mem + size - 16);
-  *(volatile int *) (mem + size - 16) = temp;
+  if (gupcr_is_forcetouch_enabled ())
+    {
+      volatile char *memp = (volatile char *) mem;
+      while (memp < mem + size)
+	{
+	  temp = *memp;
+	  *memp = temp;
+	  memp += GUPCR_MEMORY_PAGE_SIZE;
+	}
+    }
+  else
+    {
+      /* Only check the first and the last page.  */
+      temp = *(volatile char *) mem;
+      *(volatile char *) mem = temp;
+      temp = *(volatile char *) (mem + size - 16);
+      *(volatile char *) (mem + size - 16) = temp;
+    }
 
-  /* Restore the SIGBUS handler.  */
+  /* Restore SIGBUS handler.  */
   sigaction (SIGBUS, &old_action, NULL);
 }
 
@@ -173,7 +186,7 @@ gupcr_node_local_alloc (size_t size)
 
 #if GUPCR_NODE_LOCAL_MEM
   /* Node Local Memory can be disabled by env variable.  */
-  if (gupcr_is_node_local_mem_enabled ())
+  if (gupcr_is_node_local_memory_enabled ())
     {
       int i;
       /* Create mapping for this thread.  */
@@ -223,7 +236,7 @@ void
 gupcr_node_init (void)
 {
 #if GUPCR_NODE_LOCAL_MEM
-  if (gupcr_is_node_local_mem_enabled ())
+  if (gupcr_is_node_local_memory_enabled ())
     gupcr_mem_local_init ();
 #endif
 }

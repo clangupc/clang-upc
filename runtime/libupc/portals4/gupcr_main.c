@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intel Corporation.  All rights reserved.
+|* Copyright 2012-2014, Intel Corporation.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTEL.TXT for details.
 |*
@@ -12,6 +12,7 @@
  * @file gupcr_main.c
  * GUPC Portals4 runtime main program.
  */
+
 #include "gupcr_config.h"
 #include "gupcr_defs.h"
 #include "gupcr_sup.h"
@@ -26,6 +27,9 @@
 #include "gupcr_gmem.h"
 #include "gupcr_node.h"
 #include "gupcr_coll_sup.h"
+#include "gupcr_atomic_sup.h"
+#include "gupcr_nb_sup.h"
+#include "gupcr_backtrace.h"
 
 /** User's main program */
 extern int GUPCR_MAIN (int argc, char *argv[]);
@@ -71,17 +75,24 @@ gupcr_init (void)
   upc_shared_ptr_t heap_region_base;
   size_t heap_region_size;
 
+  /* Initialize Runtime.  */
+  if (gupcr_runtime_init ())
+    {
+      /* Report an error to stderr as the GUPC error reporting
+	 is not initialized yet.  Note: all threads report
+	 this error.  */
+      fprintf (stderr, "Unable to initialize runtime.\n");
+      abort ();
+    }
+
+  /* Get the thread number.  */
+  MYTHREAD = gupcr_runtime_get_rank ();
+
   /* Set up debugging, tracing, statistics, and timing support.  */
   gupcr_utils_init ();
 
-  /* Initialize Runtime.  */
-  gupcr_runtime_init ();
-
   /* Initialize Portals.  */
   gupcr_portals_init ();
-
-  /* Get the thread number.  */
-  MYTHREAD = gupcr_get_rank ();
 
   /* Validate program info.  */
   gupcr_validate_pgm_info ();
@@ -96,8 +107,13 @@ gupcr_init (void)
   else if (THREADS != run_threads_count)
     gupcr_abort_with_msg ("number of running threads (%d) is "
 			  "not equal to compiled threads (%d)",
-			  THREADS, run_threads_count);
+			  run_threads_count, THREADS);
   gupcr_assert (THREADS >= 1);
+
+#if HAVE_UPC_BACKTRACE                                                          
+  /* Initialize backtrace support. */                                           
+  gupcr_backtrace_init (gupcr_get_pgm_name () );                                        
+#endif 
 
   /* Initialize the Portals Network Interface.  */
   gupcr_portals_ni_init ();
@@ -112,6 +128,8 @@ gupcr_init (void)
   gupcr_barrier_init ();
   gupcr_broadcast_init ();
   gupcr_coll_init ();
+  gupcr_atomic_init ();
+  gupcr_nb_init ();
   gupcr_shutdown_init ();
 
   GUPCR_PTS_SET_NULL_SHARED (heap_region_base);
@@ -123,7 +141,7 @@ gupcr_init (void)
   /* Indicate that runtime initialization is complete.  */
   gupcr_init_complete ();
 
-  /* It is ok to call the finalization routines */
+  /* It is ok to call the finalization routines.  */
   gupcr_finalize_ok = 1;
 }
 
@@ -136,6 +154,8 @@ void
 gupcr_fini (void)
 {
   gupcr_shutdown_fini ();
+  gupcr_nb_fini ();
+  gupcr_atomic_fini ();
   gupcr_broadcast_fini ();
   gupcr_barrier_fini ();
   gupcr_lock_fini ();

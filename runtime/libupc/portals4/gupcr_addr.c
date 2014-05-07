@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
@@ -169,7 +169,7 @@ upc_affinitysize (size_t totalsize, size_t nbytes, size_t threadid)
 	result = (size_t) ((nblocks + THREADS - 1) / THREADS) * nbytes;
       else if (threadid > cutoff)
 	result = (size_t) (nblocks / THREADS) * nbytes;
-      else			/* threadid == cutoff */
+      else
 	result = (size_t) ((nblocks / THREADS) * nbytes)
 	  + totalsize - nblocks * nbytes;
     }

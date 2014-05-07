@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intel Corporation.  All rights reserved.
+|* Copyright 2012-2014, Intel Corporation.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTEL.TXT for details.
 |*
@@ -27,12 +27,12 @@ static double gupcr_clock_base;
 
 #if HAVE_CLOCK_GETTIME
 
-#if defined(CLOCK_MONOTONIC_RAW) && defined(CLOCK_MONOTONIC)
+#if defined (CLOCK_MONOTONIC_RAW) && defined (CLOCK_MONOTONIC)
 #define GUPCR_CLOCK_ID CLOCK_MONOTONIC_RAW
 /* On some RHEL/CentOS systems, the timer resolution returned for
    CLOCK_MONOTONIC_RAW is incorrect.  Use CLOCK_MONOTONIC instead.  */
 #define GUPCR_CLOCK_REZ_ID CLOCK_MONOTONIC
-#elif defined(CLOCK_MONOTONIC)
+#elif defined (CLOCK_MONOTONIC)
 #define GUPCR_CLOCK_ID CLOCK_MONOTONIC
 #define GUPCR_CLOCK_REZ_ID CLOCK_MONOTONIC
 #else

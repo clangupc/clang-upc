@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intel Corporation.  All rights reserved.
+|* Copyright 2012-2014, Intel Corporation.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTEL.TXT for details.
 |*
@@ -56,7 +56,7 @@ typedef shared upc_heap_t *upc_heap_p;
 
 typedef struct upc_heap_node_struct
 {
-  upc_heap_list_t link;		/* must be first */
+  upc_heap_list_t link;		/* Must be first.  */
   size_t size;
   int alloc_tag;
   int is_global;
@@ -74,6 +74,21 @@ static strict shared size_t gupcr_heap_local_low_water_mark;
 static upc_heap_p gupcr_global_heap;
 static upc_heap_p gupcr_local_heap;
 
+/** Increment a shared pointer, by 'nbytes'.  */
+static inline shared void *
+gupcr_pts_add_offset (shared void *ptr, ptrdiff_t nbytes)
+{
+  return (shared void *) (((shared [] char *) ptr) + nbytes);
+}
+
+/** Return the difference between 'ptr1' and 'ptr2'. Both
+    pointers must be non-NULL and have affinity to the same thread.  */
+static inline ptrdiff_t
+gupcr_pts_diff (shared void *ptr1, shared void *ptr2)
+{
+  return (ptrdiff_t) (((shared [] char *) ptr1) - ((shared [] char *) ptr2));
+}
+
 /** Return the smallest power of 2 that is >= 'v',
     scaled so that gupcr_log2 of the minimum allocation size is 0.  */
 static inline unsigned int
@@ -83,7 +98,7 @@ gupcr_plog2 (unsigned long long v)
     GUPCR_HEAP_ALLOC_MIN_BITS;
 }
 
-/** Return TRUE if 'list' is empty. */
+/** Return TRUE if 'list' is empty.  */
 static inline int
 gupcr_heap_is_empty_list (upc_heap_list_p list)
 {

@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intel Corporation.  All rights reserved.
+|* Copyright 2012-2014, Intel Corporation.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTEL.TXT for details.
 |*
@@ -36,6 +36,8 @@
 #define	GUPCR_PTL_PTE_SHUTDOWN		GUPCR_PTE_BASE+4
 /** Collectives service signaling PTE */
 #define	GUPCR_PTL_PTE_COLL		GUPCR_PTE_BASE+5
+/** Non-blocking transfers PTE */
+#define	GUPCR_PTL_PTE_NB		GUPCR_PTE_BASE+6
 /** @} */
 
 //begin lib_portals
@@ -46,6 +48,9 @@ extern size_t gupcr_max_ordered_size;
 /** Max size of a message (put, get, or reply) */
 extern size_t gupcr_max_msg_size;
 #define GUPCR_PORTALS_MAX_MSG_SIZE gupcr_max_msg_size
+/** Max size of a message that can use volatile memory descriptor */
+extern size_t gupcr_max_volatile_size;
+#define GUPCR_PORTALS_MAX_VOLATILE_SIZE gupcr_max_volatile_size
 
 //end lib_portals
 
@@ -75,6 +80,7 @@ extern size_t gupcr_max_msg_size;
       {									\
         pstatus = portals_func args;					\
 	if ((pstatus != PTL_OK) &&					\
+	    (pstatus != PTL_EQ_EMPTY) &&				\
 	    (pstatus != PTL_CT_NONE_REACHED) &&				\
 	    (pstatus != PTL_IN_USE) &&					\
 	    (pstatus != PTL_INTERRUPTED))		        	\
@@ -129,6 +135,7 @@ extern const char *gupcr_strptldatatype (ptl_datatype_t);
 extern const char *gupcr_nifailtype (ptl_ni_fail_t);
 extern void gupcr_process_fail_events (ptl_handle_eq_t);
 extern ptl_datatype_t gupcr_get_atomic_datatype (int);
+extern size_t gupcr_get_atomic_size (ptl_datatype_t);
 extern int gupcr_get_rank (void);
 extern int gupcr_get_threads_count (void);
 extern int gupcr_get_rank_pid (int rank);

@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intel Corporation.  All rights reserved.
+|* Copyright 2012-2014, Intel Corporation.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTEL.TXT for details.
 |*
@@ -59,6 +59,10 @@ size_t gupcr_gmem_heap_base_offset;
 
 /** Size of UPC shared region reserved for the heap */
 size_t gupcr_gmem_heap_size;
+
+/** Remote puts flow control */
+static const size_t gupcr_gmem_high_mark_puts = GUPCR_MAX_OUTSTANDING_PUTS;
+static const size_t gupcr_gmem_low_mark_puts = GUPCR_MAX_OUTSTANDING_PUTS / 2;
 
 /**
  * Allocate memory for this thread's shared space contribution.
@@ -235,6 +239,11 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 	  local_offset = src_addr - (char *) USER_PROG_MEM_START;
 	  md_handle = gupcr_gmem_puts.md;
 	}
+      else if (n_rem <= GUPCR_PORTALS_MAX_VOLATILE_SIZE)
+	{
+	  local_offset = src_addr - (char *) USER_PROG_MEM_START;
+	  md_handle = gupcr_gmem_puts.md_volatile;
+	}
       else
 	{
 	  char *bounce_buf;
@@ -256,6 +265,25 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 				   PTL_NULL_HDR_DATA));
       n_rem -= n_xfer;
       src_addr += n_xfer;
+
+      if (gupcr_gmem_puts.num_pending == gupcr_gmem_high_mark_puts)
+   	{
+	  ptl_ct_event_t ct;
+	  size_t complete_cnt;
+	  size_t wait_cnt = gupcr_gmem_puts.num_completed
+			    + gupcr_gmem_puts.num_pending
+			    - gupcr_gmem_low_mark_puts;
+	  gupcr_portals_call (PtlCTWait,
+			      (gupcr_gmem_puts.ct_handle, wait_cnt, &ct));
+	  if (ct.failure > 0)
+	    {
+	      gupcr_process_fail_events (gupcr_gmem_puts.eq_handle);
+	      gupcr_abort ();
+	    }
+	  complete_cnt = ct.success - gupcr_gmem_puts.num_completed;
+	  gupcr_gmem_puts.num_pending -= complete_cnt;
+	  gupcr_gmem_puts.num_completed = ct.success;
+	}
     }
   if (must_sync)
     gupcr_gmem_sync_puts ();
@@ -379,11 +407,11 @@ gupcr_gmem_set (int thread, size_t offset, int c, size_t n)
 void
 gupcr_gmem_init (void)
 {
-  ptl_md_t md;
+  ptl_md_t md, md_volatile;
   ptl_le_t le;
   ptl_pt_index_t pte;
   gupcr_log (FC_MEM, "gmem init called");
-  /* Allocate memory for this thread's contribution to shared memory. */
+  /* Allocate memory for this thread's contribution to shared memory.  */
   gupcr_gmem_alloc_shared ();
   gupcr_portals_call (PtlPTAlloc,
 		      (gupcr_ptl_ni, 0,
@@ -401,6 +429,9 @@ gupcr_gmem_init (void)
 		      (gupcr_ptl_ni,
 		       GUPCR_PTL_PTE_GMEM, &le,
 		       PTL_PRIORITY_LIST, NULL, &gupcr_gmem_le));
+  gupcr_debug (FC_MEM, "Gmem LE created at 0x%lx with size 0x%lx)",
+	      (long unsigned) gupcr_gmem_base,
+	      (long unsigned) gupcr_gmem_size);
   /* Initialize GMEM get lists */
   gupcr_gmem_gets.num_pending = 0;
   gupcr_gmem_gets.num_completed = 0;
@@ -417,12 +448,12 @@ gupcr_gmem_init (void)
   md.eq_handle = gupcr_gmem_gets.eq_handle;
   md.ct_handle = gupcr_gmem_gets.ct_handle;
   gupcr_portals_call (PtlMDBind, (gupcr_ptl_ni, &md, &gupcr_gmem_gets.md));
-  /* Initialize GMEM put lists. */
+  /* Initialize GMEM put lists.  */
   gupcr_gmem_puts.num_pending = 0;
   gupcr_gmem_puts.num_completed = 0;
   gupcr_gmem_puts.md_options =
     PTL_MD_EVENT_CT_ACK | PTL_MD_EVENT_SUCCESS_DISABLE;
-  /* Allocate at least THREADS number of EQ entries. */
+  /* Allocate at least THREADS number of EQ entries.  */
   gupcr_portals_call (PtlEQAlloc,
 		      (gupcr_ptl_ni, THREADS, &gupcr_gmem_puts.eq_handle));
   gupcr_portals_call (PtlCTAlloc, (gupcr_ptl_ni, &gupcr_gmem_puts.ct_handle));
@@ -433,7 +464,12 @@ gupcr_gmem_init (void)
   md.eq_handle = gupcr_gmem_puts.eq_handle;
   md.ct_handle = gupcr_gmem_puts.ct_handle;
   gupcr_portals_call (PtlMDBind, (gupcr_ptl_ni, &md, &gupcr_gmem_puts.md));
-  /* Initialize GMEM put bounce buffer. */
+  /* And map the same but with a volatile option.  */
+  md_volatile = md;
+  md_volatile.options |= PTL_MD_VOLATILE;
+  gupcr_portals_call (PtlMDBind, (gupcr_ptl_ni, &md_volatile,
+				  &gupcr_gmem_puts.md_volatile));
+  /* Initialize GMEM put bounce buffer.  */
   md.length = GUPCR_BOUNCE_BUFFER_SIZE;
   md.start = gupcr_gmem_put_bb;
   md.options = gupcr_gmem_puts.md_options;
@@ -454,12 +490,12 @@ gupcr_gmem_fini (void)
   gupcr_portals_call (PtlMDRelease, (gupcr_gmem_gets.md));
   gupcr_portals_call (PtlCTFree, (gupcr_gmem_gets.ct_handle));
   gupcr_portals_call (PtlEQFree, (gupcr_gmem_gets.eq_handle));
-  /* Release PUT MDs. */
+  /* Release PUT MDs.  */
   gupcr_portals_call (PtlMDRelease, (gupcr_gmem_puts.md));
   gupcr_portals_call (PtlMDRelease, (gupcr_gmem_put_bb_md));
   gupcr_portals_call (PtlCTFree, (gupcr_gmem_puts.ct_handle));
   gupcr_portals_call (PtlEQFree, (gupcr_gmem_puts.eq_handle));
-  /* Release LEs and PTEs. */
+  /* Release LEs and PTEs.  */
   gupcr_portals_call (PtlLEUnlink, (gupcr_gmem_le));
   gupcr_portals_call (PtlPTFree, (gupcr_ptl_ni, GUPCR_PTL_PTE_GMEM));
 }

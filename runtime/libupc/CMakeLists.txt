@@ -303,6 +303,9 @@ elseif(LIBUPC_RUNTIME_MODEL STREQUAL Portals4)
     portals4/gupcr_access.c
     portals4/gupcr_addr.c
     portals4/gupcr_alloc.upc
+    portals4/gupcr_atomic_sup.c
+    portals4/gupcr_atomic_sup.h
+    portals4/gupcr_atomic.upc
     portals4/gupcr_barrier.c
     portals4/gupcr_broadcast.c
     portals4/gupcr_clock.c

@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intel Corporation.  All rights reserved.
+|* Copyright 2012-2014, Intel Corporation.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTEL.TXT for details.
 |*
@@ -86,7 +86,7 @@ static ptl_handle_md_t gupcr_shutdown_md;
 /** Shutdown memory MD event counter */
 static ptl_handle_ct_t gupcr_shutdown_md_ct;
 /** Shutdown memory MD event queue */
-static ptl_handle_ct_t gupcr_shutdown_md_eq;
+static ptl_handle_eq_t gupcr_shutdown_md_eq;
 
 /** Shutdown pthread ID */
 static pthread_t gupcr_shutdown_pthread_id;
@@ -129,7 +129,7 @@ gupcr_signal_exit (int status)
   gupcr_finalize_ok = 0;
   /* Wait for our own shutdown pthread to complete.  */
   pthread_join (gupcr_shutdown_pthread_id, NULL);
-  /* Wait for ACKs from all threads. It should happen quickly
+  /* Wait for ACKs from all threads.  It should happen quickly
      if everything is ok, otherwise timeout after configured
      number of seconds.  */
   do

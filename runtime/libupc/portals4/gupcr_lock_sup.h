@@ -2,7 +2,7 @@
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012, Intel Corporation.  All rights reserved.
+|* Copyright 2012-2014, Intel Corporation.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTEL.TXT for details.
 |*
@@ -24,7 +24,7 @@ extern void gupcr_lock_put (size_t, size_t, void *, size_t);
 extern void gupcr_lock_get (size_t, size_t, void *, size_t);
 extern void gupcr_lock_wait (void);
 
-/* See: gupcr_alloc.upc */
+/* See: gupcr_alloc.upc.  */
 extern void gupcr_lock_link_init (void);
 extern void gupcr_lock_free_init (void);
 extern void gupcr_lock_heap_sup_init (void);
