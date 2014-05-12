@@ -21,3 +21,6 @@
 
 /* the field order */
 #define UPC_PTS_VADDR_ORDER "${UPC_PTS_VADDR_ORDER}"
+
+/* Portals4 support */
+#define LIBUPC_PORTALS4 "${LIBUPC_PORTALS4}"

@@ -80,7 +80,6 @@ if(LIBUPC_ENABLE_BACKTRACE_SIGNAL)
   set(GUPCR_BACKTRACE_SIGNAL ${LIBUPC_BACKTRACE_SIGNAL})
 endif()
 
-# GUPC_BOUNCE_BUFFER_SIZE
 set(LIBUPC_BOUNCE_BUFFER_SIZE 256K CACHE STRING "the size (in bytes) of the bounce buffer that is used by the UPC runtime to buffer network data")
 if(NOT LIBUPC_BOUNCE_BUFFER_SIZE MATCHES "^([0-9]+[gGmMkK]?)$")
   message(FATAL_ERROR "Invalid LIBUPC_BOUNCE_BUFFER_SIZE")
@@ -109,8 +108,8 @@ set(GUPCR_HAVE_STATS ${LIBUPC_ENABLE_RUNTIME_STATS})
 set(LIBUPC_ENABLE_RUNTIME_TRACE FALSE CACHE BOOL "enable internal UPC runtime trace collection support; a runtime trace is a time stamped log that records various significant internal events; this trace is written to a per-process log file.")
 set(GUPCR_HAVE_TRACE ${LIBUPC_ENABLE_RUNTIME_TRACE})
 
-set(LIBUPC_RUNTIME_MAX_LOCKS 1024 CACHE STRING "The maximum number of locks that can be held by a single UPC thread")
-set(GUPCR_MAX_LOCKS ${LIBUPC_RUNTIME_MAX_LOCKS})
+set(LIBUPC_MAX_LOCKS 1024 CACHE STRING "The maximum number of locks that can be held by a single UPC thread")
+set(GUPCR_MAX_LOCKS ${LIBUPC_MAX_LOCKS})
 
 set(LIBUPC_NODE_LOCAL_MEM posix CACHE STRING "specify type of shared memory used for node local memory accesses. (posix, mmap, or none)")
 if(LIBUPC_NODE_LOCAL_MEM STREQUAL "posix")
@@ -157,15 +156,36 @@ else()
   message(fatal_error "invalid value of LIBUPC_LOCAL_MEM")
 endif()
 
-set(LIBUPC_RUNTIME_PTE_BASE 16 CACHE STRING "specify the base index of the first Portals4 PTE used by the UPC runtime")
-set(GUPCR_PTE_BASE ${LIBUPC_RUNTIME_PTE_BASE})
+set(LIBUPC_PORTALS4 "/usr/local/portals4" CACHE STRING "directory for installed portals4 package")
+if(EXISTS ${LIBUPC_PORTALS4}/include/portals4.h)
+  set(LIBUPC_RUNTIME_FLAGS "-I${LIBUPC_PORTALS4}/include")
+else()
+  message(fatal_error "Portals4 not installed or wrong LIBUPC_PORTALS4(${LIBUPC_PORTALS4}) specified")
+endif()
 
-set(LIBUPC_RUNTIME_ENABLE_TRIGGERED_OPS TRUE CACHE STRING "enable UPC runtime support for Portals4 triggered operations.")
-set(GUPCR_USE_PORTALS4_TRIGGERED_OPS ${LIBUPC_RUNTIME_ENABLE_TRIGGERED_OPS})
+set(LIBUPC_PTE_BASE 16 CACHE STRING
+	"specify the base index of the first Portals4 PTE used by the UPC runtime")
+set(GUPCR_PTE_BASE ${LIBUPC_PTE_BASE})
 
+set(LIBUPC_ENABLE_TRIGGERED_OPS TRUE CACHE STRING
+	"enable UPC runtime support for Portals4 triggered operations.")
+set(GUPCR_USE_PORTALS4_TRIGGERED_OPS ${LIBUPC_ENABLE_TRIGGERED_OPS})
 
-set(LIBUPC_RUNTIME_TREE_FANOUT 4 CACHE STRING "The maximum number of children in each sub-tree used to implement UPC collectives operations (e. g. upc_barrier)")
-set(GUPCR_TREE_FANOUT ${LIBUPC_RUNTIME_TREE_FANOUT})
+set(LIBUPC_MAX_OUTSTANDING_PUTS 256 CACHE STRING
+	"specify the maximum number of outstanding remote put requests (default=256)")
+set(GUPCR_MAX_OUTSTANDING_PUTS ${LIBUPC_MAX_OUTSTANDING_PUTS})
+
+set(LIBUPC_JOB_LAUNCHER slurm CACHE STRING "select UPC Portals4 job launcher (default=slurm).")
+if (LIBUPC_JOB_LAUNCHER STREQUAL "slurm")
+  set(GUPCR_JOB_LAUNCHER_SLURM 1)
+elseif (LIBUPC_JOB_LAUNCHER STREQUAL "jod")
+  set(GUPCR_JOB_LAUNCHER_YOD 1)
+else()
+  message(fatal_error "Unrecognized job launcher (${LIBUPC_JOB_LAUNCHER}). Use slurm or yod.")
+endif()
+
+set(LIBUPC_TREE_FANOUT 4 CACHE STRING "The maximum number of children in each sub-tree used to implement UPC collectives operations (e. g. upc_barrier)")
+set(GUPCR_TREE_FANOUT ${LIBUPC_TREE_FANOUT})
 
 set(CMAKE_REQUIRED_LIBRARIES rt)
 check_function_exists(clock_gettime HAVE_CLOCK_GETTIME)
@@ -247,7 +267,8 @@ configure_file(config.h.cmake config.h)
 
 include_directories(include collectives)
 
-if(LIBUPC_RUNTIME_MODEL STREQUAL SMP)
+string(REGEX REPLACE [A-Za-z]] "\\1" LIBUPC_RUNTIME_MODEL ${LIBUPC_RUNTIME_MODEL})
+if(LIBUPC_RUNTIME_MODEL STREQUAL smp)
 
 set(LIBUPC_SOURCES
 
@@ -298,7 +319,7 @@ list(APPEND LIBUPC_SOURCES
   collectives/upc_coll_sort.upc
 )
 
-elseif(LIBUPC_RUNTIME_MODEL STREQUAL Portals4)
+elseif(LIBUPC_RUNTIME_MODEL STREQUAL portals4)
   set(LIBUPC_SOURCES
     portals4/gupcr_access.c
     portals4/gupcr_addr.c
@@ -431,6 +452,9 @@ foreach(config ${CONFIGURATIONS})
   else()
     set(flags "${flags} -fupc-pts-vaddr-order=last")
   endif()
+
+  # Add special include directories (if any)
+  set(flags "${flags} ${LIBUPC_RUNTIME_FLAGS}")
 
   # Build in the target library
   set(lib_defs ${lib_defs};IN_TARGET_LIBS=1)

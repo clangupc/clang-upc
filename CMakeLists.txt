@@ -175,6 +175,10 @@ endif ()
 set(UPC_PTS "packed" CACHE STRING "UPC shared pointer representation (packed|struct) default packed")
 set(UPC_PACKED_BITS "20,10,34" CACHE STRING "UPC shared pointer bits per field (phase,thread,addr) default 20,10,34")
 set(UPC_PTS_VADDR_ORDER "first" CACHE STRING "UPC shared pointer field order default first")
+set(LIBUPC_PORTALS4 "/usr/local/portals4" CACHE STRING "directory for installed portals4 package")
+if( NOT EXISTS ${LIBUPC_PORTALS4}/include/portals4.h)
+  message(fatal_error "Portals4 not installed or wrong LIBUPC_PORTALS4(${LIBUPC_PORTALS4}) specified")
+endif()
 
 configure_file(
   ${CLANG_SOURCE_DIR}/include/clang/Config/config.h.cmake

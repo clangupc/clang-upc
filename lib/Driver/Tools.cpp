@@ -39,6 +39,9 @@
 #include "llvm/Support/raw_ostream.h"
 #include <sys/stat.h>
 
+// Additional flags for UPC with Portals
+#include "clang/Config/config.h"
+
 using namespace clang::driver;
 using namespace clang::driver::tools;
 using namespace clang;
@@ -3527,6 +3530,10 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
                    options::OPT_fno_upc_debug, false))
     CmdArgs.push_back("-fupc-debug");
 
+#ifdef LIBUPC_PORTALS4
+    CmdArgs.push_back(("-I" LIBUPC_PORTALS4 "/include"));
+#endif
+
   // -fcaret-diagnostics is default.
   if (!Args.hasFlag(options::OPT_fcaret_diagnostics,
                     options::OPT_fno_caret_diagnostics, true))
@@ -6718,6 +6725,11 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
       }
     }
     CmdArgs.push_back(Args.MakeArgString(Buf));
+#ifdef LIBUPC_PORTALS4
+    CmdArgs.push_back("-L" LIBUPC_PORTALS4 "/lib");
+    CmdArgs.push_back("-lportals");
+    CmdArgs.push_back("-lportals_runtime");
+#endif
     CmdArgs.push_back("-lrt");
   }
 
