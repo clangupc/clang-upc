@@ -158,7 +158,7 @@ endif()
 
 set(LIBUPC_PORTALS4 "/usr/local/portals4" CACHE STRING "directory for installed portals4 package")
 if(EXISTS ${LIBUPC_PORTALS4}/include/portals4.h)
-  set(LIBUPC_RUNTIME_FLAGS "-I${LIBUPC_PORTALS4}/include")
+  set(LIBUPC_RUNTIME_FLAGS "-I${LIBUPC_PORTALS4}/include -Wno-variadic-macros")
 else()
   message(fatal_error "Portals4 not installed or wrong LIBUPC_PORTALS4(${LIBUPC_PORTALS4}) specified")
 endif()
@@ -183,6 +183,12 @@ elseif (LIBUPC_JOB_LAUNCHER STREQUAL "jod")
 else()
   message(fatal_error "Unrecognized job launcher (${LIBUPC_JOB_LAUNCHER}). Use slurm or yod.")
 endif()
+
+set(LIBUPC_MEMORY_PAGE_SIZE 4096 CACHE STRING "Select target memory page size (default=4096).")
+set(GUPCR_MEMORY_PAGE_SIZE ${LIBUPC_MEMORY_PAGE_SIZE})
+
+set(LIBUPC_GLOBAL_EXIT_TIMEOUT 2 CACHE STRING "Select upc_global_exit() timeout in seconds (default=2).")
+set(GUPCR_GLOBAL_EXIT_TIMEOUT ${LIBUPC_GLOBAL_EXIT_TIMEOUT})
 
 set(LIBUPC_TREE_FANOUT 4 CACHE STRING "The maximum number of children in each sub-tree used to implement UPC collectives operations (e. g. upc_barrier)")
 set(GUPCR_TREE_FANOUT ${LIBUPC_TREE_FANOUT})
@@ -270,54 +276,67 @@ include_directories(include collectives)
 string(REGEX REPLACE [A-Za-z]] "\\1" LIBUPC_RUNTIME_MODEL ${LIBUPC_RUNTIME_MODEL})
 if(LIBUPC_RUNTIME_MODEL STREQUAL smp)
 
-set(LIBUPC_SOURCES
-
-  smp/upc_access.c
-  smp/upc_accessg.c
-  smp/upc_addr.c
-  # smp/upc_affinity.c
-  smp/upc_affinity_stub.c
-  smp/upc_allocg.upc
-  smp/upc_alloc.upc
-  smp/upc_atomic_generic.upc
-  smp/upc_atomic_sup.c
-  smp/upc_barrier.upc
-  smp/upc_castable.upc
-  smp/upc_debug.c
-  smp/upc_gasp.c
-  smp/upc_gum.c
-  smp/upc_libg.c
-  # smp/upc_lock_sup.c
-  smp/upc_lock.upc
-  smp/upc_main.c
-  smp/upc_mem.c
-  smp/upc_nb.upc
-  # smp/upc_numa.c
-  smp/upc_numa_stub.c
-  smp/upc_pgm_info.c
-  smp/upc_pupc.c
-  smp/upc_sysdep.c
-  smp/upc_tick.c
-  smp/upc_vm.c
-)
+  set(LIBUPC_SOURCES
+    smp/upc_access.c
+    smp/upc_accessg.c
+    smp/upc_addr.c
+    # smp/upc_affinity.c
+    smp/upc_affinity_stub.c
+    smp/upc_allocg.upc
+    smp/upc_alloc.upc
+    smp/upc_atomic_generic.upc
+    smp/upc_atomic_sup.c
+    smp/upc_barrier.upc
+    smp/upc_castable.upc
+    smp/upc_debug.c
+    smp/upc_gasp.c
+    smp/upc_gum.c
+    smp/upc_libg.c
+    # smp/upc_lock_sup.c
+    smp/upc_lock.upc
+    smp/upc_main.c
+    smp/upc_mem.c
+    smp/upc_nb.upc
+    # smp/upc_numa.c
+    smp/upc_numa_stub.c
+    smp/upc_pgm_info.c
+    smp/upc_pupc.c
+    smp/upc_sysdep.c
+    smp/upc_tick.c
+    smp/upc_vm.c
+  )
 
 if(LIBUPC_ENABLE_BACKTRACE)
-  list(APPEND LIBUPC_SOURCES smp/upc_backtrace.c)
+    list(APPEND LIBUPC_SOURCES smp/upc_backtrace.c)
 endif()
 
-list(APPEND LIBUPC_SOURCES
-  collectives/upc_coll_broadcast.upc
-  collectives/upc_coll_err.upc
-  collectives/upc_coll_exchange.upc
-  collectives/upc_coll_gather.upc
-  collectives/upc_coll_gather_all.upc
-  collectives/upc_coll_init.upc
-  collectives/upc_coll_permute.upc
-  collectives/upc_coll_prefix_reduce.upc
-  collectives/upc_coll_reduce.upc
-  collectives/upc_coll_scatter.upc
-  collectives/upc_coll_sort.upc
-)
+  list(APPEND LIBUPC_SOURCES
+    collectives/upc_coll_broadcast.upc
+    collectives/upc_coll_err.upc
+    collectives/upc_coll_exchange.upc
+    collectives/upc_coll_gather.upc
+    collectives/upc_coll_gather_all.upc
+    collectives/upc_coll_init.upc
+    collectives/upc_coll_permute.upc
+    collectives/upc_coll_prefix_reduce.upc
+    collectives/upc_coll_reduce.upc
+    collectives/upc_coll_scatter.upc
+    collectives/upc_coll_sort.upc
+  )
+                                                                                
+  set(LIBUPC_SOURCES_INLINE
+    ${PROJECT_SOURCE_DIR}/smp/gupcr_access.c
+    ${PROJECT_SOURCE_DIR}/smp/gupcr_access.h
+    ${PROJECT_SOURCE_DIR}/smp/gupcr_config.h
+    ${PROJECT_SOURCE_DIR}/smp/gupcr_defs.h
+    ${PROJECT_SOURCE_DIR}/smp/gupcr_gmem.h
+    ${PROJECT_SOURCE_DIR}/smp/gupcr_node.h
+    ${PROJECT_SOURCE_DIR}/smp/gupcr_portals.h
+    ${PROJECT_SOURCE_DIR}/smp/gupcr_pts.h
+    ${PROJECT_SOURCE_DIR}/smp/gupcr_sup.h
+    ${PROJECT_SOURCE_DIR}/smp/gupcr_sync.h
+    ${PROJECT_SOURCE_DIR}/smp/gupcr_utils.h
+  )
 
 elseif(LIBUPC_RUNTIME_MODEL STREQUAL portals4)
   set(LIBUPC_SOURCES
@@ -325,14 +344,11 @@ elseif(LIBUPC_RUNTIME_MODEL STREQUAL portals4)
     portals4/gupcr_addr.c
     portals4/gupcr_alloc.upc
     portals4/gupcr_atomic_sup.c
-    portals4/gupcr_atomic_sup.h
     portals4/gupcr_atomic.upc
     portals4/gupcr_barrier.c
+    portals4/gupcr_backtrace.c
     portals4/gupcr_broadcast.c
     portals4/gupcr_clock.c
-    portals4/gupcr_coll_broadcast.upc
-    portals4/gupcr_coll_init.upc
-    portals4/gupcr_coll_reduce.upc
     portals4/gupcr_coll_sup.c
     portals4/gupcr_env.c
     portals4/gupcr_gmem.c
@@ -340,6 +356,8 @@ elseif(LIBUPC_RUNTIME_MODEL STREQUAL portals4)
     portals4/gupcr_lock.upc
     portals4/gupcr_main.c
     portals4/gupcr_mem.c
+    portals4/gupcr_nb.upc
+    portals4/gupcr_nb_sup.c
     portals4/gupcr_node.c
     portals4/gupcr_pgm_info.c
     portals4/gupcr_portals.c
@@ -355,19 +373,35 @@ elseif(LIBUPC_RUNTIME_MODEL STREQUAL portals4)
     list(APPEND LIBUPC_SOURCES portals4/gupcr_node_mem_posix.c)
   endif()
 
-
   list(APPEND LIBUPC_SOURCES
-    #collectives/upc_coll_broadcast.upc
     collectives/upc_coll_err.upc
     collectives/upc_coll_exchange.upc
     collectives/upc_coll_gather.upc
     collectives/upc_coll_gather_all.upc
-    #collectives/upc_coll_init.upc
     collectives/upc_coll_permute.upc
     collectives/upc_coll_prefix_reduce.upc
-    #collectives/upc_coll_reduce.upc
     collectives/upc_coll_scatter.upc
     collectives/upc_coll_sort.upc
+  )
+
+  list(APPEND LIBUPC_SOURCES
+    portals4/gupcr_coll_broadcast.upc
+    portals4/gupcr_coll_init.upc
+    portals4/gupcr_coll_reduce.upc
+  )
+
+  set(LIBUPC_SOURCES_INLINE
+    ${PROJECT_SOURCE_DIR}/portals4/gupcr_access.c
+    ${PROJECT_SOURCE_DIR}/portals4/gupcr_access.h
+    ${PROJECT_SOURCE_DIR}/portals4/gupcr_config.h
+    ${PROJECT_SOURCE_DIR}/portals4/gupcr_defs.h
+    ${PROJECT_SOURCE_DIR}/portals4/gupcr_gmem.h
+    ${PROJECT_SOURCE_DIR}/portals4/gupcr_node.h
+    ${PROJECT_SOURCE_DIR}/portals4/gupcr_portals.h
+    ${PROJECT_SOURCE_DIR}/portals4/gupcr_pts.h
+    ${PROJECT_SOURCE_DIR}/portals4/gupcr_sup.h
+    ${PROJECT_SOURCE_DIR}/portals4/gupcr_sync.h
+    ${PROJECT_SOURCE_DIR}/portals4/gupcr_utils.h
   )
 
 else()
@@ -506,7 +540,7 @@ add_crt_target(upc-crtendS -DCRT_END)
 add_crt_target(upc-crtbeginT -DCRT_BEGIN)
 add_crt_target(upc-crtendT -DCRT_END)
 
-find_package(Perl REQUIRED)
+find_program(PERL_EXECUTABLE perl)
 find_program(AUTOGEN_EXECUTABLE autogen)
 
 if(LIBUPC_ENABLE_LINK_SCRIPT)
@@ -522,17 +556,10 @@ endif()
 set(header_location lib${LLVM_LIBDIR_SUFFIX}/clang/${CLANG_VERSION}/include)
 
 set(clang_upc_lib_h ${LLVM_BINARY_DIR}/${header_location}/clang-upc-lib.h)
-set(clang_upc_lib_h_sources ${PROJECT_SOURCE_DIR}/gen-inline-libupc.pl ${PROJECT_SOURCE_DIR}/smp/upc-lib.in
+set(clang_upc_lib_h_sources ${PROJECT_SOURCE_DIR}/gen-inline-libupc.pl ${PROJECT_SOURCE_DIR}/${LIBUPC_RUNTIME_MODEL}/upc-lib.in
   ${PROJECT_BINARY_DIR}/config.h
-  ${PROJECT_SOURCE_DIR}/smp/upc_access.c
-  ${PROJECT_SOURCE_DIR}/smp/upc_access.h
-  ${PROJECT_SOURCE_DIR}/smp/upc_config.h
-  ${PROJECT_SOURCE_DIR}/smp/upc_defs.h
-  ${PROJECT_SOURCE_DIR}/smp/upc_mem.h
-  ${PROJECT_SOURCE_DIR}/smp/upc_pts.h
-  ${PROJECT_SOURCE_DIR}/smp/upc_sup.h
-  ${PROJECT_SOURCE_DIR}/smp/upc_sync.h
-  ${PROJECT_SOURCE_DIR}/smp/upc_sysdep.h)
+  ${LIBUPC_SOURCES_INLINE})
+
 add_custom_command(OUTPUT ${clang_upc_lib_h}
   COMMAND ${CMAKE_COMMAND} -E make_directory ${LLVM_BINARY_DIR}/${header_location} &&
     ${PERL_EXECUTABLE} ${clang_upc_lib_h_sources} > ${clang_upc_lib_h}
@@ -540,6 +567,7 @@ add_custom_command(OUTPUT ${clang_upc_lib_h}
   VERBATIM)
 add_custom_target(clang-upc-lib-h ALL DEPENDS ${clang_upc_lib_h})
 
+if(LIBUPC_RUNTIME_MODEL STREQUAL smp)
 set(lib_upc_atomic_builtin ${PROJECT_SOURCE_DIR}/smp/upc_atomic_builtin.upc)
 set(lib_upc_atomic_generic ${PROJECT_SOURCE_DIR}/smp/upc_atomic_generic.upc)
 set(lib_upc_atomic_sources ${PROJECT_SOURCE_DIR}/smp/upc_atomic.def
@@ -558,6 +586,27 @@ add_custom_command(OUTPUT ${lib_upc_atomic_generic}
   DEPENDS ${lib_upc_atomic_sources}
   VERBATIM)
 add_custom_target(upc-atomic-generic ALL DEPENDS ${lib_upc_atomic_generic})
+
+elseif(LIBUPC_RUNTIME_MODEL STREQUAL portals4)
+set(lib_upc_reduce ${PROJECT_SOURCE_DIR}/portals4/gupcr_coll_reduce.upc)
+set(lib_upc_reduce_source ${PROJECT_SOURCE_DIR}/portals4/gupcr_coll_reduce.in)
+add_custom_target(upc-coll-reduce ALL DEPENDS ${lib_upc_reduce})
+add_custom_command(OUTPUT ${lib_upc_reduce}
+  COMMAND cd ${PROJECT_SOURCE_DIR}/portals4 &&
+          ${PERL_EXECUTABLE} ${lib_upc_reduce_source} > ${lib_upc_reduce}
+  DEPENDS ${lib_upc_reduce_source}
+  VERBATIM)
+
+set(lib_upc_prefix_reduce ${PROJECT_SOURCE_DIR}/collectives/upc_coll_prefix_reduce.upc)
+set(lib_upc_prefix_reduce_source ${PROJECT_SOURCE_DIR}/collectives/upc_coll_prefix_reduce.in)
+add_custom_target(upc-coll-prefix-reduce ALL DEPENDS ${lib_upc_prefix_reduce})
+add_custom_command(OUTPUT ${lib_upc_prefix_reduce}
+  COMMAND cd ${PROJECT_SOURCE_DIR}/portals4 &&
+          ${PERL_EXECUTABLE} ${lib_upc_prefix_reduce_source} > ${lib_upc_prefix_reduce}
+  DEPENDS ${lib_upc_prefix_reduce_source}
+  VERBATIM)
+
+endif()
 
 set(upc_headers clang-upc.h upc.h upc_atomic.h upc_castable.h
   upc_collective.h upc_nb.h upc_strict.h upc_tick.h upc_types.h

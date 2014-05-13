@@ -181,7 +181,7 @@ void
 gupcr_gmem_get (void *dest, int thread, size_t offset, size_t n)
 {
   ptl_process_t rpid;
-  char *dest_addr = (char *) (dest - USER_PROG_MEM_START);
+  char *dest_addr = (char *)dest - (size_t) USER_PROG_MEM_START;
   size_t n_rem = n;
 
   gupcr_debug (FC_MEM, "%d:0x%lx 0x%lx",

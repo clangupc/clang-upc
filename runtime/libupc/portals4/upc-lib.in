@@ -33,12 +33,34 @@
 #define __UPC_THREADS_CONFIG__ " staticthreads=" __UPC_XSTR__(THREADS)
 #else
 /* defined at run time */
-extern const int THREADS;
 #define __UPC_N_THREADS__ -1
 #define __UPC_THREADS_CONFIG__ "dynamicthreads"
 #endif
 
 #define __UPC_THREADS_MODEL__ "process"
+
+/* Support for atomics - UPC Specification 1.3.  */
+#define __UPC_ATOMIC__ 1
+
+/* Support for castability - UPC Specification 1.3.  */
+#define __UPC_CASTABLE__ 1
+
+/* Support for UPC collectives.  */
+#define __UPC_COLLECTIVE__ 1
+
+/* Support for non-blocking transfer operations - UPC Specification 1.3.  */
+#define __UPC_NB__ 1
+
+/* Support for GASP - http://gasp.hcs.ufl.edu/.  */ 
+#define __UPC_PUPC__ 1
+
+/* Support for high-performance wall-clock timer - UPC Specification 1.3.  */
+#define __UPC_TICK__ 1
+
+#pragma upc upc_code
+/* Opaque data type for referencing UPC atomic domains.  */
+typedef shared struct upc_atomicdomain_struct upc_atomicdomain_t;
+#pragma upc c_code
 
 /* Place configuration information required by the Berkeley
    UPC compilation system into the object file. */
@@ -53,8 +75,6 @@ static const char GCCUPCConfig[]
 
 #undef __UPC_XSTR__
 #undef __UPC_STR__
-
-extern const int MYTHREAD;
 
 /* Depth count used to implement the semantics of
    nested upc_forall statements.  */
@@ -87,9 +107,6 @@ __asm__ ("upc_main");
 /* The base address of the UPC shared section */
 extern char __upc_shared_start[1];
 
-/* Runtime procedures */
-//include lib_runtime_api
-
 //include detect_target64
 
 /* Runtime shared access procedures */
@@ -106,6 +123,9 @@ extern char __upc_shared_start[1];
 //include lib_pts_defs
 
 #endif /* __UPC_INLINE_LIB__ || IN_TARGET_LIBS */
+
+/* Runtime procedures */
+//include lib_runtime_api
 
 #ifdef __UPC_INLINE_LIB__
 
