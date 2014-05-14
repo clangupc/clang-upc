@@ -588,13 +588,14 @@ add_custom_command(OUTPUT ${lib_upc_atomic_generic}
 add_custom_target(upc-atomic-generic ALL DEPENDS ${lib_upc_atomic_generic})
 
 elseif(LIBUPC_RUNTIME_MODEL STREQUAL portals4)
+set(lib_upc_reduce_cmd ${PROJECT_SOURCE_DIR}/collectives/gen-upc-coll-reduce.pl)
 set(lib_upc_reduce ${PROJECT_SOURCE_DIR}/portals4/gupcr_coll_reduce.upc)
 set(lib_upc_reduce_source ${PROJECT_SOURCE_DIR}/portals4/gupcr_coll_reduce.in)
 add_custom_target(upc-coll-reduce ALL DEPENDS ${lib_upc_reduce})
 add_custom_command(OUTPUT ${lib_upc_reduce}
   COMMAND cd ${PROJECT_SOURCE_DIR}/portals4 &&
-          ${PERL_EXECUTABLE} ${lib_upc_reduce_source} > ${lib_upc_reduce}
-  DEPENDS ${lib_upc_reduce_source}
+          ${PERL_EXECUTABLE} ${lib_upc_reduce_cmd} ${lib_upc_reduce_source} > ${lib_upc_reduce}
+  DEPENDS ${lib_upc_reduce_source} ${lib_upc_reduce_cmd}
   VERBATIM)
 
 set(lib_upc_prefix_reduce ${PROJECT_SOURCE_DIR}/collectives/upc_coll_prefix_reduce.upc)
@@ -602,8 +603,8 @@ set(lib_upc_prefix_reduce_source ${PROJECT_SOURCE_DIR}/collectives/upc_coll_pref
 add_custom_target(upc-coll-prefix-reduce ALL DEPENDS ${lib_upc_prefix_reduce})
 add_custom_command(OUTPUT ${lib_upc_prefix_reduce}
   COMMAND cd ${PROJECT_SOURCE_DIR}/portals4 &&
-          ${PERL_EXECUTABLE} ${lib_upc_prefix_reduce_source} > ${lib_upc_prefix_reduce}
-  DEPENDS ${lib_upc_prefix_reduce_source}
+          ${PERL_EXECUTABLE} ${lib_upc_reduce_cmd} ${lib_upc_prefix_reduce_source} > ${lib_upc_prefix_reduce}
+  DEPENDS ${lib_upc_prefix_reduce_source} ${lib_upc_reduce_cmd}
   VERBATIM)
 
 endif()
