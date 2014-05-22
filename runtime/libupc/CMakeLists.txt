@@ -221,6 +221,13 @@ add_definitions(
  ${LIBUPC_FEATURE_FLAGS}
  )
 
+# Default packed pointer representation
+set(UPC_PACKED_BITS "20,10,34" CACHE STRING "UPC shared pointer bits per field (phase,thread,addr) default 20,10,34")
+string(REPLACE "," ";" bits_list ${UPC_PACKED_BITS})
+list(GET bits_list 0 DEFAULT_PHASE)
+list(GET bits_list 1 DEFAULT_THREAD)
+list(GET bits_list 2 DEFAULT_ADDR)
+
 set(LIBUPC_CONFIGURATIONS "p;s;p-l;s-l" CACHE STRING "UPC Pointer Representation e.g. p-f-20-10-34;s-l;p-l")
 
 set(all_configs ${LIBUPC_CONFIGURATIONS})
@@ -385,9 +392,9 @@ foreach(config ${CONFIGURATIONS})
       list(GET packed_bits 1 thread)
       list(GET packed_bits 2 addr)
     else()
-      set(phase 20)
-      set(thread 10)
-      set(addr 34)
+      set(phase ${DEFAULT_PHASE})
+      set(thread ${DEFAULT_THREAD})
+      set(addr ${DEFAULT_ADDR})
     endif()
   else()
     if( CMAKE_SIZEOF_VOID_P EQUAL 4 )
@@ -410,7 +417,7 @@ foreach(config ${CONFIGURATIONS})
     set(lib_name ${lib_name}-l)
   endif()
   if((${pts_type} STREQUAL PACKED) AND
-     NOT (${phase} EQUAL 20 AND ${thread} EQUAL 10 AND ${addr} EQUAL 34))
+     NOT (${phase} EQUAL ${DEFAULT_PHASE} AND ${thread} EQUAL ${DEFAULT_THREAD} AND ${addr} EQUAL ${DEFAULT_ADDR}))
     set(lib_name ${lib_name}-${phase}-${thread}-${addr})
   endif()
 
