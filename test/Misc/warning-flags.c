@@ -18,7 +18,7 @@ This test serves two purposes:
 
 The list of warnings below should NEVER grow.  It should gradually shrink to 0.
 
-CHECK: Warnings without flags (136):
+CHECK: Warnings without flags (137):
 CHECK-NEXT:   ext_delete_void_ptr_operand
 CHECK-NEXT:   ext_expected_semi_decl_list
 CHECK-NEXT:   ext_explicit_specialization_storage_class
@@ -127,6 +127,7 @@ CHECK-NEXT:   warn_pragma_pack_pop_failed
 CHECK-NEXT:   warn_pragma_pack_pop_identifer_and_alignment
 CHECK-NEXT:   warn_pragma_pack_show
 CHECK-NEXT:   warn_pragma_pop_macro_no_push
+CHECK-NEXT:   warn_pragma_pupc_invalid
 CHECK-NEXT:   warn_pragma_unknown_extension
 CHECK-NEXT:   warn_pragma_unused_expected_punc
 CHECK-NEXT:   warn_pragma_unused_expected_var
