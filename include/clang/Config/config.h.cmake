@@ -24,3 +24,6 @@
 
 /* Portals4 support */
 #define LIBUPC_PORTALS4 "${LIBUPC_PORTALS4}"
+
+/* Portals4 SLURM support */                                                    
+#define LIBUPC_PORTALS4_SLURM  ${LIBUPC_PORTALS4_SLURM}
