@@ -1429,6 +1429,7 @@ std::pair<uint64_t, unsigned>
 ASTContext::getTypeInfoImpl(const Type *T) const {
   uint64_t Width=0;
   unsigned Align=8;
+  unsigned Align128=128;
   switch (T->getTypeClass()) {
 #define TYPE(Class, Base)
 #define ABSTRACT_TYPE(Class, Base)
@@ -1544,7 +1545,7 @@ ASTContext::getTypeInfoImpl(const Type *T) const {
     case BuiltinType::Int128:
     case BuiltinType::UInt128:
       Width = 128;
-      Align = 128; // int128_t is 128-bit aligned on all targets.
+      Align = Align128; // int128_t is 128-bit aligned on all targets.
       break;
     case BuiltinType::Half:
       Width = Target->getHalfWidth();
@@ -1614,7 +1615,10 @@ ASTContext::getTypeInfoImpl(const Type *T) const {
   case Type::Pointer: {
     if (cast<PointerType>(T)->getPointeeType().getQualifiers().hasShared()) {
       Width = (LangOpts.UPCPhaseBits + LangOpts.UPCThreadBits + LangOpts.UPCAddrBits);
-      Align = Target->getTypeAlign(Target->getInt64Type());
+      if (Width > 64)
+        Align = Align128; // Align the same way as int128
+      else
+        Align = Target->getTypeAlign(Target->getInt64Type());
     } else {
       unsigned AS = getTargetAddressSpace(cast<PointerType>(T)->getPointeeType());
       Width = Target->getPointerWidth(AS);
