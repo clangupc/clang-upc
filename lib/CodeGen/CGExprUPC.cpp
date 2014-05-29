@@ -371,18 +371,20 @@ llvm::Value *CodeGenFunction::EmitUPCPointerGetPhase(llvm::Value *Pointer) {
   if (LangOpts.UPCPtsRep) {
     llvm::Value *Val = Builder.CreateExtractValue(Pointer, 0);
     if (LangOpts.UPCVaddrFirst) {
-      Result = Builder.CreateAnd(Val, llvm::APInt::getLowBitsSet(64, PhaseBits));
+      Result = Builder.CreateAnd(Val, llvm::APInt::getLowBitsSet(LangOpts.UPCPtsSize, PhaseBits));
     } else {
       Result = Builder.CreateLShr(Val, ThreadBits + AddrBits);
     }
+    return Builder.CreateZExtOrTrunc(Result, LangOpts.UPCPtsSize == 64 ?
+           SizeTy : llvm::Type::getIntNTy(getLLVMContext(), 128));
   } else {
     if (LangOpts.UPCVaddrFirst) {
       Result = Builder.CreateExtractValue(Pointer, 2);
     } else {
       Result = Builder.CreateExtractValue(Pointer, 0);
     }
+    return Builder.CreateZExtOrTrunc(Result, SizeTy);
   }
-  return Builder.CreateZExtOrTrunc(Result, SizeTy);
 }
 
 llvm::Value *CodeGenFunction::EmitUPCPointerGetThread(llvm::Value *Pointer) {
@@ -398,11 +400,13 @@ llvm::Value *CodeGenFunction::EmitUPCPointerGetThread(llvm::Value *Pointer) {
     } else {
       Val = Builder.CreateLShr(Val, AddrBits);
     }
-    Result = Builder.CreateAnd(Val, llvm::APInt::getLowBitsSet(64, ThreadBits));
+    Result = Builder.CreateAnd(Val, llvm::APInt::getLowBitsSet(LangOpts.UPCPtsSize, ThreadBits));
+    return Builder.CreateZExtOrTrunc(Result, LangOpts.UPCPtsSize == 64 ?
+           SizeTy : llvm::Type::getIntNTy(getLLVMContext(), 128));
   } else {
     Result = Builder.CreateExtractValue(Pointer, 1);
+    return Builder.CreateZExtOrTrunc(Result, SizeTy);
   }
-  return Builder.CreateZExtOrTrunc(Result, SizeTy);
 }
 
 llvm::Value *CodeGenFunction::EmitUPCPointerGetAddr(llvm::Value *Pointer) {
@@ -416,16 +420,18 @@ llvm::Value *CodeGenFunction::EmitUPCPointerGetAddr(llvm::Value *Pointer) {
     if (LangOpts.UPCVaddrFirst) {
       Result = Builder.CreateLShr(Val, ThreadBits + PhaseBits);
     } else {
-      Result = Builder.CreateAnd(Val, llvm::APInt::getLowBitsSet(64, AddrBits));
+      Result = Builder.CreateAnd(Val, llvm::APInt::getLowBitsSet(LangOpts.UPCPtsSize, AddrBits));
     }
+    return Builder.CreateZExtOrTrunc(Result, LangOpts.UPCPtsSize == 64 ?
+           SizeTy : llvm::Type::getIntNTy(getLLVMContext(), 128));
   } else {
     if (LangOpts.UPCVaddrFirst) {
       Result = Builder.CreateExtractValue(Pointer, 0);
     } else {
       Result = Builder.CreateExtractValue(Pointer, 2);
     }
+    return Builder.CreateZExtOrTrunc(Result, SizeTy);
   }
-  return Builder.CreateZExtOrTrunc(Result, SizeTy);
 }
 
 llvm::Value *CodeGenFunction::EmitUPCPointer(llvm::Value *Phase, llvm::Value *Thread, llvm::Value *Addr) {
@@ -435,11 +441,11 @@ llvm::Value *CodeGenFunction::EmitUPCPointer(llvm::Value *Phase, llvm::Value *Th
   unsigned AddrBits = LangOpts.UPCAddrBits;
   llvm::Value *Result = llvm::UndefValue::get(GenericPtsTy);
   if (LangOpts.UPCPtsRep) {
-    // The arguments are size_t.  Convert them
-    // to the correct size.
-    Phase = Builder.CreateZExtOrTrunc(Phase, Int64Ty);
-    Thread = Builder.CreateZExtOrTrunc(Thread, Int64Ty);
-    Addr = Builder.CreateZExtOrTrunc(Addr, Int64Ty);
+    llvm::Type *Ty = LangOpts.UPCPtsSize == 64 ? Int64Ty : llvm::Type::getIntNTy(getLLVMContext(), 128);
+    // The arguments are size_t.  Convert them to the correct size.
+    Phase = Builder.CreateZExtOrTrunc(Phase, Ty);
+    Thread = Builder.CreateZExtOrTrunc(Thread, Ty);
+    Addr = Builder.CreateZExtOrTrunc(Addr, Ty);
     llvm::Value *Val;
     if (LangOpts.UPCVaddrFirst) {
       Val = Builder.CreateOr(Builder.CreateShl(Addr, ThreadBits + PhaseBits),
@@ -554,6 +560,9 @@ static std::pair<QualType, llvm::Value *> unwrapArray(CodeGenFunction& CGF, Qual
 llvm::Value *CodeGenFunction::EmitUPCPointerArithmetic(
     llvm::Value *Pointer, llvm::Value *Index, QualType PtrTy, QualType IndexTy, bool IsSubtraction) {
 
+  const LangOptions& LangOpts = getContext().getLangOpts();
+  llvm::Type *Ty = (LangOpts.UPCPtsRep && LangOpts.UPCPtsSize == 128) ?
+			llvm::Type::getIntNTy(getLLVMContext(), 128) : SizeTy;
   llvm::Value *Phase = EmitUPCPointerGetPhase(Pointer);
   llvm::Value *Thread = EmitUPCPointerGetThread(Pointer);
   llvm::Value *Addr = EmitUPCPointerGetAddr(Pointer);
@@ -561,11 +570,14 @@ llvm::Value *CodeGenFunction::EmitUPCPointerArithmetic(
   bool isSigned = IndexTy->isSignedIntegerOrEnumerationType();
 
   unsigned width = cast<llvm::IntegerType>(Index->getType())->getBitWidth();
-  if (width != PointerWidthInBits) {
+  if (width != PointerWidthInBits ||
+      (LangOpts.UPCPtsRep && LangOpts.UPCPtsSize == 128)) {
     // Zero-extend or sign-extend the pointer value according to
     // whether the index is signed or not.
-    Index = Builder.CreateIntCast(Index, PtrDiffTy, isSigned,
-                                      "idx.ext");
+    if (LangOpts.UPCPtsRep && LangOpts.UPCPtsSize == 128)
+      Index = Builder.CreateIntCast(Index, Ty, isSigned, "idx.ext");
+    else
+      Index = Builder.CreateIntCast(Index, PtrDiffTy, isSigned, "idx.ext");
   }
 
   QualType PointeeTy = PtrTy->getAs<PointerType>()->getPointeeType();
@@ -573,6 +585,8 @@ llvm::Value *CodeGenFunction::EmitUPCPointerArithmetic(
   llvm::Value *Dim;
   llvm::tie(ElemTy, Dim) = unwrapArray(*this, PointeeTy);
   if (Dim) {
+    if (LangOpts.UPCPtsRep && LangOpts.UPCPtsSize == 128)
+      Dim = Builder.CreateIntCast(Dim, Ty, isSigned, "idx.ext");
     Index = Builder.CreateMul(Index, Dim, "idx.dim", !isSigned, isSigned);
   }
   Qualifiers Quals = ElemTy.getQualifiers();
@@ -590,17 +604,17 @@ llvm::Value *CodeGenFunction::EmitUPCPointerArithmetic(
     // component is defined to always be zero.
 
     uint64_t ElemSize = getContext().getTypeSizeInChars(ElemTy).getQuantity();
-    llvm::Value *ByteIndex = Builder.CreateMul(Index, llvm::ConstantInt::get(SizeTy, ElemSize));
+    llvm::Value *ByteIndex = Builder.CreateMul(Index, llvm::ConstantInt::get(Ty, ElemSize));
     Addr = Builder.CreateAdd(Addr, ByteIndex, "add.addr");
   } else {
     llvm::Value *OldPhase = Phase;
-    llvm::Constant *B = llvm::ConstantInt::get(SizeTy, Quals.getLayoutQualifier());
-    llvm::Value *Threads = Builder.CreateZExt(EmitUPCThreads(), SizeTy);
+    llvm::Constant *B = llvm::ConstantInt::get(Ty, Quals.getLayoutQualifier());
+    llvm::Value *Threads = Builder.CreateZExt(EmitUPCThreads(), Ty);
     llvm::Value *GlobalBlockSize = Builder.CreateNUWMul(Threads, B);
     // Combine the Phase and Thread into a single unit
     llvm::Value *TmpPhaseThread =
       Builder.CreateNUWAdd(Builder.CreateNUWMul(Thread, B),
-                           Phase);
+				   Phase);
 
     TmpPhaseThread = Builder.CreateAdd(TmpPhaseThread, Index);
 
@@ -609,9 +623,9 @@ llvm::Value *CodeGenFunction::EmitUPCPointerArithmetic(
     llvm::Value *Div = Builder.CreateSDiv(TmpPhaseThread, GlobalBlockSize);
     llvm::Value *Rem = Builder.CreateSRem(TmpPhaseThread, GlobalBlockSize);
     // Fix the result of the division/modulus
-    llvm::Value *Test = Builder.CreateICmpSLT(Rem, llvm::ConstantInt::get(SizeTy, 0));
+    llvm::Value *Test = Builder.CreateICmpSLT(Rem, llvm::ConstantInt::get(Ty, 0));
     Rem = Builder.CreateSelect(Test, Builder.CreateAdd(Rem, GlobalBlockSize), Rem);
-    llvm::Value *DecDiv = Builder.CreateSub(Div, llvm::ConstantInt::get(SizeTy, 1));
+    llvm::Value *DecDiv = Builder.CreateSub(Div, llvm::ConstantInt::get(Ty, 1));
     Div = Builder.CreateSelect(Test, DecDiv, Div);
 
     // Split out the Phase and Thread components
@@ -622,8 +636,8 @@ llvm::Value *CodeGenFunction::EmitUPCPointerArithmetic(
     // Compute the final Addr.
     llvm::Value *AddrInc =
       Builder.CreateMul(Builder.CreateAdd(Builder.CreateSub(Phase, OldPhase),
-                                          Builder.CreateMul(Div, B)),
-                        llvm::ConstantInt::get(SizeTy, ElemSize));
+					  Builder.CreateMul(Div, B)),
+			llvm::ConstantInt::get(Ty, ElemSize));
     Addr = Builder.CreateAdd(Addr, AddrInc);
   }
 
@@ -633,6 +647,9 @@ llvm::Value *CodeGenFunction::EmitUPCPointerArithmetic(
 llvm::Value *CodeGenFunction::EmitUPCPointerDiff(
     llvm::Value *Pointer1, llvm::Value *Pointer2, const Expr *E) {
 
+  const LangOptions& LangOpts = getContext().getLangOpts();
+  llvm::Type *Ty = (LangOpts.UPCPtsRep && LangOpts.UPCPtsSize == 128) ?
+			llvm::Type::getIntNTy(getLLVMContext(), 128) : SizeTy;
   const BinaryOperator *expr = cast<BinaryOperator>(E);
   Expr *LHSOperand = expr->getLHS();
   QualType PtrTy = LHSOperand->getType();
@@ -652,7 +669,7 @@ llvm::Value *CodeGenFunction::EmitUPCPointerDiff(
   Qualifiers Quals = ElemTy.getQualifiers();
 
   llvm::Constant *ElemSize = 
-    llvm::ConstantInt::get(SizeTy, getContext().getTypeSizeInChars(ElemTy).getQuantity());
+    llvm::ConstantInt::get(Ty, getContext().getTypeSizeInChars(ElemTy).getQuantity());
   llvm::Value *AddrByteDiff = Builder.CreateSub(Addr1, Addr2, "addr.diff");
   llvm::Value *AddrDiff = Builder.CreateExactSDiv(AddrByteDiff, ElemSize);
 
@@ -661,8 +678,8 @@ llvm::Value *CodeGenFunction::EmitUPCPointerDiff(
   if (Quals.getLayoutQualifier() == 0) {
     Result = AddrDiff;
   } else {
-    llvm::Constant *B = llvm::ConstantInt::get(SizeTy, Quals.getLayoutQualifier());
-    llvm::Value *Threads = Builder.CreateZExt(EmitUPCThreads(), SizeTy);
+    llvm::Constant *B = llvm::ConstantInt::get(Ty, Quals.getLayoutQualifier());
+    llvm::Value *Threads = Builder.CreateZExt(EmitUPCThreads(), Ty);
 
     llvm::Value *ThreadDiff = Builder.CreateMul(Builder.CreateSub(Thread1, Thread2, "thread.diff"), B);
     llvm::Value *PhaseDiff = Builder.CreateSub(Phase1, Phase2, "phase.diff");
@@ -677,12 +694,15 @@ llvm::Value *CodeGenFunction::EmitUPCPointerDiff(
   }
 
   // FIXME: Divide by the array dimension
-  return Result;
+  return Builder.CreateZExtOrTrunc(Result, SizeTy);
 }
 
 llvm::Value *CodeGenFunction::EmitUPCPointerCompare(
     llvm::Value *Pointer1, llvm::Value *Pointer2, const BinaryOperator *E) {
 
+  const LangOptions& LangOpts = getContext().getLangOpts();
+  llvm::Type *Ty = (LangOpts.UPCPtsRep && LangOpts.UPCPtsSize == 128) ?
+                    llvm::Type::getIntNTy(getLLVMContext(), 128) : SizeTy;
   QualType PtrTy = E->getLHS()->getType();
 
   QualType PointeeTy = PtrTy->getAs<PointerType>()->getPointeeType();
@@ -717,7 +737,7 @@ llvm::Value *CodeGenFunction::EmitUPCPointerCompare(
   // are not in the same array.
   if (E->getOpcode() == BO_EQ || E->getOpcode() == BO_NE) {
     Result = Builder.CreateAnd(Builder.CreateICmpEQ(Addr1, Addr2),
-                               Builder.CreateICmpEQ(Thread1, Thread2));
+			       Builder.CreateICmpEQ(Thread1, Thread2));
   } else if (Quals.getLayoutQualifier() == 0) {
     Result = Builder.CreateICmpULT(Addr1, Addr2);
   } else {
@@ -726,7 +746,7 @@ llvm::Value *CodeGenFunction::EmitUPCPointerCompare(
     llvm::Constant *GTResult = llvm::ConstantInt::get(BoolTy, 0);
 
     llvm::Constant *ElemSize = 
-      llvm::ConstantInt::get(SizeTy, getContext().getTypeSizeInChars(ElemTy).getQuantity());
+      llvm::ConstantInt::get(Ty, getContext().getTypeSizeInChars(ElemTy).getQuantity());
     llvm::Value *AddrByteDiff = Builder.CreateSub(Addr1, Addr2, "addr.diff");
     llvm::Value *PhaseDiff = Builder.CreateSub(Phase1, Phase2, "phase.diff");
     llvm::Value *PhaseByteDiff = Builder.CreateMul(PhaseDiff, ElemSize);
@@ -734,17 +754,17 @@ llvm::Value *CodeGenFunction::EmitUPCPointerCompare(
     llvm::Value *TestBlockEQ = Builder.CreateICmpEQ(AddrByteDiff, PhaseByteDiff);
     llvm::Value *TestThreadLT = Builder.CreateICmpULT(Thread1, Thread2);
     llvm::Value *TestThreadEQ = Builder.CreateICmpEQ(Thread1, Thread2);
-    
+	    
     // Compare the block first, then the thread, then the phase
     Result = Builder.CreateSelect(TestBlockLT,
       LTResult,
       Builder.CreateSelect(TestBlockEQ,
-        Builder.CreateSelect(TestThreadLT,
-          LTResult,
-          Builder.CreateSelect(TestThreadEQ,
-            Builder.CreateICmpULT(Phase1, Phase2),
-            GTResult)),
-        GTResult));
+	Builder.CreateSelect(TestThreadLT,
+	  LTResult,
+	  Builder.CreateSelect(TestThreadEQ,
+	    Builder.CreateICmpULT(Phase1, Phase2),
+	    GTResult)),
+	GTResult));
   }
 
   if (Flip)
@@ -753,24 +773,30 @@ llvm::Value *CodeGenFunction::EmitUPCPointerCompare(
 }
 
 llvm::Value *CodeGenFunction::EmitUPCFieldOffset(llvm::Value *Addr,
-                                                 llvm::Type * StructTy,
-                                                 int Idx) {
+						 llvm::Type * StructTy,
+						 int Idx) {
+  const LangOptions& LangOpts = getContext().getLangOpts();
+  llvm::Type *Ty = (LangOpts.UPCPtsRep && LangOpts.UPCPtsSize == 128) ?
+			llvm::Type::getIntNTy(getLLVMContext(), 128) : SizeTy;
   const llvm::StructLayout * Layout =
     CGM.getDataLayout().getStructLayout(cast<llvm::StructType>(StructTy));
   llvm::Value * Offset =
-    llvm::ConstantInt::get(SizeTy, Layout->getElementOffset(Idx));
+    llvm::ConstantInt::get(Ty, Layout->getElementOffset(Idx));
   return EmitUPCPointer(
-    llvm::ConstantInt::get(SizeTy, 0),
+    llvm::ConstantInt::get(Ty, 0),
     EmitUPCPointerGetThread(Addr),
     Builder.CreateAdd(EmitUPCPointerGetAddr(Addr), Offset));
 }
 
 llvm::Value *CodeGenFunction::EmitUPCPointerAdd(llvm::Value *Addr,
-                                                int Idx) {
+						int Idx) {
+  const LangOptions& LangOpts = getContext().getLangOpts();
+  llvm::Type *Ty = (LangOpts.UPCPtsRep && LangOpts.UPCPtsSize == 128) ?
+			llvm::Type::getIntNTy(getLLVMContext(), 128) : SizeTy;
   llvm::Value * Offset =
-    llvm::ConstantInt::get(SizeTy, Idx);
+    llvm::ConstantInt::get(Ty, Idx);
   return EmitUPCPointer(
-    llvm::ConstantInt::get(SizeTy, 0),
+    llvm::ConstantInt::get(Ty, 0),
     EmitUPCPointerGetThread(Addr),
     Builder.CreateAdd(EmitUPCPointerGetAddr(Addr), Offset));
 }

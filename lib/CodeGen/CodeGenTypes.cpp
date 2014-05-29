@@ -637,12 +637,18 @@ llvm::Type *CodeGenTypes::GetUPCPointerToSharedType() {
   if (UPCPtsType)
     return UPCPtsType;
   
-  if (Context.getLangOpts().UPCPtsRep)
-    UPCPtsType = llvm::StructType::create(
-      "__upc_shared_pointer_type",
-      llvm::Type::getInt64Ty(getLLVMContext()),
-      NULL);
-  else if (Context.getLangOpts().UPCVaddrFirst) {
+  if (Context.getLangOpts().UPCPtsRep) {
+    if (Context.getLangOpts().UPCPtsSize == 128)
+      UPCPtsType = llvm::StructType::create(
+        "__upc_shared_pointer_type",
+        llvm::Type::getIntNTy(getLLVMContext(), 128),
+        NULL);
+    else
+      UPCPtsType = llvm::StructType::create(
+        "__upc_shared_pointer_type",
+        llvm::Type::getInt64Ty(getLLVMContext()),
+        NULL);
+  } else if (Context.getLangOpts().UPCVaddrFirst) {
     if (Context.getLangOpts().UPCAddrBits == 64) {
       UPCPtsType = llvm::StructType::create(
       "__upc_shared_pointer_type",

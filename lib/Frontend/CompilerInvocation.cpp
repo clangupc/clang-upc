@@ -1379,7 +1379,8 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
       for (int i = 0; i < 3; ++i)
         if (Bits[i].getAsInteger(10, Values[i]) || Values[i] <= 0)
           okay = false;
-      if (Values[0] + Values[1] + Values[2] != 64)
+      if (!((Values[0] + Values[1] + Values[2] != 64) ||
+         (Values[0] + Values[1] + Values[2] != 128)))
         okay = false;
     } else {
       okay = false;
@@ -1394,6 +1395,7 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
       Diags.Report(diag::err_drv_invalid_value)
         << Args.getLastArg(OPT_fupc_pts_EQ)->getAsString(Args) << PackedBits;
     Opts.UPCPtsRep = 1;
+    Opts.UPCPtsSize = Values[0] + Values[1] + Values[2];
   } else if(UPCPts == "struct") {
     // Default options for struct (might change depending on the target
     // options (e.g. -m32 on 64 bits host, or 32 bits host)

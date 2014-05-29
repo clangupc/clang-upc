@@ -17,20 +17,14 @@
 #define GUPCR_LOCK_ATOMIC_THREAD_TYPE unsigned long
 #define GUPCR_LOCK_ATOMIC_VADDR_TYPE unsigned long long
 #define GUPCR_LOCK_ATOMIC_TYPE unsigned long long
+
 /* Store/Load of lock reference values must be atomic. On 32 bit
    use atomic functions.  */
-#if __SIZEOF_POINTER__ == 4
-#define GUPCR_ATOMIC_LOCK_REF_ACCESS 1
-#else
-#define GUPCR_ATOMIC_LOCK_REF_ACCESS 0
-#endif
-/* Lock reference value is a 64 bits value.  If bigger (struct
-   implementation on 64 bit) it must be converted.  */
-#if defined (GUPCR_PTS_STRUCT_REP) && __SIZEOF_POINTER__ == 8
-#define GUPCR_CONVERT_LOCK_REF 1
-#else
-#define GUPCR_CONVERT_LOCK_REF 0
-#endif
+#define GUPCR_ATOMIC_LOCK_REF_ACCESS (__SIZEOF_POINTER__ == 4)
+
+/* Lock reference value is a 64 bits value.  If using a 128 bit PTS
+   representation, it must be converted.  */
+#define GUPCR_CONVERT_LOCK_REF (__UPC_PTS_SIZE__ > 64)
 
 /* Lock link reference pointer.
    "shared" pointer with thread and offset only. Small enough that
@@ -72,7 +66,8 @@ struct upc_lock_link_struct
 {
   upc_link_ref next;		  /* Next thread on the waiting list.  */
   int signal;			  /* Notification of lock ownership.  */
-  int free;			  /* Indication that link block is not used.  */
+  int free;			  /* Indication that link block
+                                     is not used.  */
   upc_link_ref link_ref;	  /* Lock reference of this block.  */
   upc_lock_link_t *link;	  /* Free list link pointer.  */
 } __attribute__ ((aligned(64)));
@@ -85,8 +80,8 @@ typedef union pts_as_rep
   } pts_as_rep_t;
 
 /* Convert pointer to shared into the link reference.  */
-__attribute__((__always_inline__))
-static inline
+// __attribute__((__always_inline__))
+// static inline
 upc_link_ref
 upc_to_link_ref (shared void *p)
 {
@@ -97,8 +92,8 @@ upc_to_link_ref (shared void *p)
       shared void *s;
       upc_shared_ptr_t v;
     } pts = { .s = p };
-  ref.sptr.thread = GUPCR_PTS_THREAD (pts.v);
-  ref.sptr.addr = GUPCR_PTS_VADDR (pts.v);
+  ref.sptr.thread = (GUPCR_LOCK_ATOMIC_THREAD_TYPE) GUPCR_PTS_THREAD (pts.v);
+  ref.sptr.addr = (GUPCR_LOCK_ATOMIC_VADDR_TYPE) GUPCR_PTS_VADDR (pts.v);
   return ref;
 #else
   union pts_as_rep

@@ -100,12 +100,15 @@ typedef upc_shared_ptr_t upc_dbg_shared_ptr_t;
 #endif
 #define GUPCR_PTS_TO_REP(V) *((upc_shared_ptr_t *)&(V)) 
 #if GUPCR_TARGET64
-#define GUPCR_ONE 1L
+#if (GUPCR_PTS_PHASE_SIZE+GUPCR_PTS_THREAD_SIZE+GUPCR_PTS_VADDR_SIZE) == 64
 #define GUPCR_PTS_REP_T unsigned long
 #else
-#define GUPCR_ONE 1LL
+#define GUPCR_PTS_REP_T u_intTI_t
+#endif
+#else
 #define GUPCR_PTS_REP_T unsigned long long
 #endif
+#define GUPCR_ONE ((GUPCR_PTS_REP_T)1)
 #define GUPCR_PTS_VADDR_MASK	((GUPCR_ONE << GUPCR_PTS_VADDR_SIZE) - GUPCR_ONE)
 #define GUPCR_PTS_THREAD_MASK	((GUPCR_ONE << GUPCR_PTS_THREAD_SIZE) - GUPCR_ONE)
 #define GUPCR_PTS_PHASE_MASK	((GUPCR_ONE << GUPCR_PTS_PHASE_SIZE) - GUPCR_ONE)
