@@ -1725,24 +1725,15 @@ EmitBitCastOfLValueToProperType(CodeGenFunction &CGF,
 }
 
 LValue CodeGenFunction::EmitSharedVarDeclLValue(llvm::Value *V, CharUnits Alignment, QualType T) {
-  const LangOptions& LangOpts = getContext().getLangOpts();
-  if (LangOpts.UPCPtsRep) {
-    llvm::Value *SectionStart = CGM.getModule().getOrInsertGlobal("__upc_shared_start", Int8Ty);
-    llvm::Value *StartInt = Builder.CreatePtrToInt(SectionStart, PtrDiffTy, "sect.cast");
-    llvm::Value *VInt = Builder.CreatePtrToInt(V, PtrDiffTy, "addr.cast");
-    llvm::Value *Ofs = Builder.CreateSub(VInt, StartInt, "ofs.sub");
+  llvm::Value *SectionStart = CGM.getModule().getOrInsertGlobal("__upc_shared_start", Int8Ty);
+  llvm::Value *StartInt = Builder.CreatePtrToInt(SectionStart, PtrDiffTy, "sect.cast");
+  llvm::Value *VInt = Builder.CreatePtrToInt(V, PtrDiffTy, "addr.cast");
+  llvm::Value *Ofs = Builder.CreateSub(VInt, StartInt, "ofs.sub");
     
-    llvm::Value *UPCPtr = EmitUPCPointer(llvm::ConstantInt::get(SizeTy, 0),
-                                         llvm::ConstantInt::get(SizeTy, 0),
+  llvm::Value *UPCPtr = EmitUPCPointer(llvm::ConstantInt::get(SizeTy, 0),
+                                       llvm::ConstantInt::get(SizeTy, 0),
                                          Ofs);
-    return LValue::MakeAddr(UPCPtr, T, Alignment, getContext());
-  } else {
-    llvm::Value *VInt = Builder.CreatePtrToInt(V, PtrDiffTy, "addr.cast");
-    llvm::Value *UPCPtr = EmitUPCPointer(llvm::ConstantInt::get(SizeTy, 0),
-                                         llvm::ConstantInt::get(SizeTy, 0),
-                                         VInt);
-    return LValue::MakeAddr(UPCPtr, T, Alignment, getContext());
-  }
+  return LValue::MakeAddr(UPCPtr, T, Alignment, getContext());
 }
 
 static LValue EmitGlobalVarDeclLValue(CodeGenFunction &CGF,

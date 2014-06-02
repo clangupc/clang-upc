@@ -367,15 +367,10 @@ llvm::Value *CodeGenFunction::EmitUPCPointerGetPhase(llvm::Value *Pointer) {
   unsigned ThreadBits = LangOpts.UPCThreadBits;
   unsigned AddrBits = LangOpts.UPCAddrBits;
   llvm::Value *Result;
-  if (LangOpts.UPCPtsRep) {
-    llvm::Value *Val = Builder.CreateExtractValue(Pointer, 0);
-    Result = Builder.CreateLShr(Val, ThreadBits + AddrBits);
-    return Builder.CreateZExtOrTrunc(Result, LangOpts.UPCPtsSize == 64 ?
-           SizeTy : llvm::Type::getIntNTy(getLLVMContext(), 128));
-  } else {
-    Result = Builder.CreateExtractValue(Pointer, 0);
-    return Builder.CreateZExtOrTrunc(Result, SizeTy);
-  }
+  llvm::Value *Val = Builder.CreateExtractValue(Pointer, 0);
+  Result = Builder.CreateLShr(Val, ThreadBits + AddrBits);
+  return Builder.CreateZExtOrTrunc(Result, LangOpts.UPCPtsSize == 64 ?
+         SizeTy : llvm::Type::getIntNTy(getLLVMContext(), 128));
 }
 
 llvm::Value *CodeGenFunction::EmitUPCPointerGetThread(llvm::Value *Pointer) {
@@ -383,31 +378,21 @@ llvm::Value *CodeGenFunction::EmitUPCPointerGetThread(llvm::Value *Pointer) {
   unsigned ThreadBits = LangOpts.UPCThreadBits;
   unsigned AddrBits = LangOpts.UPCAddrBits;
   llvm::Value *Result;
-  if (LangOpts.UPCPtsRep) {
-    llvm::Value *Val = Builder.CreateExtractValue(Pointer, 0);
-    Val = Builder.CreateLShr(Val, AddrBits);
-    Result = Builder.CreateAnd(Val, llvm::APInt::getLowBitsSet(LangOpts.UPCPtsSize, ThreadBits));
-    return Builder.CreateZExtOrTrunc(Result, LangOpts.UPCPtsSize == 64 ?
-           SizeTy : llvm::Type::getIntNTy(getLLVMContext(), 128));
-  } else {
-    Result = Builder.CreateExtractValue(Pointer, 1);
-    return Builder.CreateZExtOrTrunc(Result, SizeTy);
-  }
+  llvm::Value *Val = Builder.CreateExtractValue(Pointer, 0);
+  Val = Builder.CreateLShr(Val, AddrBits);
+  Result = Builder.CreateAnd(Val, llvm::APInt::getLowBitsSet(LangOpts.UPCPtsSize, ThreadBits));
+  return Builder.CreateZExtOrTrunc(Result, LangOpts.UPCPtsSize == 64 ?
+         SizeTy : llvm::Type::getIntNTy(getLLVMContext(), 128));
 }
 
 llvm::Value *CodeGenFunction::EmitUPCPointerGetAddr(llvm::Value *Pointer) {
   const LangOptions& LangOpts = getContext().getLangOpts();
   unsigned AddrBits = LangOpts.UPCAddrBits;
   llvm::Value *Result;
-  if (LangOpts.UPCPtsRep) {
-    llvm::Value *Val = Builder.CreateExtractValue(Pointer, 0);
-    Result = Builder.CreateAnd(Val, llvm::APInt::getLowBitsSet(LangOpts.UPCPtsSize, AddrBits));
-    return Builder.CreateZExtOrTrunc(Result, LangOpts.UPCPtsSize == 64 ?
-           SizeTy : llvm::Type::getIntNTy(getLLVMContext(), 128));
-  } else {
-    Result = Builder.CreateExtractValue(Pointer, 2);
-    return Builder.CreateZExtOrTrunc(Result, SizeTy);
-  }
+  llvm::Value *Val = Builder.CreateExtractValue(Pointer, 0);
+  Result = Builder.CreateAnd(Val, llvm::APInt::getLowBitsSet(LangOpts.UPCPtsSize, AddrBits));
+  return Builder.CreateZExtOrTrunc(Result, LangOpts.UPCPtsSize == 64 ?
+         SizeTy : llvm::Type::getIntNTy(getLLVMContext(), 128));
 }
 
 llvm::Value *CodeGenFunction::EmitUPCPointer(llvm::Value *Phase, llvm::Value *Thread, llvm::Value *Addr) {
@@ -415,28 +400,16 @@ llvm::Value *CodeGenFunction::EmitUPCPointer(llvm::Value *Phase, llvm::Value *Th
   unsigned ThreadBits = LangOpts.UPCThreadBits;
   unsigned AddrBits = LangOpts.UPCAddrBits;
   llvm::Value *Result = llvm::UndefValue::get(GenericPtsTy);
-  if (LangOpts.UPCPtsRep) {
-    llvm::Type *Ty = LangOpts.UPCPtsSize == 64 ? Int64Ty : llvm::Type::getIntNTy(getLLVMContext(), 128);
-    // The arguments are size_t.  Convert them to the correct size.
-    Phase = Builder.CreateZExtOrTrunc(Phase, Ty);
-    Thread = Builder.CreateZExtOrTrunc(Thread, Ty);
-    Addr = Builder.CreateZExtOrTrunc(Addr, Ty);
-    llvm::Value *Val;
-    Val = Builder.CreateOr(Builder.CreateShl(Phase, ThreadBits + AddrBits),
-                           Builder.CreateOr(Builder.CreateShl(Thread, AddrBits), Addr));
-    Result = Builder.CreateInsertValue(Result, Val, 0);
-  } else {
-    if (getContext().getTargetInfo().getPointerWidth(0) == 64) {
-      Phase = Builder.CreateZExtOrTrunc(Phase, Int32Ty);
-      Thread = Builder.CreateZExtOrTrunc(Thread, Int32Ty);
-    } else {
-      Phase = Builder.CreateZExtOrTrunc(Phase, Int16Ty);
-      Thread = Builder.CreateZExtOrTrunc(Thread, Int16Ty);
-    }
-    Result = Builder.CreateInsertValue(Result, Phase, 0);
-    Result = Builder.CreateInsertValue(Result, Thread, 1);
-    Result = Builder.CreateInsertValue(Result, Addr, 2);
-  }
+  llvm::Type *Ty = LangOpts.UPCPtsSize == 64 ?
+                   Int64Ty : llvm::Type::getIntNTy(getLLVMContext(), 128);
+  // The arguments are size_t.  Convert them to the correct size.
+  Phase = Builder.CreateZExtOrTrunc(Phase, Ty);
+  Thread = Builder.CreateZExtOrTrunc(Thread, Ty);
+  Addr = Builder.CreateZExtOrTrunc(Addr, Ty);
+  llvm::Value *Val;
+  Val = Builder.CreateOr(Builder.CreateShl(Phase, ThreadBits + AddrBits),
+                         Builder.CreateOr(Builder.CreateShl(Thread, AddrBits), Addr));
+  Result = Builder.CreateInsertValue(Result, Val, 0);
   return Result;
 }
 
@@ -523,8 +496,8 @@ llvm::Value *CodeGenFunction::EmitUPCPointerArithmetic(
     llvm::Value *Pointer, llvm::Value *Index, QualType PtrTy, QualType IndexTy, bool IsSubtraction) {
 
   const LangOptions& LangOpts = getContext().getLangOpts();
-  llvm::Type *Ty = (LangOpts.UPCPtsRep && LangOpts.UPCPtsSize == 128) ?
-			llvm::Type::getIntNTy(getLLVMContext(), 128) : SizeTy;
+  llvm::Type *Ty = (LangOpts.UPCPtsSize == 64) ?
+			SizeTy : llvm::Type::getIntNTy(getLLVMContext(), 128);
   llvm::Value *Phase = EmitUPCPointerGetPhase(Pointer);
   llvm::Value *Thread = EmitUPCPointerGetThread(Pointer);
   llvm::Value *Addr = EmitUPCPointerGetAddr(Pointer);
@@ -532,11 +505,10 @@ llvm::Value *CodeGenFunction::EmitUPCPointerArithmetic(
   bool isSigned = IndexTy->isSignedIntegerOrEnumerationType();
 
   unsigned width = cast<llvm::IntegerType>(Index->getType())->getBitWidth();
-  if (width != PointerWidthInBits ||
-      (LangOpts.UPCPtsRep && LangOpts.UPCPtsSize == 128)) {
+  if (width != PointerWidthInBits || LangOpts.UPCPtsSize > 64) {
     // Zero-extend or sign-extend the pointer value according to
     // whether the index is signed or not.
-    if (LangOpts.UPCPtsRep && LangOpts.UPCPtsSize == 128)
+    if (LangOpts.UPCPtsSize > 64)
       Index = Builder.CreateIntCast(Index, Ty, isSigned, "idx.ext");
     else
       Index = Builder.CreateIntCast(Index, PtrDiffTy, isSigned, "idx.ext");
@@ -547,7 +519,7 @@ llvm::Value *CodeGenFunction::EmitUPCPointerArithmetic(
   llvm::Value *Dim;
   llvm::tie(ElemTy, Dim) = unwrapArray(*this, PointeeTy);
   if (Dim) {
-    if (LangOpts.UPCPtsRep && LangOpts.UPCPtsSize == 128)
+    if (LangOpts.UPCPtsSize > 64)
       Dim = Builder.CreateIntCast(Dim, Ty, isSigned, "idx.ext");
     Index = Builder.CreateMul(Index, Dim, "idx.dim", !isSigned, isSigned);
   }
@@ -610,8 +582,8 @@ llvm::Value *CodeGenFunction::EmitUPCPointerDiff(
     llvm::Value *Pointer1, llvm::Value *Pointer2, const Expr *E) {
 
   const LangOptions& LangOpts = getContext().getLangOpts();
-  llvm::Type *Ty = (LangOpts.UPCPtsRep && LangOpts.UPCPtsSize == 128) ?
-			llvm::Type::getIntNTy(getLLVMContext(), 128) : SizeTy;
+  llvm::Type *Ty = (LangOpts.UPCPtsSize == 64) ?
+			SizeTy : llvm::Type::getIntNTy(getLLVMContext(), 128);
   const BinaryOperator *expr = cast<BinaryOperator>(E);
   Expr *LHSOperand = expr->getLHS();
   QualType PtrTy = LHSOperand->getType();
@@ -663,8 +635,8 @@ llvm::Value *CodeGenFunction::EmitUPCPointerCompare(
     llvm::Value *Pointer1, llvm::Value *Pointer2, const BinaryOperator *E) {
 
   const LangOptions& LangOpts = getContext().getLangOpts();
-  llvm::Type *Ty = (LangOpts.UPCPtsRep && LangOpts.UPCPtsSize == 128) ?
-                    llvm::Type::getIntNTy(getLLVMContext(), 128) : SizeTy;
+  llvm::Type *Ty = (LangOpts.UPCPtsSize == 64) ?
+                    SizeTy : llvm::Type::getIntNTy(getLLVMContext(), 128);
   QualType PtrTy = E->getLHS()->getType();
 
   QualType PointeeTy = PtrTy->getAs<PointerType>()->getPointeeType();
@@ -738,8 +710,8 @@ llvm::Value *CodeGenFunction::EmitUPCFieldOffset(llvm::Value *Addr,
 						 llvm::Type * StructTy,
 						 int Idx) {
   const LangOptions& LangOpts = getContext().getLangOpts();
-  llvm::Type *Ty = (LangOpts.UPCPtsRep && LangOpts.UPCPtsSize == 128) ?
-			llvm::Type::getIntNTy(getLLVMContext(), 128) : SizeTy;
+  llvm::Type *Ty = (LangOpts.UPCPtsSize == 64) ?
+			SizeTy : llvm::Type::getIntNTy(getLLVMContext(), 128);
   const llvm::StructLayout * Layout =
     CGM.getDataLayout().getStructLayout(cast<llvm::StructType>(StructTy));
   llvm::Value * Offset =
@@ -753,8 +725,8 @@ llvm::Value *CodeGenFunction::EmitUPCFieldOffset(llvm::Value *Addr,
 llvm::Value *CodeGenFunction::EmitUPCPointerAdd(llvm::Value *Addr,
 						int Idx) {
   const LangOptions& LangOpts = getContext().getLangOpts();
-  llvm::Type *Ty = (LangOpts.UPCPtsRep && LangOpts.UPCPtsSize == 128) ?
-			llvm::Type::getIntNTy(getLLVMContext(), 128) : SizeTy;
+  llvm::Type *Ty = (LangOpts.UPCPtsSize == 64) ?
+			SizeTy : llvm::Type::getIntNTy(getLLVMContext(), 128);
   llvm::Value * Offset =
     llvm::ConstantInt::get(Ty, Idx);
   return EmitUPCPointer(

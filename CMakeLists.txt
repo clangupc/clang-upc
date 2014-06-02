@@ -172,7 +172,6 @@ if (APPLE)
   set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,-flat_namespace -Wl,-undefined -Wl,suppress")
 endif ()
 
-set(UPC_PTS "packed" CACHE STRING "UPC shared pointer representation (packed|struct) default packed")
 set(UPC_PACKED_BITS "20,10,34" CACHE STRING "UPC shared pointer bits per field (phase,thread,addr) default 20,10,34")
 string(REPLACE "," ";" bits_list ${UPC_PACKED_BITS})                            
 list(GET bits_list 0 UPC_PACKED_PHASE)

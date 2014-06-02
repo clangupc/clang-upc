@@ -1367,50 +1367,31 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
   Opts.PIELevel = getLastArgIntValue(Args, OPT_pie_level, 0, Diags);
   Opts.Static = Args.hasArg(OPT_static_define);
 
-  StringRef UPCPts = Args.getLastArgValue(OPT_fupc_pts_EQ, UPC_PTS);
-  if (UPCPts == "packed") {
-    StringRef PackedBits = Args.getLastArgValue(OPT_fupc_packed_bits_EQ, UPC_PACKED_BITS);
-
-    llvm::SmallVector<llvm::StringRef, 3> Bits;
-    PackedBits.split(Bits, ",");
-    bool okay = true;
-    int Values[3];
-    if (Bits.size() == 3) {
-      for (int i = 0; i < 3; ++i)
-        if (Bits[i].getAsInteger(10, Values[i]) || Values[i] <= 0)
-          okay = false;
-      if (!((Values[0] + Values[1] + Values[2] != 64) ||
-         (Values[0] + Values[1] + Values[2] != 128)))
+  StringRef PackedBits = Args.getLastArgValue(OPT_fupc_packed_bits_EQ, UPC_PACKED_BITS);
+  llvm::SmallVector<llvm::StringRef, 3> Bits;
+  PackedBits.split(Bits, ",");
+  bool okay = true;
+  int Values[3];
+  if (Bits.size() == 3) {
+    for (int i = 0; i < 3; ++i)
+      if (Bits[i].getAsInteger(10, Values[i]) || Values[i] <= 0)
         okay = false;
-    } else {
+    if ((Values[0] + Values[1] + Values[2] < 64) ||
+        (Values[0] + Values[1] + Values[2] > 128))
       okay = false;
-    }
+  } else {
+    okay = false;
+  }
 
-    if (okay) {
-      Opts.UPCPhaseBits = Values[0];
-      Opts.UPCThreadBits = Values[1];
-      Opts.UPCAddrBits = Values[2];
-    }
-    else
+  if (okay) {
+    Opts.UPCPhaseBits = Values[0];
+    Opts.UPCThreadBits = Values[1];
+    Opts.UPCAddrBits = Values[2];
+  } else
       Diags.Report(diag::err_drv_invalid_value)
         << Args.getLastArg(OPT_fupc_pts_EQ)->getAsString(Args) << PackedBits;
-    Opts.UPCPtsRep = 1;
-    Opts.UPCPtsSize = Values[0] + Values[1] + Values[2];
-  } else if(UPCPts == "struct") {
-    // Default options for struct (might change depending on the target
-    // options (e.g. -m32 on 64 bits host, or 32 bits host)
-    Opts.UPCPhaseBits = 32;
-    Opts.UPCThreadBits = 32;
-    Opts.UPCAddrBits = 64;
-    if (Args.hasArg(OPT_fupc_packed_bits_EQ))
-      Diags.Report(diag::err_drv_argument_not_allowed_with)
-        << Args.getLastArg(OPT_fupc_packed_bits_EQ)->getAsString(Args)
-        << Args.getLastArg(OPT_fupc_pts_EQ)->getAsString(Args);
-    Opts.UPCPtsRep = 0;
-  } else {
-    Diags.Report(diag::err_drv_invalid_value)
-      << Args.getLastArg(OPT_fupc_pts_EQ)->getAsString(Args) << UPCPts;
-  }
+
+  Opts.UPCPtsSize = (Values[0] + Values[1] + Values[2]) == 64 ? 64 : 128;
 
   int Threads = getLastArgIntValue(Args, OPT_fupc_threads, 0, Diags);
   if (Threads < 0) {
@@ -1754,22 +1735,6 @@ bool CompilerInvocation::CreateFromArgs(CompilerInvocation &Res,
   ParsePreprocessorOutputArgs(Res.getPreprocessorOutputOpts(), *Args,
                               Res.getFrontendOpts().ProgramAction);
   ParseTargetArgs(Res.getTargetOpts(), *Args);
-
-  // For UPC struct representation fields sizes depend on the
-  // target configuration (e.g. -m32 option on 64 bits host).
-  // Check for X86 or PPC target is done similarly to the code
-  // in InitHeaderSearch.cpp.  This check must be done only after
-  // the target options have been processed.
-  if (Res.getLangOpts()->UPCPtsRep == 0) {
-    std::string triple = Res.getTargetOpts().Triple;
-    bool is64bit = (triple.find("x86_64") != std::string::npos) ||
-                   (triple.find("ppc64") != std::string::npos);
-    if (!is64bit) {
-      Res.getLangOpts()->UPCPhaseBits = 16;
-      Res.getLangOpts()->UPCThreadBits = 16;
-      Res.getLangOpts()->UPCAddrBits = 32;
-    }
-  }  
 
   return Success;
 }
