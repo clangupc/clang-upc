@@ -27,7 +27,4 @@
 /* the number of bits in each field. */                                         
 #undef UPC_PACKED_BITS
                                                                                 
-/* the field order */                                                           
-#undef UPC_PTS_VADDR_ORDER
-
 #endif

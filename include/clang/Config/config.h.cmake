@@ -19,5 +19,3 @@
 /* the number of bits in each field. */
 #define UPC_PACKED_BITS "${UPC_PACKED_BITS}"
 
-/* the field order */
-#define UPC_PTS_VADDR_ORDER "${UPC_PTS_VADDR_ORDER}"

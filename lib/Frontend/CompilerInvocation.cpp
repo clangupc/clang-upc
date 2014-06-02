@@ -1412,16 +1412,6 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
       << Args.getLastArg(OPT_fupc_pts_EQ)->getAsString(Args) << UPCPts;
   }
 
-  StringRef VaddrOrder = Args.getLastArgValue(OPT_fupc_pts_vaddr_order_EQ, UPC_PTS_VADDR_ORDER);
-  if (VaddrOrder == "first")
-    Opts.UPCVaddrFirst = 1;
-  else if (VaddrOrder == "last")
-    Opts.UPCVaddrFirst = 0;
-  else
-    Diags.Report(diag::err_drv_invalid_value)
-      << Args.getLastArg(OPT_fupc_pts_vaddr_order_EQ)->getAsString(Args)
-      << VaddrOrder;
-
   int Threads = getLastArgIntValue(Args, OPT_fupc_threads, 0, Diags);
   if (Threads < 0) {
     Diags.Report(diag::err_drv_invalid_int_value)

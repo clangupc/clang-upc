@@ -3516,7 +3516,6 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
 
   Args.AddLastArg(CmdArgs, options::OPT_fupc_packed_bits_EQ);
   Args.AddLastArg(CmdArgs, options::OPT_fupc_pts_EQ);
-  Args.AddLastArg(CmdArgs, options::OPT_fupc_pts_vaddr_order_EQ);
 
   Args.AddAllArgs(CmdArgs, options::OPT_fupc_inline_lib,
                   options::OPT_fno_upc_inline_lib);
@@ -5074,9 +5073,6 @@ void darwin::Link::ConstructJob(Compilation &C, const JobAction &JA,
     llvm::SmallString<32> Buf("-lupc");
     if (Args.getLastArgValue(options::OPT_fupc_pts_EQ, "packed") == "struct") {
       Buf += "-s";
-    }
-    if (Args.getLastArgValue(options::OPT_fupc_pts_vaddr_order_EQ, "first") == "last") {
-      Buf += "-l";
     }
     if (Arg * A = Args.getLastArg(options::OPT_fupc_packed_bits_EQ)) {
       llvm::SmallVector<llvm::StringRef, 3> Bits;
@@ -6688,9 +6684,6 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
     llvm::SmallString<32> Buf("-lupc");
     if (Args.getLastArgValue(options::OPT_fupc_pts_EQ, "packed") == "struct") {
       Buf += "-s";
-    }
-    if (Args.getLastArgValue(options::OPT_fupc_pts_vaddr_order_EQ, "first") == "last") {
-      Buf += "-l";
     }
     if (Arg * A = Args.getLastArg(options::OPT_fupc_packed_bits_EQ)) {
       llvm::SmallVector<llvm::StringRef, 3> Bits;

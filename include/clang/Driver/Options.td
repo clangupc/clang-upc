@@ -789,8 +789,6 @@ def fupc_pts_EQ : Joined<["-"], "fupc-pts=">,
                   Group<f_Group>, Flags<[CC1Option]>;
 def fupc_packed_bits_EQ : Joined<["-"], "fupc-packed-bits=">,
                           Group<f_Group>, Flags<[CC1Option]>;
-def fupc_pts_vaddr_order_EQ : Joined<["-"], "fupc-pts-vaddr-order=">,
-                              Group<f_Group>, Flags<[CC1Option]>;
 def fupc_inline_lib : Flag<["-"], "fupc-inline-lib">,
                       Group<f_Group>, Flags<[CC1Option]>;
 def fno_upc_inline_lib : Flag<["-"], "fno-upc-inline-lib">,

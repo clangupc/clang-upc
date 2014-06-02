@@ -364,42 +364,28 @@ llvm::Value *CodeGenFunction::EmitUPCAtomicCmpXchg(llvm::Value *Addr,
 
 llvm::Value *CodeGenFunction::EmitUPCPointerGetPhase(llvm::Value *Pointer) {
   const LangOptions& LangOpts = getContext().getLangOpts();
-  unsigned PhaseBits = LangOpts.UPCPhaseBits;
   unsigned ThreadBits = LangOpts.UPCThreadBits;
   unsigned AddrBits = LangOpts.UPCAddrBits;
   llvm::Value *Result;
   if (LangOpts.UPCPtsRep) {
     llvm::Value *Val = Builder.CreateExtractValue(Pointer, 0);
-    if (LangOpts.UPCVaddrFirst) {
-      Result = Builder.CreateAnd(Val, llvm::APInt::getLowBitsSet(LangOpts.UPCPtsSize, PhaseBits));
-    } else {
-      Result = Builder.CreateLShr(Val, ThreadBits + AddrBits);
-    }
+    Result = Builder.CreateLShr(Val, ThreadBits + AddrBits);
     return Builder.CreateZExtOrTrunc(Result, LangOpts.UPCPtsSize == 64 ?
            SizeTy : llvm::Type::getIntNTy(getLLVMContext(), 128));
   } else {
-    if (LangOpts.UPCVaddrFirst) {
-      Result = Builder.CreateExtractValue(Pointer, 2);
-    } else {
-      Result = Builder.CreateExtractValue(Pointer, 0);
-    }
+    Result = Builder.CreateExtractValue(Pointer, 0);
     return Builder.CreateZExtOrTrunc(Result, SizeTy);
   }
 }
 
 llvm::Value *CodeGenFunction::EmitUPCPointerGetThread(llvm::Value *Pointer) {
   const LangOptions& LangOpts = getContext().getLangOpts();
-  unsigned PhaseBits = LangOpts.UPCPhaseBits;
   unsigned ThreadBits = LangOpts.UPCThreadBits;
   unsigned AddrBits = LangOpts.UPCAddrBits;
   llvm::Value *Result;
   if (LangOpts.UPCPtsRep) {
     llvm::Value *Val = Builder.CreateExtractValue(Pointer, 0);
-    if (LangOpts.UPCVaddrFirst) {
-      Val = Builder.CreateLShr(Val, PhaseBits);
-    } else {
-      Val = Builder.CreateLShr(Val, AddrBits);
-    }
+    Val = Builder.CreateLShr(Val, AddrBits);
     Result = Builder.CreateAnd(Val, llvm::APInt::getLowBitsSet(LangOpts.UPCPtsSize, ThreadBits));
     return Builder.CreateZExtOrTrunc(Result, LangOpts.UPCPtsSize == 64 ?
            SizeTy : llvm::Type::getIntNTy(getLLVMContext(), 128));
@@ -411,32 +397,21 @@ llvm::Value *CodeGenFunction::EmitUPCPointerGetThread(llvm::Value *Pointer) {
 
 llvm::Value *CodeGenFunction::EmitUPCPointerGetAddr(llvm::Value *Pointer) {
   const LangOptions& LangOpts = getContext().getLangOpts();
-  unsigned PhaseBits = LangOpts.UPCPhaseBits;
-  unsigned ThreadBits = LangOpts.UPCThreadBits;
   unsigned AddrBits = LangOpts.UPCAddrBits;
   llvm::Value *Result;
   if (LangOpts.UPCPtsRep) {
     llvm::Value *Val = Builder.CreateExtractValue(Pointer, 0);
-    if (LangOpts.UPCVaddrFirst) {
-      Result = Builder.CreateLShr(Val, ThreadBits + PhaseBits);
-    } else {
-      Result = Builder.CreateAnd(Val, llvm::APInt::getLowBitsSet(LangOpts.UPCPtsSize, AddrBits));
-    }
+    Result = Builder.CreateAnd(Val, llvm::APInt::getLowBitsSet(LangOpts.UPCPtsSize, AddrBits));
     return Builder.CreateZExtOrTrunc(Result, LangOpts.UPCPtsSize == 64 ?
            SizeTy : llvm::Type::getIntNTy(getLLVMContext(), 128));
   } else {
-    if (LangOpts.UPCVaddrFirst) {
-      Result = Builder.CreateExtractValue(Pointer, 0);
-    } else {
-      Result = Builder.CreateExtractValue(Pointer, 2);
-    }
+    Result = Builder.CreateExtractValue(Pointer, 2);
     return Builder.CreateZExtOrTrunc(Result, SizeTy);
   }
 }
 
 llvm::Value *CodeGenFunction::EmitUPCPointer(llvm::Value *Phase, llvm::Value *Thread, llvm::Value *Addr) {
   const LangOptions& LangOpts = getContext().getLangOpts();
-  unsigned PhaseBits = LangOpts.UPCPhaseBits;
   unsigned ThreadBits = LangOpts.UPCThreadBits;
   unsigned AddrBits = LangOpts.UPCAddrBits;
   llvm::Value *Result = llvm::UndefValue::get(GenericPtsTy);
@@ -447,15 +422,8 @@ llvm::Value *CodeGenFunction::EmitUPCPointer(llvm::Value *Phase, llvm::Value *Th
     Thread = Builder.CreateZExtOrTrunc(Thread, Ty);
     Addr = Builder.CreateZExtOrTrunc(Addr, Ty);
     llvm::Value *Val;
-    if (LangOpts.UPCVaddrFirst) {
-      Val = Builder.CreateOr(Builder.CreateShl(Addr, ThreadBits + PhaseBits),
-                             Builder.CreateOr(Builder.CreateShl(Thread, PhaseBits),
-                                              Phase));
-    } else {
-      Val = Builder.CreateOr(Builder.CreateShl(Phase, ThreadBits + AddrBits),
-                             Builder.CreateOr(Builder.CreateShl(Thread, AddrBits),
-                                              Addr));
-    }
+    Val = Builder.CreateOr(Builder.CreateShl(Phase, ThreadBits + AddrBits),
+                           Builder.CreateOr(Builder.CreateShl(Thread, AddrBits), Addr));
     Result = Builder.CreateInsertValue(Result, Val, 0);
   } else {
     if (getContext().getTargetInfo().getPointerWidth(0) == 64) {
@@ -465,15 +433,9 @@ llvm::Value *CodeGenFunction::EmitUPCPointer(llvm::Value *Phase, llvm::Value *Th
       Phase = Builder.CreateZExtOrTrunc(Phase, Int16Ty);
       Thread = Builder.CreateZExtOrTrunc(Thread, Int16Ty);
     }
-    if (LangOpts.UPCVaddrFirst) {
-      Result = Builder.CreateInsertValue(Result, Addr, 0);
-      Result = Builder.CreateInsertValue(Result, Thread, 1);
-      Result = Builder.CreateInsertValue(Result, Phase, 2);
-    } else {
-      Result = Builder.CreateInsertValue(Result, Phase, 0);
-      Result = Builder.CreateInsertValue(Result, Thread, 1);
-      Result = Builder.CreateInsertValue(Result, Addr, 2);
-    }
+    Result = Builder.CreateInsertValue(Result, Phase, 0);
+    Result = Builder.CreateInsertValue(Result, Thread, 1);
+    Result = Builder.CreateInsertValue(Result, Addr, 2);
   }
   return Result;
 }
