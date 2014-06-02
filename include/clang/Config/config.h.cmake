@@ -16,6 +16,15 @@
 /* UPC shared pointer representation. */
 #define UPC_PTS "${UPC_PTS}"
 
-/* the number of bits in each field. */
+/* The packed pointer to shared representation. */
 #define UPC_PACKED_BITS "${UPC_PACKED_BITS}"
+
+/* Default number of bits in the phase field. */
+#define UPC_PACKED_PHASE ${UPC_PACKED_PHASE}
+
+/* Default number of bits in the thread field. */
+#define UPC_PACKED_THREAD ${UPC_PACKED_THREAD}
+
+/* Default number of bits in the vaddr field. */
+#define UPC_PACKED_VADDR ${UPC_PACKED_VADDR}
 

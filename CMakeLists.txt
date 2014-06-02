@@ -174,7 +174,10 @@ endif ()
 
 set(UPC_PTS "packed" CACHE STRING "UPC shared pointer representation (packed|struct) default packed")
 set(UPC_PACKED_BITS "20,10,34" CACHE STRING "UPC shared pointer bits per field (phase,thread,addr) default 20,10,34")
-set(UPC_PTS_VADDR_ORDER "first" CACHE STRING "UPC shared pointer field order default first")
+string(REPLACE "," ";" bits_list ${UPC_PACKED_BITS})                            
+list(GET bits_list 0 UPC_PACKED_PHASE)
+list(GET bits_list 1 UPC_PACKED_THREAD)
+list(GET bits_list 2 UPC_PACKED_VADDR)
 
 configure_file(
   ${CLANG_SOURCE_DIR}/include/clang/Config/config.h.cmake

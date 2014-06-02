@@ -10,6 +10,7 @@
 #include "Tools.h"
 #include "InputInfo.h"
 #include "ToolChains.h"
+#include "clang/Config/config.h"
 #include "clang/Basic/ObjCRuntime.h"
 #include "clang/Basic/Version.h"
 #include "clang/Driver/Action.h"
@@ -5083,13 +5084,18 @@ void darwin::Link::ConstructJob(Compilation &C, const JobAction &JA,
         for (int i = 0; i < 3; ++i)
           if (Bits[i].getAsInteger(10, Values[i]) || Values[i] <= 0)
             okay = false;
-        if (Values[0] + Values[1] + Values[2] != 64)
-          okay = false;
+          if (Values[0] + Values[1] + Values[2] < 64 ||
+              Values[0] + Values[1] + Values[2] > 128)
+            okay = false;
       } else {
         okay = false;
       }
       if (okay) {
-        if(Values[0] != 20 || Values[1] != 10 || Values[2] != 34) {
+      D.Diag(diag::err_drv_argument_not_allowed_with)
+        << "-static 3";
+        if(Values[0] != UPC_PACKED_PHASE ||
+           Values[1] != UPC_PACKED_THREAD ||
+           Values[2] != UPC_PACKED_VADDR) {
           Buf += "-";
           Buf += Bits[0];
           Buf += "-";
@@ -6694,13 +6700,16 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
         for (int i = 0; i < 3; ++i)
           if (Bits[i].getAsInteger(10, Values[i]) || Values[i] <= 0)
             okay = false;
-        if (Values[0] + Values[1] + Values[2] != 64)
+        if (Values[0] + Values[1] + Values[2] < 64 ||
+            Values[0] + Values[1] + Values[2] > 128)
           okay = false;
       } else {
         okay = false;
       }
       if (okay) {
-        if(Values[0] != 20 || Values[1] != 10 || Values[2] != 34) {
+        if(Values[0] != UPC_PACKED_PHASE ||
+           Values[1] != UPC_PACKED_THREAD ||
+	   Values[2] != UPC_PACKED_VADDR) {
           Buf += "-";
           Buf += Bits[0];
           Buf += "-";
