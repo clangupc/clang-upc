@@ -22,12 +22,16 @@ namespace clang {
 class LangOptions;
 class SourceManager;
 class Stmt;
+class Decl;
 class TagDecl;
+struct PrintingPolicy;
 
 class PrinterHelper {
 public:
   virtual ~PrinterHelper();
   virtual bool handledStmt(Stmt* E, raw_ostream& OS) = 0;
+  virtual bool handledDecl(Decl* D, PrintingPolicy const&, raw_ostream& OS)
+  { return false; };
 };
 
 /// \brief Describes how types, statements, expressions, and
@@ -164,6 +168,8 @@ struct PrintingPolicy {
   bool IncludeLineDirectives : 1;
 
   SourceManager *SM;
+
+  PrinterHelper *Helper;
 };
 
 } // end namespace clang
