@@ -439,6 +439,8 @@ void DeclPrinter::VisitFunctionDecl(FunctionDecl *D) {
     Ty = PT->getInnerType();
   }
 
+  prettyPrintAttributes(D);
+
   if (isa<FunctionType>(Ty)) {
     const FunctionType *AFT = Ty->getAs<FunctionType>();
     const FunctionProtoType *FT = 0;
@@ -576,8 +578,6 @@ void DeclPrinter::VisitFunctionDecl(FunctionDecl *D) {
   } else {
     Ty.print(Out, Policy, Proto);
   }
-
-  prettyPrintAttributes(D);
 
   if (D->isPure())
     Out << " = 0";
