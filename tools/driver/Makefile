@@ -10,6 +10,7 @@ CLANG_LEVEL := ../..
 
 TOOLNAME = clang
 TOOLALIAS = clang++
+UPCTOOLALIAS = clang-upc
 
 # We don't currently expect production Clang builds to be interested in
 # plugins. This is important for startup performance.

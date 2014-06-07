@@ -1,0 +1,189 @@
+##===- runtime/libupc/Makefile -----------------*- Makefile -*-===##
+
+CLANG_LEVEL=../..
+
+LIBRARYNAME=upc
+
+include Makefile.optional
+
+SOURCES=\
+	upc_access.c\
+	upc_access.c\
+	upc_accessg.c\
+	upc_addr.c\
+	upc_affinity_stub.c\
+	upc_atomic_sup.c\
+	upc_debug.c\
+	upc_gasp.c\
+	upc_gum.c\
+	upc_libg.c\
+	upc_main.c\
+	upc_mem.c\
+	upc_nb.upc\
+	upc_numa_stub.c\
+	upc_pgm_info.c\
+	upc_pupc.c\
+	upc_sysdep.c\
+	upc_tick.c\
+	upc_vm.c
+
+SOURCES +=\
+	upc_allocg.upc\
+	upc_alloc.upc\
+	upc_atomic_generic.upc\
+	upc_barrier.upc\
+	upc_castable.upc\
+	upc_lock.upc
+
+ifeq ($(LIBUPC_ENABLE_BACKTRACE),1)
+SOURCES +=\
+	upc_backtrace.c
+endif
+
+SOURCES +=\
+	upc_coll_broadcast.upc \
+	upc_coll_exchange.upc \
+	upc_coll_gather.upc \
+	upc_coll_gather_all.upc \
+	upc_coll_init.upc \
+	upc_coll_permute.upc \
+	upc_coll_prefix_reduce.upc \
+	upc_coll_reduce.upc \
+	upc_coll_scatter.upc \
+	upc_coll_sort.upc
+
+SOURCES_INLINE = config.h upc_access.c upc_access.h \
+	upc_config.h upc_defs.h upc_mem.h upc_pts.h \
+	upc_sup.h upc_sync.h upc_sysdep.h
+
+include $(CLANG_LEVEL)/Makefile
+include Makefile.rules
+
+
+# Build library specific include file
+clang-upc-lib.h: gen-inline-libupc.pl upc-lib.in $(SOURCES_INLINE)
+	$(Verb) $(PERL) $+ > $@
+	$(Echo) Building clang-upc-lib.h
+
+BUILT_SOURCES = clang-upc-lib.h 
+
+LibDir := $(PROJ_OBJ_ROOT)/$(BuildMode)/lib
+PROJ_lib := $(DESTDIR)$(PROJ_prefix)/lib
+
+# Build and install link script
+ifeq ($(LIBUPC_LINK_SCRIPT),1)
+UPC_LINK_SCRIPT := upc.ld                                                       
+$(UPC_LINK_SCRIPT): gen-upc-ld-script.pl                                        
+	$(Verb) $(CC) $(LDFLAGS) -Xlinker --verbose -x none /dev/null 2>&1 | \
+	$(PERL) $+ > $@
+
+BUILT_SOURCES += $(UPC_LINK_SCRIPT)
+
+UPC_LD_BUILD := $(addprefix $(LibDir)/, upc.ld)
+$(UPC_LD_BUILD): upc.ld
+	$(Verb) cp $< $@
+	$(Echo) Copying $(notdir $<) to build dir
+
+all-local:: $(UPC_LD_BUILD)
+
+UPC_LD_INSTALL := $(PROJ_lib)/upc.ld
+ 
+$(UPC_LD_INSTALL): $(UPC_LD_BUILD)
+	$(Verb) $(DataInstall) $< $(UPC_LD_INSTALL)
+	$(Echo) Installing compiler linker file: $(notdir $<)
+
+install-local:: $(UPC_LD_INSTALL)
+endif
+
+# Build and install various crt files
+OS := $(shell uname -s)
+ifeq ($(OS),Darwin)
+  CFG_DIR := darwin
+else
+  CFG_DIR := default
+endif
+CRT_INC := $(PROJ_SRC_DIR)/config/$(CFG_DIR)
+upc-crtbegin.o: $(PROJ_SRC_DIR)/upc-crtstuff.c
+	$(Verb) $(Compile.C) -Wno-empty-translation-unit -DCRT_BEGIN -I$(CRT_INC) $< -o $@
+upc-crtbeginS.o: $(PROJ_SRC_DIR)/upc-crtstuff.c
+	$(Verb) $(Compile.C) -Wno-empty-translation-unit -DCRT_BEGIN -I$(CRT_INC) $< -o $@
+upc-crtbeginT.o: $(PROJ_SRC_DIR)/upc-crtstuff.c
+	$(Verb) $(Compile.C) -Wno-empty-translation-unit -DCRT_BEGIN -I$(CRT_INC) $< -o $@
+upc-crtend.o: $(PROJ_SRC_DIR)/upc-crtstuff.c
+	$(Verb) $(Compile.C) -Wno-empty-translation-unit -DCRT_END -I$(CRT_INC) $< -o $@
+upc-crtendS.o: $(PROJ_SRC_DIR)/upc-crtstuff.c
+	$(Verb) $(Compile.C) -Wno-empty-translation-unit -DCRT_END -I$(CRT_INC) $< -o $@
+upc-crtendT.o: $(PROJ_SRC_DIR)/upc-crtstuff.c
+	$(Verb) $(Compile.C) -Wno-empty-translation-unit -DCRT_END -I$(CRT_INC) $< -o $@
+
+CRT_FILES := upc-crtbegin.o upc-crtbeginS.o upc-crtbeginT.o \
+	upc-crtend.o upc-crtendS.o upc-crtendT.o
+
+CRT_BLD_FILES := $(addprefix $(LibDir)/, $(CRT_FILES))
+
+$(CRT_BLD_FILES): $(LibDir)/%.o: %.o $(LibDir)/.dir
+	$(Verb) cp $< $@
+	$(Echo) Copying $(notdir $<) to build dir
+
+CleanCrtFiles:
+	$(Verb) rm -f $(CRT_FILES)
+
+CleanBldCrtFiles:
+	$(Verb) rm -f $(CRT_BLD_FILES)
+
+all-local:: $(CRT_BLD_FILES)
+clean-local:: CleanCrtFiles
+clean:: CleanBldCrtFiles
+
+INSTCRTS := $(addprefix $(PROJ_lib)/, $(CRT_FILES))
+
+$(INSTCRTS): $(PROJ_lib)/%.o: %.o
+	$(Verb) $(DataInstall) $< $(PROJ_lib)
+	$(Echo) Installing compiler include file: $(notdir $<)
+
+install-local:: $(INSTCRTS)
+
+# Install headers (based on the code in lib/Headers)
+CLANG_VERSION := $(word 3,$(shell grep "CLANG_VERSION " \
+	$(PROJ_OBJ_DIR)/$(CLANG_LEVEL)/include/clang/Basic/Version.inc))
+
+HeaderDir := $(PROJ_OBJ_ROOT)/$(BuildMode)/lib/clang/$(CLANG_VERSION)/include
+
+HEADERS := $(notdir $(wildcard $(PROJ_SRC_DIR)/include/*.h))
+
+OBJHEADERS := $(addprefix $(HeaderDir)/, $(HEADERS))
+
+$(OBJHEADERS): $(HeaderDir)/%.h: $(PROJ_SRC_DIR)/include/%.h $(HeaderDir)/.dir
+	$(Verb) cp $< $@
+	$(Echo) Copying $(notdir $<) to build dir
+
+CLANG_UPC_LIB_HEADER := $(addprefix $(HeaderDir)/, clang-upc-lib.h)
+$(CLANG_UPC_LIB_HEADER): clang-upc-lib.h
+	$(Verb) cp $< $@
+	$(Echo) Copying $(notdir $<) to build dir
+
+all-local:: $(OBJHEADERS) $(CLANG_UPC_LIB_HEADER)
+
+PROJ_headers := $(DESTDIR)$(PROJ_prefix)/lib/clang/$(CLANG_VERSION)/include
+
+INSTHEADERS := $(addprefix $(PROJ_headers)/, $(HEADERS))
+INSTHEADERS += $(PROJ_headers)/clang-upc-lib.h
+
+$(PROJ_headers):
+	$(Verb) $(MKDIR) $@
+
+$(INSTHEADERS): $(PROJ_headers)/%.h: $(HeaderDir)/%.h | $(PROJ_headers)
+	$(Verb) $(DataInstall) $< $(PROJ_headers)
+	$(Echo) Installing compiler include file: $(notdir $<)
+
+install-local:: $(INSTHEADERS)
+
+# UPC compiling
+Compile.UPC = $(Compile.Wrapper) \
+	$(Verb) $(UPC) $(CPP.Flags) $(C.Flags) $(CFLAGS) $(CPPFLAGS) \
+	$(TargetCommonOpts) $(CompileCommonOpts) -c
+
+$(ObjDir)/%.o: %.upc $(ObjDir)/.dir $(BUILT_SOURCES)
+	$(Echo) "Compiling $*.upc for $(BuildMode) build" $(PIC_FLAG)
+	$(Compile.UPC) $< -o $@
+
