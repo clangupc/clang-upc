@@ -14,6 +14,10 @@ ifndef NO_RUNTIME_LIBS
 
 PARALLEL_DIRS  := compiler-rt libcxx
 
+ifeq ($(ENABLE_CLANG_UPC_RUNTIME), 1)                                                 
+  PARALLEL_DIRS += libupc
+endif
+
 endif
 
 include $(CLANG_LEVEL)/Makefile
