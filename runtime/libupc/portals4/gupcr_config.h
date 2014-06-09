@@ -42,7 +42,9 @@
 #include <sys/wait.h>
 
 #ifdef _POSIX_PRIORITY_SCHEDULING
+#ifndef __USE_GNU
 #define __USE_GNU
+#endif
 #include <sched.h>
 #endif
 

@@ -33,12 +33,34 @@
 #define __UPC_THREADS_CONFIG__ " staticthreads=" __UPC_XSTR__(THREADS)
 #else
 /* defined at run time */
-extern const int THREADS;
 #define __UPC_N_THREADS__ -1
 #define __UPC_THREADS_CONFIG__ "dynamicthreads"
 #endif
 
 #define __UPC_THREADS_MODEL__ "process"
+
+/* Support for atomics - UPC Specification 1.3.  */
+#define __UPC_ATOMIC__ 1
+
+/* Support for castability - UPC Specification 1.3.  */
+#define __UPC_CASTABLE__ 1
+
+/* Support for UPC collectives.  */
+#define __UPC_COLLECTIVE__ 1
+
+/* Support for non-blocking transfer operations - UPC Specification 1.3.  */
+#define __UPC_NB__ 1
+
+/* Support for GASP - http://gasp.hcs.ufl.edu/.  */ 
+#define __UPC_PUPC__ 1
+
+/* Support for high-performance wall-clock timer - UPC Specification 1.3.  */
+#define __UPC_TICK__ 1
+
+#pragma upc upc_code
+/* Opaque data type for referencing UPC atomic domains.  */
+typedef shared struct upc_atomicdomain_struct upc_atomicdomain_t;
+#pragma upc c_code
 
 /* Place configuration information required by the Berkeley
    UPC compilation system into the object file. */
@@ -54,11 +76,24 @@ static const char GCCUPCConfig[]
 #undef __UPC_XSTR__
 #undef __UPC_STR__
 
-extern const int MYTHREAD;
-
 /* Depth count used to implement the semantics of
    nested upc_forall statements.  */
 extern int __upc_forall_depth;
+
+/* Clang allows for pointer to shared type (struct/packed) and packed
+   pointer field sizes to be specified on the command line.  Set the
+   run-time macro definitions to correct values.  */
+#define GUPCR_PTS_PHASE_SIZE __UPC_PHASE_SIZE__
+#define GUPCR_PTS_THREAD_SIZE __UPC_THREAD_SIZE__
+#define GUPCR_PTS_VADDR_SIZE __UPC_VADDR_SIZE__
+#ifdef __UPC_PTS_PACKED_REP__
+#define GUPCR_PTS_PACKED_REP 1
+#elif defined(__UPC_PTS_STRUCT_REP__)
+#define GUPCR_PTS_STRUCT_REP 1
+#endif
+#ifdef __UPC_VADDR_FIRST__
+#define GUPCR_PTS_VADDR_FIRST 1
+#endif
 
 /* The UPC runtime's main program must run first,
  * we rename the user's main to upc_main(). */
@@ -87,13 +122,14 @@ __asm__ ("upc_main");
 /* The base address of the UPC shared section */
 extern char __upc_shared_start[1];
 
-/* Runtime procedures */
-//include lib_runtime_api
-
 //include detect_target64
 
 /* Runtime shared access procedures */
 //include mode_types
+/* Shared pointer definitions */
+//include lib_pts_defs
+/* Runtime procedures */
+//include lib_runtime_api
 
 #if defined(__UPC_INLINE_LIB__) || defined(IN_TARGET_LIBS)
 
@@ -103,7 +139,6 @@ extern char __upc_shared_start[1];
 //include lib_min_max
 //include lib_config_heap
 //include lib_config_shared_section
-//include lib_pts_defs
 
 #endif /* __UPC_INLINE_LIB__ || IN_TARGET_LIBS */
 

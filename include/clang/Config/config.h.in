@@ -30,4 +30,10 @@
 /* the field order */                                                           
 #undef UPC_PTS_VADDR_ORDER
 
+/* Portals4 support */
+#undef LIBUPC_PORTALS4
+
+/* Portals4 SLURM support */
+#undef LIBUPC_PORTALS4_SLURM
+
 #endif

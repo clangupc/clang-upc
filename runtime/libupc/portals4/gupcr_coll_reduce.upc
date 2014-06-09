@@ -1,4 +1,4 @@
-/*===-- gupcr_coll_reduce.upc - UPC Runtime Support Library --------------===
+/*===-- gupcr_coll_reduce.in - UPC Runtime Support Library ---------------===
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <upc.h>
 #include <upc_collective.h>
-#include <upc_coll.h>
+#include "upc_coll.h"
 #include "gupcr_config.h"
 #include "gupcr_defs.h"
 #include "gupcr_sup.h"

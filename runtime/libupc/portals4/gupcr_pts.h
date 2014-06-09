@@ -50,12 +50,19 @@
 #undef GUPCR_PTS_PHASE_TYPE
 #define GUPCR_PTS_PHASE_TYPE u_intHI_t
 #endif
+#if GUPCR_PTS_VADDR_SIZE == 64
+#undef GUPCR_PTS_VADDR_TYPE
+#define GUPCR_PTS_VADDR_TYPE u_intDI_t
+#elif GUPCR_PTS_VADDR_SIZE == 32
+#undef GUPCR_PTS_VADDR_TYPE
+#define GUPCR_PTS_VADDR_TYPE u_intSI_t
+#elif GUPCR_PTS_VADDR_SIZE == 16
+#undef GUPCR_PTS_VADDR_TYPE
+#define GUPCR_PTS_VADDR_TYPE u_intHI_t
+#endif
 
-#if !__GCC_UPC__
-/* The UPC compiler pre-defines upc_shared_ptr_t to be the
-   representation of a shared pointer.  Since most of the
-   runtime is written in regular "C", we need to define
-   the pointer representation here.  */
+#ifndef GUPCR_UPC_PTS_TARGET_LIB
+#define GUPCR_UPC_PTS_TARGET_LIB
 typedef struct shared_ptr_struct
 {
 #if GUPCR_PTS_VADDR_FIRST
@@ -67,7 +74,11 @@ typedef struct shared_ptr_struct
   GUPCR_PTS_THREAD_TYPE thread GUPCR_PTS_THREAD_FIELD;
   GUPCR_PTS_VADDR_TYPE vaddr;
 #endif
-} upc_shared_ptr_t __attribute__ ((aligned (GUPCR_PTS_ALIGN)));
+} upc_shared_ptr_t
+#ifdef GUPCR_PTS_ALIGN
+  __attribute__ ((aligned (GUPCR_PTS_ALIGN)))
+#endif
+  ;
 typedef upc_shared_ptr_t *upc_shared_ptr_p;
 /* upc_dbg_shared_ptr_t is used by the debugger to figure out
    shared pointer layout.  */
@@ -86,7 +97,7 @@ typedef upc_shared_ptr_t upc_dbg_shared_ptr_t;
 #define GUPCR_PTS_THREAD(P) (P).thread
 #define GUPCR_PTS_PHASE(P) (P).phase
 
-#define GUPCR_PTS_SET_VADDR(P,V) (P).vaddr = (void *)((size_t)(V) \
+#define GUPCR_PTS_SET_VADDR(P,V) (P).vaddr = (GUPCR_PTS_VADDR_TYPE)((size_t)(V) \
 				+ (size_t)GUPCR_SHARED_SECTION_START)
 #define GUPCR_PTS_INCR_VADDR(P,V) (P).vaddr += ((size_t)(V))
 #define GUPCR_PTS_SET_THREAD(P,V) (P).thread = (size_t)(V)
@@ -120,7 +131,8 @@ typedef upc_shared_ptr_t upc_dbg_shared_ptr_t;
 #define GUPCR_PTS_PHASE_MASK	((GUPCR_ONE << GUPCR_PTS_PHASE_SIZE) \
                                  - GUPCR_ONE)
 
-#if !__GCC_UPC__
+#ifndef GUPCR_UPC_PTS_TARGET_LIB
+#define GUPCR_UPC_PTS_TARGET_LIB
 /* upc_dbg_shared_ptr_t is used by debugger to figure out
    shared pointer layout.  */
 typedef struct shared_ptr_struct

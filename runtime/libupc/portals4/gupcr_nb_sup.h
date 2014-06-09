@@ -1,4 +1,4 @@
-/*===-- gupcr_nb_sup.h - UPC Non-blocking Library Support ----------------===
+/*===-- gupcr_nb_sup.h - UPC Runtime Support Library ---------------------===
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
