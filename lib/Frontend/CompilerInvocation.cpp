@@ -1769,10 +1769,8 @@ bool CompilerInvocation::CreateFromArgs(CompilerInvocation &Res,
   // in InitHeaderSearch.cpp.  This check must be done only after
   // the target options have been processed.
   if (Res.getLangOpts()->UPCPtsRep == 0) {
-    std::string triple = Res.getTargetOpts().Triple;
-    bool is64bit = (triple.find("x86_64") != std::string::npos) ||
-                   (triple.find("ppc64") != std::string::npos);
-    if (!is64bit) {
+    llvm::Triple CTriple(Res.getTargetOpts().Triple);
+    if (!CTriple.isArch64Bit()) {
       Res.getLangOpts()->UPCPhaseBits = 16;
       Res.getLangOpts()->UPCThreadBits = 16;
       Res.getLangOpts()->UPCAddrBits = 32;
