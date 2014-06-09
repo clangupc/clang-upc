@@ -1,4 +1,4 @@
-/*===-- gupcr_backtrace.h - UPC Backtrace Support ------------------------===
+/*===-- gupcr_backtrace.h - UPC Runtime Support Library ------------------===
 |*
 |*                     The LLVM Compiler Infrastructure
 |*

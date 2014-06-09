@@ -172,9 +172,27 @@ if (APPLE)
   set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -Wl,-flat_namespace -Wl,-undefined -Wl,suppress")
 endif ()
 
+# UPC pointer to shared representation
 set(UPC_PTS "packed" CACHE STRING "UPC shared pointer representation (packed|struct) default packed")
 set(UPC_PACKED_BITS "20,10,34" CACHE STRING "UPC shared pointer bits per field (phase,thread,addr) default 20,10,34")
 set(UPC_PTS_VADDR_ORDER "first" CACHE STRING "UPC shared pointer field order default first")
+
+# Check for Portals4 and SLURM libraries 
+# These checkes must be done here as we need to add approprite libraries on the
+# linker command line
+set(LIBUPC_PORTALS4 "/usr/local/portals4" CACHE STRING "directory for installed portals4 package")
+if( NOT EXISTS ${LIBUPC_PORTALS4}/include/portals4.h )
+  message(fatal_error "Portals4 not installed or wrong LIBUPC_PORTALS4(${LIBUPC_PORTALS4}) specified")
+endif()
+
+include(CheckIncludeFiles)
+set(LIBUPC_JOB_LAUNCHER slurm CACHE STRING "select UPC Portals4 job launcher (default=slurm).")
+if( LIBUPC_JOB_LAUNCHER STREQUAL "slurm" )
+  CHECK_INCLUDE_FILES("slurm/slurm.h" LIBUPC_PORTALS4_SLURM)
+  if( NOT LIBUPC_PORTALS4_SLURM )
+    message(fatal_error "Portals4 job launcher (${LIBUPC_JOB_LAUNCHER}) not available")
+  endif()
+endif()
 
 configure_file(
   ${CLANG_SOURCE_DIR}/include/clang/Config/config.h.cmake
