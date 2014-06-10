@@ -45,6 +45,7 @@ option(LIBUPC_ENABLE_SHARED "Build libupc as a shared library. (Broken)" OFF)
 # Configure libupc
 
 set(LIBUPC_RUNTIME_MODEL smp CACHE STRING "specify the runtime implementation model for UPC, where MODEL may be: 'smp' (Symmetric Multiprocessing) or 'portals4' (Infiniband with Portals4 library)")
+string(REGEX REPLACE [A-Za-z]] "\\1" LIBUPC_RUNTIME_MODEL ${LIBUPC_RUNTIME_MODEL})
 
 set(LIBUPC_ENABLE_LINK_SCRIPT TRUE CACHE STRING "enable UPC's use of a custom linker script; this will define the UPC shared section as a no load section on targets where this feature is supported (requires GNU LD)")
 
@@ -156,32 +157,34 @@ else()
   message(fatal_error "invalid value of LIBUPC_LOCAL_MEM")
 endif()
 
-set(LIBUPC_PORTALS4 "/usr/local/portals4" CACHE STRING "directory for installed portals4 package")
-if(EXISTS ${LIBUPC_PORTALS4}/include/portals4.h)
-  set(LIBUPC_RUNTIME_FLAGS "-I${LIBUPC_PORTALS4}/include -Wno-variadic-macros")
-else()
-  message(fatal_error "Portals4 not installed or wrong LIBUPC_PORTALS4(${LIBUPC_PORTALS4}) specified")
-endif()
+if (LIBUPC_RUNTIME_MODEL STREQUAL portals4)
+  set(LIBUPC_PORTALS4 "/usr/local/portals4" CACHE STRING "directory for installed portals4 package")
+  if(EXISTS ${LIBUPC_PORTALS4}/include/portals4.h)
+    set(LIBUPC_RUNTIME_FLAGS "-I${LIBUPC_PORTALS4}/include -Wno-variadic-macros")
+  else()
+    message(fatal_error "Portals4 not installed or wrong LIBUPC_PORTALS4(${LIBUPC_PORTALS4}) specified")
+  endif()
 
-set(LIBUPC_PTE_BASE 16 CACHE STRING
+  set(LIBUPC_PTE_BASE 16 CACHE STRING
 	"specify the base index of the first Portals4 PTE used by the UPC runtime")
-set(GUPCR_PTE_BASE ${LIBUPC_PTE_BASE})
+  set(GUPCR_PTE_BASE ${LIBUPC_PTE_BASE})
 
-set(LIBUPC_ENABLE_TRIGGERED_OPS TRUE CACHE STRING
+  set(LIBUPC_ENABLE_TRIGGERED_OPS TRUE CACHE STRING
 	"enable UPC runtime support for Portals4 triggered operations.")
-set(GUPCR_USE_PORTALS4_TRIGGERED_OPS ${LIBUPC_ENABLE_TRIGGERED_OPS})
+  set(GUPCR_USE_PORTALS4_TRIGGERED_OPS ${LIBUPC_ENABLE_TRIGGERED_OPS})
 
-set(LIBUPC_MAX_OUTSTANDING_PUTS 256 CACHE STRING
+  set(LIBUPC_MAX_OUTSTANDING_PUTS 256 CACHE STRING
 	"specify the maximum number of outstanding remote put requests (default=256)")
-set(GUPCR_MAX_OUTSTANDING_PUTS ${LIBUPC_MAX_OUTSTANDING_PUTS})
+  set(GUPCR_MAX_OUTSTANDING_PUTS ${LIBUPC_MAX_OUTSTANDING_PUTS})
 
-set(LIBUPC_JOB_LAUNCHER slurm CACHE STRING "select UPC Portals4 job launcher (default=slurm).")
-if (LIBUPC_JOB_LAUNCHER STREQUAL "slurm")
-  set(GUPCR_JOB_LAUNCHER_SLURM 1)
-elseif (LIBUPC_JOB_LAUNCHER STREQUAL "yod")
-  set(GUPCR_JOB_LAUNCHER_YOD 1)
-else()
-  message(fatal_error "Unrecognized job launcher (${LIBUPC_JOB_LAUNCHER}). Use slurm or yod.")
+  set(LIBUPC_JOB_LAUNCHER slurm CACHE STRING "select UPC Portals4 job launcher (default=slurm).")
+  if (LIBUPC_JOB_LAUNCHER STREQUAL "slurm")
+    set(GUPCR_JOB_LAUNCHER_SLURM 1)
+  elseif (LIBUPC_JOB_LAUNCHER STREQUAL "yod")
+    set(GUPCR_JOB_LAUNCHER_YOD 1)
+  else()
+    message(fatal_error "Unrecognized job launcher (${LIBUPC_JOB_LAUNCHER}). Use slurm or yod.")
+  endif()
 endif()
 
 set(LIBUPC_MEMORY_PAGE_SIZE 4096 CACHE STRING "Select target memory page size (default=4096).")
@@ -280,7 +283,6 @@ configure_file(config.h.cmake config.h)
 
 include_directories(include collectives)
 
-string(REGEX REPLACE [A-Za-z]] "\\1" LIBUPC_RUNTIME_MODEL ${LIBUPC_RUNTIME_MODEL})
 if(LIBUPC_RUNTIME_MODEL STREQUAL smp)
 
   set(LIBUPC_SOURCES

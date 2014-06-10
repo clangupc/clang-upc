@@ -177,20 +177,26 @@ set(UPC_PTS "packed" CACHE STRING "UPC shared pointer representation (packed|str
 set(UPC_PACKED_BITS "20,10,34" CACHE STRING "UPC shared pointer bits per field (phase,thread,addr) default 20,10,34")
 set(UPC_PTS_VADDR_ORDER "first" CACHE STRING "UPC shared pointer field order default first")
 
-# Check for Portals4 and SLURM libraries 
-# These checkes must be done here as we need to add approprite libraries on the
-# linker command line
-set(LIBUPC_PORTALS4 "/usr/local/portals4" CACHE STRING "directory for installed portals4 package")
-if( NOT EXISTS ${LIBUPC_PORTALS4}/include/portals4.h )
-  message(fatal_error "Portals4 not installed or wrong LIBUPC_PORTALS4(${LIBUPC_PORTALS4}) specified")
-endif()
+# Check for Portals4 and SLURM libraries if necessary
+set(LIBUPC_RUNTIME_MODEL smp CACHE STRING "specify the runtime implementation model for UPC, where MODEL may be: '
+smp' (Symmetric Multiprocessing) or 'portals4' (Infiniband with Portals4 library)")
+string(REGEX REPLACE [A-Za-z]] "\\1" LIBUPC_RUNTIME_MODEL ${LIBUPC_RUNTIME_MODEL})
 
-include(CheckIncludeFiles)
-set(LIBUPC_JOB_LAUNCHER slurm CACHE STRING "select UPC Portals4 job launcher (default=slurm).")
-if( LIBUPC_JOB_LAUNCHER STREQUAL "slurm" )
-  CHECK_INCLUDE_FILES("slurm/slurm.h" LIBUPC_PORTALS4_SLURM)
-  if( NOT LIBUPC_PORTALS4_SLURM )
-    message(fatal_error "Portals4 job launcher (${LIBUPC_JOB_LAUNCHER}) not available")
+if (LIBUPC_RUNTIME_MODEL STREQUAL portals4)
+  # These checks must be done here as we need to add approprite libraries on the
+  # linker command line
+  set(LIBUPC_PORTALS4 "/usr/local/portals4" CACHE STRING "directory for installed portals4 package")
+  if( NOT EXISTS ${LIBUPC_PORTALS4}/include/portals4.h )
+    message(fatal_error "Portals4 not installed or wrong LIBUPC_PORTALS4(${LIBUPC_PORTALS4}) specified")
+  endif()
+
+  include(CheckIncludeFiles)
+  set(LIBUPC_JOB_LAUNCHER slurm CACHE STRING "select UPC Portals4 job launcher (default=slurm).")
+  if( LIBUPC_JOB_LAUNCHER STREQUAL "slurm" )
+    CHECK_INCLUDE_FILES("slurm/slurm.h" LIBUPC_PORTALS4_SLURM)
+    if( NOT LIBUPC_PORTALS4_SLURM )
+      message(fatal_error "Portals4 job launcher (${LIBUPC_JOB_LAUNCHER}) not available")
+    endif()
   endif()
 endif()
 

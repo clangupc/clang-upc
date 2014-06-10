@@ -14,16 +14,16 @@
 #define GCC_INSTALL_PREFIX "${GCC_INSTALL_PREFIX}"
 
 /* UPC shared pointer representation. */
-#define UPC_PTS "${UPC_PTS}"
+#cmakedefine UPC_PTS "${UPC_PTS}"
 
 /* the number of bits in each field. */
-#define UPC_PACKED_BITS "${UPC_PACKED_BITS}"
+#cmakedefine UPC_PACKED_BITS "${UPC_PACKED_BITS}"
 
 /* the field order */
-#define UPC_PTS_VADDR_ORDER "${UPC_PTS_VADDR_ORDER}"
+#cmakedefine UPC_PTS_VADDR_ORDER "${UPC_PTS_VADDR_ORDER}"
 
 /* Portals4 support */
-#define LIBUPC_PORTALS4 "${LIBUPC_PORTALS4}"
+#cmakedefine LIBUPC_PORTALS4 "${LIBUPC_PORTALS4}"
 
 /* Portals4 SLURM support */                                                    
-#define LIBUPC_PORTALS4_SLURM  ${LIBUPC_PORTALS4_SLURM}
+#cmakedefine LIBUPC_PORTALS4_SLURM ${LIBUPC_PORTALS4_SLURM}
