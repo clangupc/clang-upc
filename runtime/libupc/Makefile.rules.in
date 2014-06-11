@@ -1,0 +1,37 @@
+# Local Makefile configuration
+VPATH          = $(PROJ_SRC_DIR):$(PROJ_SRC_DIR)/@LIBUPC_RUNTIME_MODEL@:$(PROJ_SRC_DIR)/collectives
+
+PERL	       = @PERL@
+LLVM_TOOLS_DIR = $(LLVMToolDir)
+LLVM_LIBS_DIR  = $(LLVMLibDir)
+CC	       = $(LLVM_TOOLS_DIR)/clang
+UPC	       = $(LLVM_TOOLS_DIR)/clang
+C.Flags       += -Wno-variadic-macros
+CPP.Flags     += -I$(PROJ_SRC_DIR)/collectives
+CPP.Flags     += -DIN_TARGET_LIBS=1
+LIBUPC_LINK_SCRIPT = @LIBUPC_LINK_SCRIPT@
+LIBUPC_ENABLE_BACKTRACE = @LIBUPC_ENABLE_BACKTRACE@
+GUPCR_PTS_VADDR_FIRST = @GUPCR_PTS_VADDR_FIRST@
+ifeq ($(GUPCR_PTS_VADDR_FIRST),1)
+CPP.Flags     += -DGUPCR_PTS_VADDR_FIRST=@GUPCR_PTS_VADDR_FIRST@
+C.Flags       += -fupc-pts-vaddr-order=first
+else
+C.Flags       += -fupc-pts-vaddr-order=last
+endif
+GUPCR_PTS_PACKED_REP = @GUPCR_PTS_PACKED_REP@
+ifeq ($(GUPCR_PTS_PACKED_REP),1)
+CPP.Flags     += -DGUPCR_PTS_PACKED_REP=1
+C.Flags       += -fupc-pts=packed \
+		 -fupc-packed-bits=@GUPCR_PTS_PHASE_SIZE@,@GUPCR_PTS_THREAD_SIZE@,@GUPCR_PTS_VADDR_SIZE@
+else
+CPP.Flags     += -DGUPCR_PTS_STRUCT_REP=1 \
+		 -DGUPCR_PTS_VADDR_TYPE="@GUPCR_PTS_VADDR_TYPE@" \
+		 -DGUPCR_PTS_THREAD_TYPE="@GUPCR_PTS_THREAD_TYPE@" \
+		 -DGUPCR_PTS_PHASE_TYPE="@GUPCR_PTS_PHASE_TYPE@" \
+		 -DGUPCR_PTS_ALIGN=@GUPCR_PTS_ALIGN@
+C.Flags       += -fupc-pts=struct
+endif
+C.Flags       += -Wno-gnu -Wno-language-extension-token
+CPP.Flags     += -DGUPCR_PTS_PHASE_SIZE=@GUPCR_PTS_PHASE_SIZE@ \
+		 -DGUPCR_PTS_THREAD_SIZE=@GUPCR_PTS_THREAD_SIZE@ \
+		 -DGUPCR_PTS_VADDR_SIZE=@GUPCR_PTS_VADDR_SIZE@
