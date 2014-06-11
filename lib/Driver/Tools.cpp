@@ -6225,15 +6225,29 @@ void netbsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
       CmdArgs.push_back(Args.MakeArgString(
                               getToolChain().GetFilePath("crtbeginS.o")));
     }
+
+    if (D.CCCIsUPC()) {
+      const char *upc_crtbegin = GetUPCBeginFile(Args);
+      CmdArgs.push_back(Args.MakeArgString(getToolChain().GetFilePath(upc_crtbegin)));
+    }
   }
 
   Args.AddAllArgs(CmdArgs, options::OPT_L);
+  const ToolChain::path_list Paths = getToolChain().getFilePaths();
+  for (ToolChain::path_list::const_iterator i = Paths.begin(), e = Paths.end();
+       i != e; ++i)
+    CmdArgs.push_back(Args.MakeArgString(StringRef("-L") + *i));
   Args.AddAllArgs(CmdArgs, options::OPT_T_Group);
   Args.AddAllArgs(CmdArgs, options::OPT_e);
   Args.AddAllArgs(CmdArgs, options::OPT_s);
   Args.AddAllArgs(CmdArgs, options::OPT_t);
   Args.AddAllArgs(CmdArgs, options::OPT_Z_Flag);
   Args.AddAllArgs(CmdArgs, options::OPT_r);
+
+  if (D.CCCIsUPC() && !Args.hasArg(options::OPT_nostdlib)) {
+    CmdArgs.push_back(Args.MakeArgString("-T" + getToolChain().GetFilePath("upc.ld")));
+    CmdArgs.push_back(GetUPCLibOption(Args));
+  }
 
   AddLinkerInputs(getToolChain(), Inputs, Args, CmdArgs);
 
@@ -6275,6 +6289,11 @@ void netbsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
 
   if (!Args.hasArg(options::OPT_nostdlib) &&
       !Args.hasArg(options::OPT_nostartfiles)) {
+    if (D.CCCIsUPC()) {
+      const char *upc_crtend = GetUPCEndFile(Args);
+      CmdArgs.push_back(Args.MakeArgString(getToolChain().GetFilePath(upc_crtend)));
+    }
+
     if (!Args.hasArg(options::OPT_shared))
       CmdArgs.push_back(Args.MakeArgString(getToolChain().GetFilePath(
                                                                   "crtend.o")));

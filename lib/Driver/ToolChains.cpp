@@ -2034,6 +2034,8 @@ NetBSD::NetBSD(const Driver &D, const llvm::Triple& Triple, const ArgList &Args)
 
     getFilePaths().push_back("=/usr/lib");
   }
+
+  getFilePaths().push_back(getDriver().Dir + "/../lib");
 }
 
 Tool *NetBSD::buildAssembler() const {
