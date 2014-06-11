@@ -1544,20 +1544,14 @@ AC_ARG_WITH(upc-pts,
     withval="packed")
   upc_pts=$withval
 AC_DEFINE_UNQUOTED(UPC_PTS,"$withval",
-                   [UPC packed/struct pointer representation.])
-AC_ARG_WITH(upc-packed-bits,
-  AS_HELP_STRING([--with-upc-packed-bits],
-    [UPC packed pointer representation.]),,
-    withval="[20,10,34]")
-AC_DEFINE_UNQUOTED(UPC_PACKED_BITS,"$withval",
-                   [UPC packed pointer representation.])
+                   [Choose the default representation of a UPC pointer-to-shared])
 
-# Perl is required for checking pts representation
+# Perl is required for checking packed pts representation
 AC_CHECK_PROG(PERL, perl, perl)
 
-AC_ARG_WITH([upc-packed-bits],
-  AS_HELP_STRING([--with-upc-packed-bits],
-    [Packed UPC pointer-to-shared representation.]),
+AC_ARG_WITH([upc-pts-packed-bits],
+  AS_HELP_STRING([--with-upc-pts-packed-bits],
+    [Choose bit distribution in packed UPC pointer-to-shared representation]),
 [
   if test x"$upc_pts" = x"packed"; then
     UPC_PTS_PHASE_SIZE=`echo "$withval" | $PERL -ne 'm/^(\d+),(\d+),(\d+)$/;
@@ -1569,13 +1563,13 @@ AC_ARG_WITH([upc-packed-bits],
     if test -z "$UPC_PTS_PHASE_SIZE" \
        || test -z "$UPC_PTS_THREAD_SIZE" \
        || test -z "$UPC_PTS_VADDR_SIZE" ; then
-      AC_MSG_ERROR([--with-upc-packed-bits=phase,thread,vaddr requires
+      AC_MSG_ERROR([--with-upc-pts-packed-bits=phase,thread,vaddr requires
   phase+thread+vaddr=64 and phase >= 1 and thread >= 1 and vaddr >= 20])
     fi
-    AC_DEFINE_UNQUOTED(UPC_PACKED_BITS,"$withval",
+    AC_DEFINE_UNQUOTED(UPC_PTS_PACKED_BITS,"$withval",
                        [UPC packed pointer representation.])
   else
-    AC_MSG_ERROR([--with-upc-packed-bits is only supported for
+    AC_MSG_ERROR([--with-upc-pts-packed-bits is only supported for
 the packed UPC pointer-to-shared representation])
   fi
 ],
@@ -1587,10 +1581,10 @@ the packed UPC pointer-to-shared representation])
 
 AC_ARG_WITH(upc-pts-vaddr-order,
   AS_HELP_STRING([--with-upc-pts-vaddr-order],
-    [UPC vaddr first or last.]),,
+    [Choose position of the address field in UPC pointer-to-shared representation]),,
     withval="first")
   upc_vaddr_order=$withval
-AC_DEFINE_UNQUOTED(UPC_PTS_VADDR_ORDER,"$withval",
+AC_DEFINE_UNQUOTED(UPC_VADDR_ORDER,"$withval",
                    [UPC vaddr first or last in the pointer representation.])
 
 # Need to know the target size (32 or 64 bits)
@@ -1702,7 +1696,7 @@ dnl Select target specific runtime implementation.
 AC_MSG_CHECKING([for UPC runtime model])
 AC_ARG_WITH(upc-runtime,
 [AS_HELP_STRING([--with-upc-runtime=MODEL],
-		[specify the runtime implementation model for UPC,
+		[Specify the runtime implementation model for UPC,
 		 where MODEL may be: 'SMP' (Symmetric Multiprocessing)
 		 or 'Portals4'.  [default='SMP']])],
 [
@@ -1725,14 +1719,14 @@ changequote([,])dnl
   upc_runtime_model=smp
 ])
 AC_MSG_RESULT([$upc_runtime_model])
-UPC_RUNTIME_MODEL=$upc_runtime_model
-AC_SUBST(UPC_RUNTIME_MODEL)
+LIBUPC_RUNTIME_MODEL=$upc_runtime_model
+AC_SUBST(LIBUPC_RUNTIME_MODEL)
 
 AC_MSG_CHECKING([for UPC runtime checking support])
 AC_ARG_ENABLE(upc-runtime-checks,
 [AS_HELP_STRING([--enable-upc-runtime-checks],
-		[enable internal UPC runtime checks that validate
-		 arguments, and check for inconsistent runtime state.
+		[Enable internal UPC runtime checks that validate
+		 arguments, and check for inconsistent runtime state
 		 [default=no]])],
 [
   case $enableval in
@@ -1753,10 +1747,10 @@ fi
 AC_MSG_CHECKING([for UPC runtime statistics support])
 AC_ARG_ENABLE(upc-runtime-stats,
 [AS_HELP_STRING([--enable-upc-runtime-stats],
-		[enable internal UPC runtime statistics collection support;
+		[Enable internal UPC runtime statistics collection support;
 		 these statistics count the number of various significant
 		 internal operations, and dump those counts into a
-		 per-process statistics file.
+		 per-process statistics file
 		 [default=no]])],
 [
   case $enableval in
@@ -1777,10 +1771,10 @@ fi
 AC_MSG_CHECKING([for UPC runtime trace support])
 AC_ARG_ENABLE(upc-runtime-trace,
 [AS_HELP_STRING([--enable-upc-runtime-trace],
-		[enable internal UPC runtime trace collection support;
+		[Enable internal UPC runtime trace collection support;
 		 a runtime trace is a time stamped log that records
 		 various significant internal events; this trace
-		 is written to a per-process log file.
+		 is written to a per-process log file
 		 [default=no]])],
 [
   case $enableval in
@@ -1801,7 +1795,7 @@ fi
 AC_MSG_CHECKING([for UPC runtime debug configuration])
 AC_ARG_ENABLE(upc-runtime-debug,
 [AS_HELP_STRING([--enable-upc-runtime-debug],
-		[enable UPC runtime debugging mode,
+		[Enable UPC runtime debugging mode,
 		 where more expensive internal checks are implemented,
 		 and conservative algorithms are used that
 		 reduce the degree of parallelism, and that
@@ -1833,7 +1827,7 @@ AC_SUBST(enable_upc_runtime_debug)
 AC_MSG_CHECKING([for UPC link script support])
 AC_ARG_ENABLE(upc-link-script,
 [AS_HELP_STRING([--enable-upc-link-script],
-                [enable UPC's use of a custom linker script;
+                [Enable UPC's use of a custom linker script;
                  this will define the UPC shared section as a
 		 no load section on targets where this feature
 		 is supported (requires GNU LD)])],
@@ -1878,7 +1872,7 @@ AC_SUBST(LIBUPC_LINK_SCRIPT)
 AC_MSG_CHECKING([for UPC runtime tree fanout])
 AC_ARG_WITH(upc-runtime-tree-fanout,
 [AS_HELP_STRING([--with-upc-runtime-tree-fanout=WIDTH],
-		[specify the maximum number of children in each
+		[Specify the maximum number of children in each
 		 sub-tree used to implement UPC collectives operations
 		 (e. g. upc_barrier)
 		 [default=4]])],
@@ -1900,8 +1894,8 @@ AC_DEFINE_UNQUOTED(GUPCR_TREE_FANOUT, [$upc_runtime_tree_fanout],
 AC_MSG_CHECKING([for UPC backtrace support])
 AC_ARG_ENABLE(upc-backtrace,
 [AS_HELP_STRING([--enable-upc-backtrace],
-		[enable UPC backtrace;
-		 enable stack frame backtrace report
+		[Enable UPC backtrace;
+		 Enable stack frame backtrace report
 		 when UPC run-time fatal errors occur
 		 or by user request (via signal)])],
 [
@@ -1925,8 +1919,8 @@ AC_SUBST(LIBUPC_ENABLE_BACKTRACE)
 # Check for user specified GDB
 AC_ARG_WITH(upc-backtrace-gdb,
   [AS_HELP_STRING([--with-upc-backtrace-gdb=GDB],
-  [specify which GDB to use for UPC backtrace support
-  [default='gdb']])],
+  		  [Specify which GDB to use for UPC backtrace support
+  		  [default='gdb']])],
 [
   upc_backtrace_gdb=$withval
 ],
@@ -1948,7 +1942,7 @@ fi
 AC_MSG_CHECKING([for UPC backtrace GDB support])
 AC_ARG_ENABLE(upc-backtrace-gdb,
 [AS_HELP_STRING([--enable-upc-backtrace-gdb],
-		[enable the use of GDB for UPC stack backtrace
+		[Enable the use of GDB for UPC stack backtrace
 		[default='yes']])],
 [
   case "$enableval" in
@@ -1977,7 +1971,7 @@ fi
 AC_MSG_CHECKING([for UPC backtrace signal support])
 AC_ARG_ENABLE(upc-backtrace-signal,
 [AS_HELP_STRING([--enable-upc-backtrace-signal],
-		[enable signal support for UPC stack backtrace
+		[Enable signal support for UPC stack backtrace
 		[default='yes']])],
 [
   case "$enableval" in
@@ -1998,7 +1992,7 @@ if test "$enable_upc_backtrace_signal" = yes; then
   AC_MSG_CHECKING([for UPC backtrace signal name/number])
   AC_ARG_WITH(upc-backtrace-signal,
     [AS_HELP_STRING([--with-upc-backtrace-signal=SIGNAL],
-    [specify the signal to be used for UPC stack backtrace
+    [Specify the signal to be used for UPC stack backtrace
     [default='SIGUSR1']])],
     [
       upc_backtrace_signal=$withval
@@ -2168,49 +2162,10 @@ if test "$upc_runtime_model" = "portals4"; then
   # Use the generic (reference implementation)
   use_generic_collectives="no"
 
-  # Check for Portals4 libs
-  portals4libs="-lportals"
-  portals4inc=
-  have_portals4=no
-  AC_ARG_WITH(portals4,
-  [AS_HELP_STRING([--with-portals4=PATH],
-		  [specify prefix directory for installed portals4 package.
-		   Equivalent to --with-portals4-include=PATH/include
-		   plus --with-portals4-lib=PATH/lib])])
-  AC_ARG_WITH(portals4-include,
-  [AS_HELP_STRING([--with-portals4-include=PATH],
-		  [specify directory for installed portals4 include files])])
-  AC_ARG_WITH(portals4-lib,
-  [AS_HELP_STRING([--with-portals4-lib=PATH],
-		  [specify directory for the installed portals4 library])])
-
-  if test "x$with_portals4" != x; then
-    portals4libs="-L$with_portals4/lib $portals4libs"
-    portals4inc="-I$with_portals4/include $portals4inc"
-  fi
-  if test "x$with_portals4_include" != x; then
-    portals4inc="-I$with_portals4_include $portals4inc"
-  fi
-  if test "x$with_portals4_lib" != x; then
-    portals4libs="-L$with_portals4_lib $portals4libs"
-  fi
-  if test "x$with_portals4$with_portals4_include$with_portals4_lib" = x \
-     && test -d ${srcdir}/portals4; then
-    portals4libs='-L$$r/$(HOST_SUBDIR)/portals4/ '"$lt_cv_objdir $portals4libs"
-    portals4inc='-I$$r/$(HOST_SUBDIR)/portals4 -I$$s/portals4 '"$portals4inc"
-    # Do not test the portals4 version.  Assume that it is sufficient, since
-    # it is in the source tree, and the library has not been built yet
-    # but it would be included on the link line in the version check below
-    # hence making the test fail.
-    have_portals4=yes
-  fi
-  AC_SUBST(portals4libs)
-  AC_SUBST(portals4inc)
-
   AC_MSG_CHECKING([for UPC runtime Portals4 PTE base index])
   AC_ARG_WITH(upc-runtime-pte-base,
   [AS_HELP_STRING([--with-upc-runtime-pte-base=BASE],
-		  [specify the base index of the first Portals4 PTE used
+		  [Specify the base index of the first Portals4 PTE used
 		   by the UPC runtime [default=16]])],
   [
     # $withval must be a decimal integer
@@ -2229,7 +2184,7 @@ if test "$upc_runtime_model" = "portals4"; then
   AC_MSG_CHECKING([for UPC runtime maximum number of locks held per thread])
   AC_ARG_WITH(upc-runtime-max-locks,
   [AS_HELP_STRING([--with-upc-runtime-max-locks=MAX_LOCKS],
-		  [specify the maximum number of locks that can be held by
+		  [Specify the maximum number of locks that can be held by
 		   a single UPC thread [default=1024]])],
   [
     # $withval must be a decimal integer
@@ -2249,7 +2204,7 @@ if test "$upc_runtime_model" = "portals4"; then
   AC_MSG_CHECKING([for UPC runtime bounce buffer size])
   AC_ARG_WITH(upc-runtime-bounce-buffer-size,
   [AS_HELP_STRING([--with-upc-runtime-bounce-buffer-size=SIZE],
-		  [specify the size (in bytes) of the bounce buffer
+		  [Specify the size (in bytes) of the bounce buffer
 		   that is used by the UPC runtime to buffer
 		   network data [default=256K]])],
   [
@@ -2273,8 +2228,8 @@ if test "$upc_runtime_model" = "portals4"; then
   AC_MSG_CHECKING([for UPC maximum number of outstanding remote puts])
   AC_ARG_WITH(upc-max-outstanding-puts,
   [AS_HELP_STRING([--with-upc-max-outstanding-puts=SIZE],
-		  [specify the maximum number of outstanding
-		   remote put requests. [default=256]])],
+		  [Specify the maximum number of outstanding
+		   remote put requests [default=256]])],
   [
     # $withval must be a decimal integer
     if ! echo "$withval" | grep '^[[0-9]]*$' >/dev/null 2>&1; then
@@ -2290,33 +2245,11 @@ if test "$upc_runtime_model" = "portals4"; then
   AC_DEFINE_UNQUOTED(GUPCR_MAX_OUTSTANDING_PUTS,[$upc_max_puts_count],
     [Maximum number of outstanding remote puts])
 
-  AC_MSG_CHECKING([for UPC runtime collectives tree fanout])
-  AC_ARG_WITH(upc-runtime-tree-fanout,
-  [AS_HELP_STRING([--with-upc-runtime-tree-fanout=WIDTH],
-		  [specify the maximum number of children in each
-		   sub-tree used to implement UPC collective operations
-		   (e. g., upc_barrier and upc_global_alloc).
-		   [default=4]])],
-  [
-    # $withval must be a decimal integer
-    if ! echo "$withval" | grep '^[[0-9]][[0-9]]*$' >/dev/null 2>&1; then
-      AC_MSG_ERROR([$withval is an invalid option to
-			--with-upc-runtime-tree-fanout])
-    fi
-    upc_runtime_tree_fanout="$withval"
-  ],
-  [
-    upc_runtime_tree_fanout=4
-  ])
-  AC_MSG_RESULT([$upc_runtime_tree_fanout])
-  AC_DEFINE_UNQUOTED(GUPCR_TREE_FANOUT, [$upc_runtime_tree_fanout],
-    [Maximum number of children at each level of a collective operation tree.])
-
   AC_MSG_CHECKING([for UPC runtime Portals4 triggered operation support])
   AC_ARG_ENABLE(upc-runtime-triggered-ops,
   [AS_HELP_STRING([--enable-upc-runtime-triggered-ops],
-		  [enable UPC runtime support for Portals4 triggered
-		   operations.  [default=yes]])],
+		  [Enable UPC runtime support for Portals4 triggered
+		   operations [default=yes]])],
   [
     case $enableval in
     yes | no) ;;
@@ -2338,8 +2271,8 @@ if test "$upc_runtime_model" = "portals4"; then
   AC_MSG_CHECKING([for UPC runtime node local memory access])
   AC_ARG_ENABLE(upc-node-local-mem,
   [AS_HELP_STRING([--enable-upc-node-local-mem],
-		  [enable UPC runtime support for accessing shared
-		   memory of the node local threads.  [default=yes]])],
+		  [Enable UPC runtime support for accessing shared
+		   memory of the node local threads [default=yes]])],
   [
     case $enableval in
     yes | no) ;;
@@ -2362,8 +2295,8 @@ if test "$upc_runtime_model" = "portals4"; then
     AC_MSG_CHECKING([for UPC node local memory type])
     AC_ARG_WITH(upc-node-local-mem,
     [AS_HELP_STRING([--with-upc-node-local-mem=SHMEM],
-		    [specify type of shared memory used for node local
-		     memory accesses (posix or mmap).
+		    [Specify type of shared memory used for node local
+		     memory accesses (posix or mmap)
 		    [default=posix]])],
     [
       case $withval in
@@ -2436,7 +2369,7 @@ if test "$upc_runtime_model" = "portals4"; then
   AC_MSG_CHECKING([for UPC runtime Portals4 job launcher])
   AC_ARG_WITH(upc-job-launcher,
   [AS_HELP_STRING([--with-upc-job-launcher],
-		  [Select UPC Portals4 job launcher.
+		  [Select UPC Portals4 job launcher
 		   [default=slurm]])],
   [
     case $withval in
@@ -2475,7 +2408,7 @@ if test "$upc_runtime_model" = "portals4"; then
   AC_MSG_CHECKING([for memory page size])
   AC_ARG_WITH(upc-memory-page-size,
   [AS_HELP_STRING([--with-upc-memory-page-size],
-		  [Select target memory page size.
+		  [Select target memory page size
 		   [default=4096]])],
   [
     # $withval must be a decimal integer

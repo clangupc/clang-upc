@@ -6,6 +6,7 @@ LIBRARYNAME=upc
 
 include Makefile.optional
 
+ifeq ($(LIBUPC_RUNTIME_MODEL),smp)
 SOURCES=\
 	upc_access.c\
 	upc_access.c\
@@ -56,6 +57,64 @@ SOURCES_INLINE = config.h upc_access.c upc_access.h \
 	upc_config.h upc_defs.h upc_mem.h upc_pts.h \
 	upc_sup.h upc_sync.h upc_sysdep.h
 
+else ifeq ($(LIBUPC_RUNTIME_MODEL),portals4)
+
+SOURCES =\
+	gupcr_access.c \
+	gupcr_addr.c \
+	gupcr_atomic_sup.c \
+	gupcr_atomic.upc \
+	gupcr_barrier.c \
+	gupcr_backtrace.c \
+	gupcr_broadcast.c \
+	gupcr_clock.c \
+	gupcr_coll_sup.c \
+	gupcr_env.c \
+	gupcr_gmem.c \
+	gupcr_lock_sup.c \
+	gupcr_main.c \
+	gupcr_mem.c \
+	gupcr_nb_sup.c \
+	gupcr_node.c \
+	gupcr_pgm_info.c \
+	gupcr_portals.c \
+	gupcr_runtime.c \
+	gupcr_shutdown.c \
+	gupcr_tick.c \
+	gupcr_utils.c
+
+SOURCES +=\
+	gupcr_alloc.upc \
+	gupcr_lock.upc \
+	gupcr_nb.upc \
+	gupcr_coll_broadcast.upc \
+	gupcr_coll_init.upc \
+	gupcr_coll_reduce.upc
+
+ifeq ($(LIBUPC_NODE_LOCAL_MEM STREQUAL),mmap)
+SOURCES += gupcr_node_mem_mmap.c
+else
+SOURCES += gupcr_node_mem_posix.c
+endif
+
+SOURCES +=\
+	upc_coll_err.upc \
+	upc_coll_exchange.upc \
+	upc_coll_gather.upc \
+	upc_coll_gather_all.upc \
+	upc_coll_permute.upc \
+	upc_coll_prefix_reduce.upc \
+	upc_coll_scatter.upc \
+	upc_coll_sort.upc
+
+SOURCES_INLINE = config.h gupcr_access.c gupcr_access.h gupcr_config.h \
+	gupcr_defs.h gupcr_gmem.h gupcr_node.h gupcr_portals.h \
+	gupcr_pts.h gupcr_sup.h gupcr_sync.h gupcr_utils.h
+
+else
+$(error Wrong runtime model ($(LIBUPC_RUNTIME_MODEL)) or it is not specified)
+endif
+ 
 include $(CLANG_LEVEL)/Makefile
 include Makefile.rules
 
@@ -183,7 +242,7 @@ Compile.UPC = $(Compile.Wrapper) \
 	$(Verb) $(UPC) $(CPP.Flags) $(C.Flags) $(CFLAGS) $(CPPFLAGS) \
 	$(TargetCommonOpts) $(CompileCommonOpts) -c
 
-$(ObjDir)/%.o: %.upc $(ObjDir)/.dir $(BUILT_SOURCES)
+$(ObjDir)/%.o: %.upc $(ObjDir)/.dir $(BUILT_SOURCES) $(OBJHEADERS)
 	$(Echo) "Compiling $*.upc for $(BuildMode) build" $(PIC_FLAG)
 	$(Compile.UPC) $< -o $@
 

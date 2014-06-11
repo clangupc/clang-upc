@@ -1,11 +1,12 @@
 # Local Makefile configuration
-VPATH          = $(PROJ_SRC_DIR):$(PROJ_SRC_DIR)/@UPC_RUNTIME_MODEL@:$(PROJ_SRC_DIR)/collectives
+VPATH          = $(PROJ_SRC_DIR):$(PROJ_SRC_DIR)/@LIBUPC_RUNTIME_MODEL@:$(PROJ_SRC_DIR)/collectives
 
 PERL	       = @PERL@
 LLVM_TOOLS_DIR = $(LLVMToolDir)
 LLVM_LIBS_DIR  = $(LLVMLibDir)
 CC	       = $(LLVM_TOOLS_DIR)/clang
 UPC	       = $(LLVM_TOOLS_DIR)/clang
+C.Flags       += -Wno-variadic-macros
 CPP.Flags     += -I$(PROJ_SRC_DIR)/collectives
 CPP.Flags     += -DIN_TARGET_LIBS=1
 LIBUPC_LINK_SCRIPT = @LIBUPC_LINK_SCRIPT@

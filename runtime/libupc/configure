@@ -798,13 +798,11 @@ GUPCR_PTS_VADDR_TYPE
 GUPCR_PTS_THREAD_TYPE
 GUPCR_PTS_PHASE_TYPE
 GUPCR_PTS_ALIGN
-UPC_RUNTIME_MODEL
+LIBUPC_RUNTIME_MODEL
 enable_upc_runtime_debug
 LIBUPC_LINK_SCRIPT
 LIBUPC_ENABLE_BACKTRACE
 PATH_TO_GDB
-portals4libs
-portals4inc
 LIBGUPC_SMP_RUNTIME_TRUE
 LIBGUPC_SMP_RUNTIME_FALSE
 LIBGUPC_PORTALS4_RUNTIME_TRUE
@@ -1462,23 +1460,23 @@ Optional Features:
   --enable-libffi         Check for the presence of libffi (default is NO)
   --enable-ltdl-install   install libltdl
   --enable-upc-runtime-checks
-                          enable internal UPC runtime checks that validate
-                          arguments, and check for inconsistent runtime state.
+                          Enable internal UPC runtime checks that validate
+                          arguments, and check for inconsistent runtime state
                           [default=no]
   --enable-upc-runtime-stats
-                          enable internal UPC runtime statistics collection
+                          Enable internal UPC runtime statistics collection
                           support; these statistics count the number of
                           various significant internal operations, and dump
-                          those counts into a per-process statistics file.
+                          those counts into a per-process statistics file
                           [default=no]
   --enable-upc-runtime-trace
-                          enable internal UPC runtime trace collection
+                          Enable internal UPC runtime trace collection
                           support; a runtime trace is a time stamped log that
                           records various significant internal events; this
-                          trace is written to a per-process log file.
+                          trace is written to a per-process log file
                           [default=no]
   --enable-upc-runtime-debug
-                          enable UPC runtime debugging mode, where more
+                          Enable UPC runtime debugging mode, where more
                           expensive internal checks are implemented, and
                           conservative algorithms are used that reduce the
                           degree of parallelism, and that exercise less
@@ -1489,27 +1487,27 @@ Optional Features:
                           build the runtime, and debugging symbols will be
                           generated. [default=no]
   --enable-upc-link-script
-                          enable UPC's use of a custom linker script; this
+                          Enable UPC's use of a custom linker script; this
                           will define the UPC shared section as a no load
                           section on targets where this feature is supported
                           (requires GNU LD)
-  --enable-upc-backtrace  enable UPC backtrace; enable stack frame backtrace
+  --enable-upc-backtrace  Enable UPC backtrace; Enable stack frame backtrace
                           report when UPC run-time fatal errors occur or by
                           user request (via signal)
   --enable-upc-backtrace-gdb
-                          enable the use of GDB for UPC stack backtrace
+                          Enable the use of GDB for UPC stack backtrace
                           [default='yes']
   --enable-upc-backtrace-signal
-                          enable signal support for UPC stack backtrace
+                          Enable signal support for UPC stack backtrace
                           [default='yes']
   --enable-upc-gum-debug  enable UPC's source level debugging with GDB and GUM
                           support (requires UPC aware GDB)
   --enable-upc-runtime-triggered-ops
-                          enable UPC runtime support for Portals4 triggered
-                          operations. [default=yes]
+                          Enable UPC runtime support for Portals4 triggered
+                          operations [default=yes]
   --enable-upc-node-local-mem
-                          enable UPC runtime support for accessing shared
-                          memory of the node local threads. [default=yes]
+                          Enable UPC runtime support for accessing shared
+                          memory of the node local threads [default=yes]
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -1537,60 +1535,48 @@ Optional Packages:
   --with-oprofile=<prefix>
                           Tell OProfile >= 0.9.4 how to symbolize JIT output
   --with-upc-pts          UPC packed or struct pointer representation.
-  --with-upc-packed-bits  UPC packed pointer representation.
-  --with-upc-packed-bits  Packed UPC pointer-to-shared representation.
+  --with-upc-pt-packed-bits
+                          Choose bit distribution in packed UPC
+                          pointer-to-shared representation
   --with-upc-pts-vaddr-order
-                          UPC vaddr first or last.
+                          Choose position of the address field in UPC
+                          pointer-to-shared representation
   --with-upc-runtime=MODEL
                           specify the runtime implementation model for UPC,
                           where MODEL may be: 'SMP' (Symmetric
                           Multiprocessing) or 'Portals4'. [default='SMP']
   --with-upc-runtime-tree-fanout=WIDTH
-                          specify the maximum number of children in each
+                          Specify the maximum number of children in each
                           sub-tree used to implement UPC collectives
                           operations (e. g. upc_barrier) [default=4]
   --with-upc-backtrace-gdb=GDB
-                          specify which GDB to use for UPC backtrace support
+                          Specify which GDB to use for UPC backtrace support
                           [default='gdb']
   --with-upc-backtrace-signal=SIGNAL
-                          specify the signal to be used for UPC stack
+                          Specify the signal to be used for UPC stack
                           backtrace [default='SIGUSR1']
   --with-upc-runtime-max-locks=MAX_LOCKS
                           specify the maximum number of locks that can be held
                           by a single UPC thread [default=1024]
-  --with-portals4=PATH    specify prefix directory for installed portals4
-                          package. Equivalent to
-                          --with-portals4-include=PATH/include plus
-                          --with-portals4-lib=PATH/lib
-  --with-portals4-include=PATH
-                          specify directory for installed portals4 include
-                          files
-  --with-portals4-lib=PATH
-                          specify directory for the installed portals4 library
   --with-upc-runtime-pte-base=BASE
-                          specify the base index of the first Portals4 PTE
+                          Specify the base index of the first Portals4 PTE
                           used by the UPC runtime [default=16]
   --with-upc-runtime-max-locks=MAX_LOCKS
-                          specify the maximum number of locks that can be held
+                          Specify the maximum number of locks that can be held
                           by a single UPC thread [default=1024]
   --with-upc-runtime-bounce-buffer-size=SIZE
-                          specify the size (in bytes) of the bounce buffer
+                          Specify the size (in bytes) of the bounce buffer
                           that is used by the UPC runtime to buffer network
                           data [default=256K]
   --with-upc-max-outstanding-puts=SIZE
-                          specify the maximum number of outstanding remote put
-                          requests. [default=256]
-  --with-upc-runtime-tree-fanout=WIDTH
-                          specify the maximum number of children in each
-                          sub-tree used to implement UPC collective operations
-                          (e. g., upc_barrier and upc_global_alloc).
-                          [default=4]
+                          Specify the maximum number of outstanding remote put
+                          requests [default=256]
   --with-upc-node-local-mem=SHMEM
-                          specify type of shared memory used for node local
-                          memory accesses (posix or mmap). [default=posix]
-  --with-upc-job-launcher Select UPC Portals4 job launcher. [default=slurm]
+                          Specify type of shared memory used for node local
+                          memory accesses (posix or mmap) [default=posix]
+  --with-upc-job-launcher Select UPC Portals4 job launcher [default=slurm]
   --with-upc-memory-page-size
-                          Select target memory page size. [default=4096]
+                          Select target memory page size [default=4096]
 
 Some influential environment variables:
   CC          C compiler command
@@ -10590,7 +10576,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 10593 "configure"
+#line 10579 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -21735,20 +21721,7 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 
-# Check whether --with-upc-packed-bits was given.
-if test "${with_upc_packed_bits+set}" = set; then
-  withval=$with_upc_packed_bits;
-else
-  withval="20,10,34"
-fi
-
-
-cat >>confdefs.h <<_ACEOF
-#define UPC_PACKED_BITS "$withval"
-_ACEOF
-
-
-# Perl is required for checking pts representation
+# Perl is required for checking packed pts representation
 # Extract the first word of "perl", so it can be a program name with args.
 set dummy perl; ac_word=$2
 { echo "$as_me:$LINENO: checking for $ac_word" >&5
@@ -21788,9 +21761,9 @@ fi
 
 
 
-# Check whether --with-upc-packed-bits was given.
-if test "${with_upc_packed_bits+set}" = set; then
-  withval=$with_upc_packed_bits;
+# Check whether --with-upc-pts-packed-bits was given.
+if test "${with_upc_pts_packed_bits+set}" = set; then
+  withval=$with_upc_pts_packed_bits;
   if test x"$upc_pts" = x"packed"; then
     UPC_PTS_PHASE_SIZE=`echo "$withval" | $PERL -ne 'm/^(\d+),(\d+),(\d+)$/;
 						  print $1 if ($1+$2+$3 == 64) && $1>=1;'`
@@ -21801,9 +21774,9 @@ if test "${with_upc_packed_bits+set}" = set; then
     if test -z "$UPC_PTS_PHASE_SIZE" \
        || test -z "$UPC_PTS_THREAD_SIZE" \
        || test -z "$UPC_PTS_VADDR_SIZE" ; then
-      { { echo "$as_me:$LINENO: error: --with-upc-packed-bits=phase,thread,vaddr requires
+      { { echo "$as_me:$LINENO: error: --with-upc-pts-packed-bits=phase,thread,vaddr requires
   phase+thread+vaddr=64 and phase >= 1 and thread >= 1 and vaddr >= 20" >&5
-echo "$as_me: error: --with-upc-packed-bits=phase,thread,vaddr requires
+echo "$as_me: error: --with-upc-pts-packed-bits=phase,thread,vaddr requires
   phase+thread+vaddr=64 and phase >= 1 and thread >= 1 and vaddr >= 20" >&2;}
    { (exit 1); exit 1; }; }
     fi
@@ -21813,9 +21786,9 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
   else
-    { { echo "$as_me:$LINENO: error: --with-upc-packed-bits is only supported for
+    { { echo "$as_me:$LINENO: error: --with-upc-pts-packed-bits is only supported for
 the packed UPC pointer-to-shared representation" >&5
-echo "$as_me: error: --with-upc-packed-bits is only supported for
+echo "$as_me: error: --with-upc-pts-packed-bits is only supported for
 the packed UPC pointer-to-shared representation" >&2;}
    { (exit 1); exit 1; }; }
   fi
@@ -22193,7 +22166,7 @@ fi
 
 { echo "$as_me:$LINENO: result: $upc_runtime_model" >&5
 echo "${ECHO_T}$upc_runtime_model" >&6; }
-UPC_RUNTIME_MODEL=$upc_runtime_model
+LIBUPC_RUNTIME_MODEL=$upc_runtime_model
 
 
 { echo "$as_me:$LINENO: checking for UPC runtime checking support" >&5
@@ -22862,52 +22835,6 @@ if test "$upc_runtime_model" = "portals4"; then
   # Use the generic (reference implementation)
   use_generic_collectives="no"
 
-  # Check for Portals4 libs
-  portals4libs="-lportals"
-  portals4inc=
-  have_portals4=no
-
-# Check whether --with-portals4 was given.
-if test "${with_portals4+set}" = set; then
-  withval=$with_portals4;
-fi
-
-
-# Check whether --with-portals4-include was given.
-if test "${with_portals4_include+set}" = set; then
-  withval=$with_portals4_include;
-fi
-
-
-# Check whether --with-portals4-lib was given.
-if test "${with_portals4_lib+set}" = set; then
-  withval=$with_portals4_lib;
-fi
-
-
-  if test "x$with_portals4" != x; then
-    portals4libs="-L$with_portals4/lib $portals4libs"
-    portals4inc="-I$with_portals4/include $portals4inc"
-  fi
-  if test "x$with_portals4_include" != x; then
-    portals4inc="-I$with_portals4_include $portals4inc"
-  fi
-  if test "x$with_portals4_lib" != x; then
-    portals4libs="-L$with_portals4_lib $portals4libs"
-  fi
-  if test "x$with_portals4$with_portals4_include$with_portals4_lib" = x \
-     && test -d ${srcdir}/portals4; then
-    portals4libs='-L$$r/$(HOST_SUBDIR)/portals4/ '"$lt_cv_objdir $portals4libs"
-    portals4inc='-I$$r/$(HOST_SUBDIR)/portals4 -I$$s/portals4 '"$portals4inc"
-    # Do not test the portals4 version.  Assume that it is sufficient, since
-    # it is in the source tree, and the library has not been built yet
-    # but it would be included on the link line in the version check below
-    # hence making the test fail.
-    have_portals4=yes
-  fi
-
-
-
   { echo "$as_me:$LINENO: checking for UPC runtime Portals4 PTE base index" >&5
 echo $ECHO_N "checking for UPC runtime Portals4 PTE base index... $ECHO_C" >&6; }
 
@@ -23026,36 +22953,6 @@ echo "${ECHO_T}$upc_max_puts_count" >&6; }
 
 cat >>confdefs.h <<_ACEOF
 #define GUPCR_MAX_OUTSTANDING_PUTS $upc_max_puts_count
-_ACEOF
-
-
-  { echo "$as_me:$LINENO: checking for UPC runtime collectives tree fanout" >&5
-echo $ECHO_N "checking for UPC runtime collectives tree fanout... $ECHO_C" >&6; }
-
-# Check whether --with-upc-runtime-tree-fanout was given.
-if test "${with_upc_runtime_tree_fanout+set}" = set; then
-  withval=$with_upc_runtime_tree_fanout;
-    # $withval must be a decimal integer
-    if ! echo "$withval" | grep '^[0-9][0-9]*$' >/dev/null 2>&1; then
-      { { echo "$as_me:$LINENO: error: $withval is an invalid option to
-			--with-upc-runtime-tree-fanout" >&5
-echo "$as_me: error: $withval is an invalid option to
-			--with-upc-runtime-tree-fanout" >&2;}
-   { (exit 1); exit 1; }; }
-    fi
-    upc_runtime_tree_fanout="$withval"
-
-else
-
-    upc_runtime_tree_fanout=4
-
-fi
-
-  { echo "$as_me:$LINENO: result: $upc_runtime_tree_fanout" >&5
-echo "${ECHO_T}$upc_runtime_tree_fanout" >&6; }
-
-cat >>confdefs.h <<_ACEOF
-#define GUPCR_TREE_FANOUT $upc_runtime_tree_fanout
 _ACEOF
 
 
@@ -24758,13 +24655,11 @@ GUPCR_PTS_VADDR_TYPE!$GUPCR_PTS_VADDR_TYPE$ac_delim
 GUPCR_PTS_THREAD_TYPE!$GUPCR_PTS_THREAD_TYPE$ac_delim
 GUPCR_PTS_PHASE_TYPE!$GUPCR_PTS_PHASE_TYPE$ac_delim
 GUPCR_PTS_ALIGN!$GUPCR_PTS_ALIGN$ac_delim
-UPC_RUNTIME_MODEL!$UPC_RUNTIME_MODEL$ac_delim
+LIBUPC_RUNTIME_MODEL!$LIBUPC_RUNTIME_MODEL$ac_delim
 enable_upc_runtime_debug!$enable_upc_runtime_debug$ac_delim
 LIBUPC_LINK_SCRIPT!$LIBUPC_LINK_SCRIPT$ac_delim
 LIBUPC_ENABLE_BACKTRACE!$LIBUPC_ENABLE_BACKTRACE$ac_delim
 PATH_TO_GDB!$PATH_TO_GDB$ac_delim
-portals4libs!$portals4libs$ac_delim
-portals4inc!$portals4inc$ac_delim
 LIBGUPC_SMP_RUNTIME_TRUE!$LIBGUPC_SMP_RUNTIME_TRUE$ac_delim
 LIBGUPC_SMP_RUNTIME_FALSE!$LIBGUPC_SMP_RUNTIME_FALSE$ac_delim
 LIBGUPC_PORTALS4_RUNTIME_TRUE!$LIBGUPC_PORTALS4_RUNTIME_TRUE$ac_delim
@@ -24795,7 +24690,7 @@ LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 40; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 38; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
