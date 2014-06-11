@@ -5997,6 +5997,11 @@ void freebsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
       crtbegin = "crtbegin.o";
 
     CmdArgs.push_back(Args.MakeArgString(ToolChain.GetFilePath(crtbegin)));
+
+    if (D.CCCIsUPC()) {
+      const char *upc_crtbegin = GetUPCBeginFile(Args);
+      CmdArgs.push_back(Args.MakeArgString(getToolChain().GetFilePath(upc_crtbegin)));
+    }
   }
 
   Args.AddAllArgs(CmdArgs, options::OPT_L);
@@ -6029,6 +6034,11 @@ void freebsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
                         Args.MakeArgString(Twine("-plugin-opt=mcpu=") +
                                            CPU));
     }
+  }
+
+  if (D.CCCIsUPC() && !Args.hasArg(options::OPT_nostdlib)) {
+    CmdArgs.push_back(Args.MakeArgString("-T" + getToolChain().GetFilePath("upc.ld")));
+    CmdArgs.push_back(GetUPCLibOption(Args));
   }
 
   AddLinkerInputs(ToolChain, Inputs, Args, CmdArgs);
@@ -6089,6 +6099,11 @@ void freebsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
 
   if (!Args.hasArg(options::OPT_nostdlib) &&
       !Args.hasArg(options::OPT_nostartfiles)) {
+    if (D.CCCIsUPC()) {
+      const char *upc_crtend = GetUPCEndFile(Args);
+      CmdArgs.push_back(Args.MakeArgString(getToolChain().GetFilePath(upc_crtend)));
+    }
+
     if (Args.hasArg(options::OPT_shared) || Args.hasArg(options::OPT_pie))
       CmdArgs.push_back(Args.MakeArgString(ToolChain.GetFilePath("crtendS.o")));
     else
