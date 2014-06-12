@@ -39,7 +39,7 @@ char *__upc_strsignal (sig)
      int sig;
 {
   static char sigbuf[64];
-#ifdef __sgi__
+#if defined(__sgi__) || defined(__sun__)
   char **sys_siglist = _sys_siglist;
   const int nsig = _sys_nsig;
 #else
