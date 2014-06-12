@@ -117,7 +117,7 @@ endif
  
 include $(CLANG_LEVEL)/Makefile
 include Makefile.rules
-
+NO_MAYBE_UNINITIALIZED=
 
 # Build library specific include file
 clang-upc-lib.h: gen-inline-libupc.pl upc-lib.in $(SOURCES_INLINE)
@@ -236,6 +236,8 @@ $(INSTHEADERS): $(PROJ_headers)/%.h: $(HeaderDir)/%.h | $(PROJ_headers)
 	$(Echo) Installing compiler include file: $(notdir $<)
 
 install-local:: $(INSTHEADERS)
+
+COMPILE_DEPS += $(OBJHEADERS)
 
 # UPC compiling
 Compile.UPC = $(Compile.Wrapper) \
