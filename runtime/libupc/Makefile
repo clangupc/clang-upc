@@ -119,13 +119,6 @@ include $(CLANG_LEVEL)/Makefile
 include Makefile.rules
 NO_MAYBE_UNINITIALIZED=
 
-# Build library specific include file
-clang-upc-lib.h: gen-inline-libupc.pl upc-lib.in $(SOURCES_INLINE)
-	$(Verb) $(PERL) $+ > $@
-	$(Echo) Building clang-upc-lib.h
-
-BUILT_SOURCES = clang-upc-lib.h 
-
 LibDir := $(PROJ_OBJ_ROOT)/$(BuildMode)/lib
 PROJ_lib := $(DESTDIR)$(PROJ_prefix)/lib
 
@@ -217,9 +210,11 @@ $(OBJHEADERS): $(HeaderDir)/%.h: $(PROJ_SRC_DIR)/include/%.h $(HeaderDir)/.dir
 	$(Echo) Copying $(notdir $<) to build dir
 
 CLANG_UPC_LIB_HEADER := $(addprefix $(HeaderDir)/, clang-upc-lib.h)
-$(CLANG_UPC_LIB_HEADER): clang-upc-lib.h
-	$(Verb) cp $< $@
-	$(Echo) Copying $(notdir $<) to build dir
+$(CLANG_UPC_LIB_HEADER): gen-inline-libupc.pl upc-lib.in $(SOURCES_INLINE)
+	$(Verb) $(PERL) $+ > $@
+	$(Echo) Building clang-upc-lib.h
+
+BUILT_SOURCES = $(CLANG_UPC_LIB_HEADER)
 
 all-local:: $(OBJHEADERS) $(CLANG_UPC_LIB_HEADER)
 
@@ -247,4 +242,5 @@ Compile.UPC = $(Compile.Wrapper) \
 $(ObjDir)/%.o: %.upc $(ObjDir)/.dir $(BUILT_SOURCES) $(OBJHEADERS)
 	$(Echo) "Compiling $*.upc for $(BuildMode) build" $(PIC_FLAG)
 	$(Compile.UPC) $< -o $@
+
 
