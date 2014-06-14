@@ -80,6 +80,7 @@ Decl * Sema::ActOnPragmaPUPC(SourceLocation PragmaLoc, PragmaPUPCKind Kind) {
   }
   Decl * Result = PragmaPupcDecl::Create(Context, CurContext, PragmaLoc, PUPCOn);
   CurContext->addDecl(Result);
+  return Result;
 }
 
 StmtResult Sema::ActOnDeclStmt(DeclGroupPtrTy dg, SourceLocation StartLoc,
