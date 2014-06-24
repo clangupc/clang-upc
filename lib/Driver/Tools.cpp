@@ -5651,14 +5651,14 @@ void openbsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
   Args.AddAllArgs(CmdArgs, options::OPT_Z_Flag);
   Args.AddAllArgs(CmdArgs, options::OPT_r);
 
+  AddLinkerInputs(getToolChain(), Inputs, Args, CmdArgs);
+
   if (D.CCCIsUPC() && !Args.hasArg(options::OPT_nostdlib)) {
 #ifdef LIBUPC_LINK_SCRIPT
     CmdArgs.push_back(Args.MakeArgString("-T" + getToolChain().GetFilePath("upc.ld")));
 #endif
     CmdArgs.push_back(GetUPCLibOption(Args));
   }
-
-  AddLinkerInputs(getToolChain(), Inputs, Args, CmdArgs);
 
   if (!Args.hasArg(options::OPT_nostdlib) &&
       !Args.hasArg(options::OPT_nodefaultlibs)) {
@@ -6056,14 +6056,14 @@ void freebsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
     }
   }
 
+  AddLinkerInputs(ToolChain, Inputs, Args, CmdArgs);
+
   if (D.CCCIsUPC() && !Args.hasArg(options::OPT_nostdlib)) {
 #ifdef LIBUPC_LINK_SCRIPT
     CmdArgs.push_back(Args.MakeArgString("-T" + getToolChain().GetFilePath("upc.ld")));
 #endif
     CmdArgs.push_back(GetUPCLibOption(Args));
   }
-
-  AddLinkerInputs(ToolChain, Inputs, Args, CmdArgs);
 
   if (!Args.hasArg(options::OPT_nostdlib) &&
       !Args.hasArg(options::OPT_nodefaultlibs)) {
@@ -6281,14 +6281,14 @@ void netbsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
   Args.AddAllArgs(CmdArgs, options::OPT_Z_Flag);
   Args.AddAllArgs(CmdArgs, options::OPT_r);
 
+  AddLinkerInputs(getToolChain(), Inputs, Args, CmdArgs);
+
   if (D.CCCIsUPC() && !Args.hasArg(options::OPT_nostdlib)) {
 #ifdef LIBUPC_LINK_SCRIPT
     CmdArgs.push_back(Args.MakeArgString("-T" + getToolChain().GetFilePath("upc.ld")));
 #endif
     CmdArgs.push_back(GetUPCLibOption(Args));
   }
-
-  AddLinkerInputs(getToolChain(), Inputs, Args, CmdArgs);
 
   unsigned Major, Minor, Micro;
   getToolChain().getTriple().getOSVersion(Major, Minor, Micro);
