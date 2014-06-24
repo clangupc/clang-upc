@@ -39,7 +39,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include <sys/stat.h>
 
-// Additional flags for UPC with Portals
+// Additional flags for UPC
 #include "clang/Config/config.h"
 
 using namespace clang::driver;
@@ -5652,7 +5652,9 @@ void openbsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
   Args.AddAllArgs(CmdArgs, options::OPT_r);
 
   if (D.CCCIsUPC() && !Args.hasArg(options::OPT_nostdlib)) {
+#ifdef LIBUPC_LINK_SCRIPT
     CmdArgs.push_back(Args.MakeArgString("-T" + getToolChain().GetFilePath("upc.ld")));
+#endif
     CmdArgs.push_back(GetUPCLibOption(Args));
   }
 
@@ -6055,7 +6057,9 @@ void freebsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
   }
 
   if (D.CCCIsUPC() && !Args.hasArg(options::OPT_nostdlib)) {
+#ifdef LIBUPC_LINK_SCRIPT
     CmdArgs.push_back(Args.MakeArgString("-T" + getToolChain().GetFilePath("upc.ld")));
+#endif
     CmdArgs.push_back(GetUPCLibOption(Args));
   }
 
@@ -6278,7 +6282,9 @@ void netbsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
   Args.AddAllArgs(CmdArgs, options::OPT_r);
 
   if (D.CCCIsUPC() && !Args.hasArg(options::OPT_nostdlib)) {
+#ifdef LIBUPC_LINK_SCRIPT
     CmdArgs.push_back(Args.MakeArgString("-T" + getToolChain().GetFilePath("upc.ld")));
+#endif
     CmdArgs.push_back(GetUPCLibOption(Args));
   }
 
@@ -6750,7 +6756,9 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
   }
 
   if (D.CCCIsUPC() && !Args.hasArg(options::OPT_nostdlib)) {
+#ifdef LIBUPC_LINK_SCRIPT
     CmdArgs.push_back(Args.MakeArgString("-T" + ToolChain.GetFilePath("upc.ld")));
+#endif
     CmdArgs.push_back(GetUPCLibOption(Args));
 #ifdef LIBUPC_PORTALS4
     CmdArgs.push_back("-L" LIBUPC_PORTALS4 "/lib");
