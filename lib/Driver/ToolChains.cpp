@@ -1958,6 +1958,8 @@ FreeBSD::FreeBSD(const Driver &D, const llvm::Triple& Triple, const ArgList &Arg
     getFilePaths().push_back(getDriver().SysRoot + "/usr/lib32");
   else
     getFilePaths().push_back(getDriver().SysRoot + "/usr/lib");
+
+  getFilePaths().push_back(getDriver().Dir + "/../lib");
 }
 
 ToolChain::CXXStdlibType
@@ -2034,6 +2036,8 @@ NetBSD::NetBSD(const Driver &D, const llvm::Triple& Triple, const ArgList &Args)
 
     getFilePaths().push_back("=/usr/lib");
   }
+
+  getFilePaths().push_back(getDriver().Dir + "/../lib");
 }
 
 Tool *NetBSD::buildAssembler() const {

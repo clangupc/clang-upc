@@ -4618,6 +4618,64 @@ const char *Clang::getDependencyFileName(const ArgList &Args,
   return Args.MakeArgString(Res + ".d");
 }
 
+static const char *GetUPCLibOption(const ArgList &Args) {
+  llvm::SmallString<32> Buf("-lupc");
+  if (Args.getLastArgValue(options::OPT_fupc_pts_EQ, "packed") == "struct") {
+    Buf += "-s";
+  }
+  if (Args.getLastArgValue(options::OPT_fupc_pts_vaddr_order_EQ, "first") == "last") {
+    Buf += "-l";
+  }
+  if (Arg * A = Args.getLastArg(options::OPT_fupc_packed_bits_EQ)) {
+    llvm::SmallVector<llvm::StringRef, 3> Bits;
+    StringRef(A->getValue()).split(Bits, ",");
+    bool okay = true;
+    int Values[3];
+    if (Bits.size() == 3) {
+      for (int i = 0; i < 3; ++i)
+        if (Bits[i].getAsInteger(10, Values[i]) || Values[i] <= 0)
+          okay = false;
+      if (Values[0] + Values[1] + Values[2] != 64)
+        okay = false;
+    } else {
+      okay = false;
+    }
+    if (okay) {
+      if(Values[0] != 20 || Values[1] != 10 || Values[2] != 34) {
+        Buf += "-";
+        Buf += Bits[0];
+        Buf += "-";
+        Buf += Bits[1];
+        Buf += "-";
+        Buf += Bits[2];
+      }
+    }
+  }
+  return Args.MakeArgString(Buf);
+}
+
+static const char *GetUPCBeginFile(const ArgList &Args) {
+  const char *upc_crtbegin;
+  if (Args.hasArg(options::OPT_static))
+    upc_crtbegin = "upc-crtbeginT.o";
+  else if (Args.hasArg(options::OPT_shared) || Args.hasArg(options::OPT_pie))
+    upc_crtbegin = "upc-crtbeginS.o";
+  else
+    upc_crtbegin = "upc-crtbegin.o";
+  return upc_crtbegin;
+}
+
+static const char *GetUPCEndFile(const ArgList &Args) {
+  const char *upc_crtend;
+  if (Args.hasArg(options::OPT_static))
+    upc_crtend = "upc-crtendT.o";
+  else if (Args.hasArg(options::OPT_shared) || Args.hasArg(options::OPT_pie))
+    upc_crtend = "upc-crtendS.o";
+  else
+    upc_crtend = "upc-crtend.o";
+  return upc_crtend;
+}
+
 void darwin::Assemble::ConstructJob(Compilation &C, const JobAction &JA,
                                     const InputInfo &Output,
                                     const InputInfoList &Inputs,
@@ -5045,13 +5103,7 @@ void darwin::Link::ConstructJob(Compilation &C, const JobAction &JA,
         }
       }
       if (D.CCCIsUPC()) {
-        const char *upc_crtbegin;
-        if (Args.hasArg(options::OPT_static))
-          upc_crtbegin = "upc-crtbeginT.o";
-        else if (Args.hasArg(options::OPT_shared) || Args.hasArg(options::OPT_pie))
-          upc_crtbegin = "upc-crtbeginS.o";
-        else
-          upc_crtbegin = "upc-crtbegin.o";
+        const char *upc_crtbegin = GetUPCBeginFile(Args);
         CmdArgs.push_back(Args.MakeArgString(getToolChain().GetFilePath(upc_crtbegin)));
       }
     }
@@ -5077,41 +5129,8 @@ void darwin::Link::ConstructJob(Compilation &C, const JobAction &JA,
     // This is more complicated in gcc...
     CmdArgs.push_back("-lgomp");
 
-  if (D.CCCIsUPC() && !Args.hasArg(options::OPT_nostdlib)) {
-    llvm::SmallString<32> Buf("-lupc");
-    if (Args.getLastArgValue(options::OPT_fupc_pts_EQ, "packed") == "struct") {
-      Buf += "-s";
-    }
-    if (Args.getLastArgValue(options::OPT_fupc_pts_vaddr_order_EQ, "first") == "last") {
-      Buf += "-l";
-    }
-    if (Arg * A = Args.getLastArg(options::OPT_fupc_packed_bits_EQ)) {
-      llvm::SmallVector<llvm::StringRef, 3> Bits;
-      StringRef(A->getValue()).split(Bits, ",");
-      bool okay = true;
-      int Values[3];
-      if (Bits.size() == 3) {
-        for (int i = 0; i < 3; ++i)
-          if (Bits[i].getAsInteger(10, Values[i]) || Values[i] <= 0)
-            okay = false;
-        if (Values[0] + Values[1] + Values[2] != 64)
-          okay = false;
-      } else {
-        okay = false;
-      }
-      if (okay) {
-        if(Values[0] != 20 || Values[1] != 10 || Values[2] != 34) {
-          Buf += "-";
-          Buf += Bits[0];
-          Buf += "-";
-          Buf += Bits[1];
-          Buf += "-";
-          Buf += Bits[2];
-        }
-      }
-    }
-    CmdArgs.push_back(Args.MakeArgString(Buf));
-  }
+  if (D.CCCIsUPC() && !Args.hasArg(options::OPT_nostdlib))
+    CmdArgs.push_back(GetUPCLibOption(Args));
 
   AddLinkerInputs(getToolChain(), Inputs, Args, CmdArgs);
   
@@ -5161,13 +5180,7 @@ void darwin::Link::ConstructJob(Compilation &C, const JobAction &JA,
       !Args.hasArg(options::OPT_nostartfiles)) {
 
     if (D.CCCIsUPC()) {
-      const char *upc_crtend;
-      if (Args.hasArg(options::OPT_static))
-        upc_crtend = "upc-crtendT.o";
-      else if (Args.hasArg(options::OPT_shared) || Args.hasArg(options::OPT_pie))
-        upc_crtend = "upc-crtendS.o";
-      else
-        upc_crtend = "upc-crtend.o";
+      const char *upc_crtend = GetUPCEndFile(Args);
       CmdArgs.push_back(Args.MakeArgString(ToolChain.GetFilePath(upc_crtend)));
     }
   }
@@ -5614,6 +5627,10 @@ void openbsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
       CmdArgs.push_back(Args.MakeArgString(
                               getToolChain().GetFilePath("crtbeginS.o")));
     }
+    if (D.CCCIsUPC()) {
+      const char *upc_crtbegin = GetUPCBeginFile(Args);
+      CmdArgs.push_back(Args.MakeArgString(getToolChain().GetFilePath(upc_crtbegin)));
+    }
   }
 
   std::string Triple = getToolChain().getTripleString();
@@ -5623,12 +5640,21 @@ void openbsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
                                        "/4.2.1"));
 
   Args.AddAllArgs(CmdArgs, options::OPT_L);
+  const ToolChain::path_list Paths = getToolChain().getFilePaths();
+  for (ToolChain::path_list::const_iterator i = Paths.begin(), e = Paths.end();
+       i != e; ++i)
+    CmdArgs.push_back(Args.MakeArgString(StringRef("-L") + *i));
   Args.AddAllArgs(CmdArgs, options::OPT_T_Group);
   Args.AddAllArgs(CmdArgs, options::OPT_e);
   Args.AddAllArgs(CmdArgs, options::OPT_s);
   Args.AddAllArgs(CmdArgs, options::OPT_t);
   Args.AddAllArgs(CmdArgs, options::OPT_Z_Flag);
   Args.AddAllArgs(CmdArgs, options::OPT_r);
+
+  if (D.CCCIsUPC() && !Args.hasArg(options::OPT_nostdlib)) {
+    CmdArgs.push_back(Args.MakeArgString("-T" + getToolChain().GetFilePath("upc.ld")));
+    CmdArgs.push_back(GetUPCLibOption(Args));
+  }
 
   AddLinkerInputs(getToolChain(), Inputs, Args, CmdArgs);
 
@@ -5666,6 +5692,11 @@ void openbsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
 
   if (!Args.hasArg(options::OPT_nostdlib) &&
       !Args.hasArg(options::OPT_nostartfiles)) {
+    if (D.CCCIsUPC()) {
+      const char *upc_crtend = GetUPCEndFile(Args);
+      CmdArgs.push_back(Args.MakeArgString(getToolChain().GetFilePath(upc_crtend)));
+    }
+
     if (!Args.hasArg(options::OPT_shared))
       CmdArgs.push_back(Args.MakeArgString(
                               getToolChain().GetFilePath("crtend.o")));
@@ -5984,6 +6015,11 @@ void freebsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
       crtbegin = "crtbegin.o";
 
     CmdArgs.push_back(Args.MakeArgString(ToolChain.GetFilePath(crtbegin)));
+
+    if (D.CCCIsUPC()) {
+      const char *upc_crtbegin = GetUPCBeginFile(Args);
+      CmdArgs.push_back(Args.MakeArgString(getToolChain().GetFilePath(upc_crtbegin)));
+    }
   }
 
   Args.AddAllArgs(CmdArgs, options::OPT_L);
@@ -6016,6 +6052,11 @@ void freebsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
                         Args.MakeArgString(Twine("-plugin-opt=mcpu=") +
                                            CPU));
     }
+  }
+
+  if (D.CCCIsUPC() && !Args.hasArg(options::OPT_nostdlib)) {
+    CmdArgs.push_back(Args.MakeArgString("-T" + getToolChain().GetFilePath("upc.ld")));
+    CmdArgs.push_back(GetUPCLibOption(Args));
   }
 
   AddLinkerInputs(ToolChain, Inputs, Args, CmdArgs);
@@ -6076,6 +6117,11 @@ void freebsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
 
   if (!Args.hasArg(options::OPT_nostdlib) &&
       !Args.hasArg(options::OPT_nostartfiles)) {
+    if (D.CCCIsUPC()) {
+      const char *upc_crtend = GetUPCEndFile(Args);
+      CmdArgs.push_back(Args.MakeArgString(getToolChain().GetFilePath(upc_crtend)));
+    }
+
     if (Args.hasArg(options::OPT_shared) || Args.hasArg(options::OPT_pie))
       CmdArgs.push_back(Args.MakeArgString(ToolChain.GetFilePath("crtendS.o")));
     else
@@ -6212,15 +6258,29 @@ void netbsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
       CmdArgs.push_back(Args.MakeArgString(
                               getToolChain().GetFilePath("crtbeginS.o")));
     }
+
+    if (D.CCCIsUPC()) {
+      const char *upc_crtbegin = GetUPCBeginFile(Args);
+      CmdArgs.push_back(Args.MakeArgString(getToolChain().GetFilePath(upc_crtbegin)));
+    }
   }
 
   Args.AddAllArgs(CmdArgs, options::OPT_L);
+  const ToolChain::path_list Paths = getToolChain().getFilePaths();
+  for (ToolChain::path_list::const_iterator i = Paths.begin(), e = Paths.end();
+       i != e; ++i)
+    CmdArgs.push_back(Args.MakeArgString(StringRef("-L") + *i));
   Args.AddAllArgs(CmdArgs, options::OPT_T_Group);
   Args.AddAllArgs(CmdArgs, options::OPT_e);
   Args.AddAllArgs(CmdArgs, options::OPT_s);
   Args.AddAllArgs(CmdArgs, options::OPT_t);
   Args.AddAllArgs(CmdArgs, options::OPT_Z_Flag);
   Args.AddAllArgs(CmdArgs, options::OPT_r);
+
+  if (D.CCCIsUPC() && !Args.hasArg(options::OPT_nostdlib)) {
+    CmdArgs.push_back(Args.MakeArgString("-T" + getToolChain().GetFilePath("upc.ld")));
+    CmdArgs.push_back(GetUPCLibOption(Args));
+  }
 
   AddLinkerInputs(getToolChain(), Inputs, Args, CmdArgs);
 
@@ -6262,6 +6322,11 @@ void netbsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
 
   if (!Args.hasArg(options::OPT_nostdlib) &&
       !Args.hasArg(options::OPT_nostartfiles)) {
+    if (D.CCCIsUPC()) {
+      const char *upc_crtend = GetUPCEndFile(Args);
+      CmdArgs.push_back(Args.MakeArgString(getToolChain().GetFilePath(upc_crtend)));
+    }
+
     if (!Args.hasArg(options::OPT_shared))
       CmdArgs.push_back(Args.MakeArgString(getToolChain().GetFilePath(
                                                                   "crtend.o")));
@@ -6610,13 +6675,7 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
     CmdArgs.push_back(Args.MakeArgString(ToolChain.GetFilePath(crtbegin)));
 
     if (D.CCCIsUPC()) {
-      const char *upc_crtbegin;
-      if (Args.hasArg(options::OPT_static))
-        upc_crtbegin = "upc-crtbeginT.o";
-      else if (Args.hasArg(options::OPT_shared) || Args.hasArg(options::OPT_pie))
-        upc_crtbegin = "upc-crtbeginS.o";
-      else
-        upc_crtbegin = "upc-crtbegin.o";
+      const char *upc_crtbegin = GetUPCBeginFile(Args);
       CmdArgs.push_back(Args.MakeArgString(ToolChain.GetFilePath(upc_crtbegin)));
     }
 
@@ -6692,39 +6751,7 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
 
   if (D.CCCIsUPC() && !Args.hasArg(options::OPT_nostdlib)) {
     CmdArgs.push_back(Args.MakeArgString("-T" + ToolChain.GetFilePath("upc.ld")));
-    llvm::SmallString<32> Buf("-lupc");
-    if (Args.getLastArgValue(options::OPT_fupc_pts_EQ, "packed") == "struct") {
-      Buf += "-s";
-    }
-    if (Args.getLastArgValue(options::OPT_fupc_pts_vaddr_order_EQ, "first") == "last") {
-      Buf += "-l";
-    }
-    if (Arg * A = Args.getLastArg(options::OPT_fupc_packed_bits_EQ)) {
-      llvm::SmallVector<llvm::StringRef, 3> Bits;
-      StringRef(A->getValue()).split(Bits, ",");
-      bool okay = true;
-      int Values[3];
-      if (Bits.size() == 3) {
-        for (int i = 0; i < 3; ++i)
-          if (Bits[i].getAsInteger(10, Values[i]) || Values[i] <= 0)
-            okay = false;
-        if (Values[0] + Values[1] + Values[2] != 64)
-          okay = false;
-      } else {
-        okay = false;
-      }
-      if (okay) {
-        if(Values[0] != 20 || Values[1] != 10 || Values[2] != 34) {
-          Buf += "-";
-          Buf += Bits[0];
-          Buf += "-";
-          Buf += Bits[1];
-          Buf += "-";
-          Buf += Bits[2];
-        }
-      }
-    }
-    CmdArgs.push_back(Args.MakeArgString(Buf));
+    CmdArgs.push_back(GetUPCLibOption(Args));
 #ifdef LIBUPC_PORTALS4
     CmdArgs.push_back("-L" LIBUPC_PORTALS4 "/lib");
     CmdArgs.push_back("-lportals");
@@ -6769,13 +6796,7 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
     if (!Args.hasArg(options::OPT_nostartfiles)) {
 
       if (D.CCCIsUPC()) {
-        const char *upc_crtend;
-        if (Args.hasArg(options::OPT_static))
-          upc_crtend = "upc-crtendT.o";
-        else if (Args.hasArg(options::OPT_shared) || Args.hasArg(options::OPT_pie))
-          upc_crtend = "upc-crtendS.o";
-        else
-          upc_crtend = "upc-crtend.o";
+        const char *upc_crtend = GetUPCEndFile(Args);
         CmdArgs.push_back(Args.MakeArgString(ToolChain.GetFilePath(upc_crtend)));
       }
 
