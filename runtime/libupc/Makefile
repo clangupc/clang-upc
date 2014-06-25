@@ -126,7 +126,7 @@ PROJ_lib := $(DESTDIR)$(PROJ_prefix)/lib
 ifeq ($(LIBUPC_LINK_SCRIPT),1)
 UPC_LINK_SCRIPT := upc.ld                                                       
 $(UPC_LINK_SCRIPT): gen-upc-ld-script.pl                                        
-	$(Verb) $(CC) $(LDFLAGS) -Xlinker --verbose -x none /dev/null 2>&1 | \
+	$(Verb) echo "int main(){}" | $(CC) $(LDFLAGS) -Xlinker --verbose -o /dev/null -xc - | \
 	$(PERL) $+ > $@
 
 BUILT_SOURCES += $(UPC_LINK_SCRIPT)
