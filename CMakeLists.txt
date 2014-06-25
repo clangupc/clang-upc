@@ -204,6 +204,18 @@ endif()
 set(LIBUPC_ENABLE_LINK_SCRIPT TRUE CACHE STRING "enable UPC's use of a custom linker script; this will define the UPC shared section as a no load section on targets where this feature is supported (requires GNU LD)")
 set(LIBUPC_LINK_SCRIPT ${LIBUPC_ENABLE_LINK_SCRIPT})
 
+# Check for backtrace on systems (freebsd,..) that need an extra library
+set(LIBUPC_ENABLE_BACKTRACE TRUE CACHE STRING "enable UPC backtrace; enable stack frame backtrace report when UPC run-time fatal errors occur or by user request (via signal)")
+if (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR
+    ${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD" OR
+    ${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
+  # Check if libexecinfo with backtrace exists
+  CHECK_LIBRARY_EXISTS(execinfo backtrace "" HAVE_EXECINFO_LIB)
+  if (NOT ${HAVE_EXECINFO_LIB})
+    set(LIBUPC_ENABLE_BACKTRACE FALSE)
+  endif()
+endif()
+
 configure_file(
   ${CLANG_SOURCE_DIR}/include/clang/Config/config.h.cmake
   ${CLANG_BINARY_DIR}/include/clang/Config/config.h)

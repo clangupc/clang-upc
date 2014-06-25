@@ -5674,6 +5674,9 @@ void openbsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
     CmdArgs.push_back(Args.MakeArgString("-T" + getToolChain().GetFilePath("upc.ld")));
 #endif
     CmdArgs.push_back(GetUPCLibOption(Args));
+#ifdef LIBUPC_ENABLE_BACKTRACE
+    CmdArgs.push_back("-lexecinfo");
+#endif
   }
 
   if (!Args.hasArg(options::OPT_nostdlib) &&
@@ -6079,6 +6082,9 @@ void freebsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
     CmdArgs.push_back(Args.MakeArgString("-T" + getToolChain().GetFilePath("upc.ld")));
 #endif
     CmdArgs.push_back(GetUPCLibOption(Args));
+#ifdef LIBUPC_ENABLE_BACKTRACE
+    CmdArgs.push_back("-lexecinfo");
+#endif
   }
 
   if (!Args.hasArg(options::OPT_nostdlib) &&
@@ -6304,6 +6310,9 @@ void netbsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
     CmdArgs.push_back(Args.MakeArgString("-T" + getToolChain().GetFilePath("upc.ld")));
 #endif
     CmdArgs.push_back(GetUPCLibOption(Args));
+#ifdef LIBUPC_ENABLE_BACKTRACE
+    CmdArgs.push_back("-lexecinfo");
+#endif
   }
 
   unsigned Major, Minor, Micro;

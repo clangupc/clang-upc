@@ -25,6 +25,9 @@
 /* UPC link script enabled. */
 #cmakedefine LIBUPC_LINK_SCRIPT 1
 
+/* Enable UPC backtrace */
+#cmakedefine LIBUPC_ENABLE_BACKTRACE 1
+
 /* Portals4 support */
 #cmakedefine LIBUPC_PORTALS4 "${LIBUPC_PORTALS4}"
 
