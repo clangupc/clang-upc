@@ -211,7 +211,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR
     ${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
   # Check if libexecinfo with backtrace exists
   CHECK_LIBRARY_EXISTS(execinfo backtrace "" HAVE_EXECINFO_LIB)
-  if (NOT ${HAVE_EXECINFO_LIB})
+  if (NOT HAVE_EXECINFO_LIB)
     set(LIBUPC_ENABLE_BACKTRACE FALSE)
   endif()
 endif()
