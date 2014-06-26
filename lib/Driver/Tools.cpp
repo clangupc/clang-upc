@@ -5675,6 +5675,9 @@ void openbsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
 #endif
     CmdArgs.push_back(GetUPCLibOption(Args));
 #ifdef LIBUPC_ENABLE_BACKTRACE
+#ifdef LIBUPC_EXECINFO_LIB_PATH
+    CmdArgs.push_back("-L" LIBUPC_EXECINFO_LIB_PATH);
+#endif
     CmdArgs.push_back("-lexecinfo");
 #endif
   }
@@ -6083,6 +6086,9 @@ void freebsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
 #endif
     CmdArgs.push_back(GetUPCLibOption(Args));
 #ifdef LIBUPC_ENABLE_BACKTRACE
+#ifdef LIBUPC_EXECINFO_LIB_PATH
+    CmdArgs.push_back("-L" LIBUPC_EXECINFO_LIB_PATH);
+#endif
     CmdArgs.push_back("-lexecinfo");
 #endif
   }
@@ -6311,6 +6317,9 @@ void netbsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
 #endif
     CmdArgs.push_back(GetUPCLibOption(Args));
 #ifdef LIBUPC_ENABLE_BACKTRACE
+#ifdef LIBUPC_EXECINFO_LIB_PATH
+    CmdArgs.push_back("-L" LIBUPC_EXECINFO_LIB_PATH);
+#endif
     CmdArgs.push_back("-lexecinfo");
 #endif
   }

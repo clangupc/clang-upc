@@ -209,9 +209,14 @@ set(LIBUPC_ENABLE_BACKTRACE TRUE CACHE STRING "enable UPC backtrace; enable stac
 if (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR
     ${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD" OR
     ${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
+  # Check if execinfo include and library paths
+  find_path(EXECINFO_INC_PATH execinfo.h)
+  find_library(EXECINFO_LIB_PATH execinfo)
   # Check if libexecinfo with backtrace exists
   CHECK_LIBRARY_EXISTS(execinfo backtrace "" HAVE_EXECINFO_LIB)
-  if (NOT HAVE_EXECINFO_LIB)
+  if (HAVE_EXECINFO_LIB AND EXECINFO_INC_PATH AND EXECINFO_LIB_PATH)
+    get_filename_component(LIBUPC_EXECINFO_LIB_PATH ${EXECINFO_LIB_PATH} DIRECTORY)
+  else()
     set(LIBUPC_ENABLE_BACKTRACE FALSE)
   endif()
 endif()

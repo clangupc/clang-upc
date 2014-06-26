@@ -28,6 +28,9 @@
 /* Enable UPC backtrace */
 #cmakedefine LIBUPC_ENABLE_BACKTRACE 1
 
+/* execinfo library path for UPC backtrace */
+#cmakedefine LIBUPC_EXECINFO_LIB_PATH "${LIBUPC_EXECINFO_LIB_PATH}"
+
 /* Portals4 support */
 #cmakedefine LIBUPC_PORTALS4 "${LIBUPC_PORTALS4}"
 

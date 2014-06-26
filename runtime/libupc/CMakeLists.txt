@@ -54,12 +54,16 @@ set(LIBUPC_ENABLE_BACKTRACE TRUE CACHE STRING "enable UPC backtrace; enable stac
 if (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR
     ${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD" OR
     ${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
+  # Check if execinfo include and library paths
+  find_path(EXECINFO_INC_PATH execinfo.h)
+  find_library(EXECINFO_LIB_PATH execinfo)
   # Check if libexecinfo with backtrace exists
   CHECK_LIBRARY_EXISTS(execinfo backtrace "" HAVE_EXECINFO_LIB)
-  if (NOT $HAVE_EXECINFO_LIB)
+  if (HAVE_EXECINFO_LIB AND EXECINFO_INC_PATH AND EXECINFO_LIB_PATH)
+    set(LIBUPC_EXECINFO_INC_PATH ${EXECINFO_INC_PATH})
+  else()
     set(LIBUPC_ENABLE_BACKTRACE FALSE)
   endif()
-else()
 endif()
 set(HAVE_UPC_BACKTRACE ${LIBUPC_ENABLE_BACKTRACE})
 
@@ -168,10 +172,14 @@ else()
   message(fatal_error "invalid value of LIBUPC_LOCAL_MEM")
 endif()
 
+if (LIBUPC_ENABLE_BACKTRACE AND LIBUPC_EXECINFO_INC_PATH)
+    set(LIBUPC_RUNTIME_FLAGS "-I${LIBUPC_EXECINFO_INC_PATH}")
+endif()
+
 if (LIBUPC_RUNTIME_MODEL STREQUAL portals4)
   set(LIBUPC_PORTALS4 "/usr/local/portals4" CACHE STRING "directory for installed portals4 package")
   if(EXISTS ${LIBUPC_PORTALS4}/include/portals4.h)
-    set(LIBUPC_RUNTIME_FLAGS "-I${LIBUPC_PORTALS4}/include -Wno-variadic-macros")
+    set(LIBUPC_RUNTIME_FLAGS "${LIBUPC_RUNTIME_FLAGS} -I${LIBUPC_PORTALS4}/include -Wno-variadic-macros")
   else()
     message(fatal_error "Portals4 not installed or wrong LIBUPC_PORTALS4(${LIBUPC_PORTALS4}) specified")
   endif()
