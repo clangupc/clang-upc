@@ -180,7 +180,7 @@ set(UPC_PTS_VADDR_ORDER "first" CACHE STRING "UPC shared pointer field order def
 # Check for Portals4 and SLURM libraries if necessary
 set(LIBUPC_RUNTIME_MODEL smp CACHE STRING "specify the runtime implementation model for UPC, where MODEL may be: '
 smp' (Symmetric Multiprocessing) or 'portals4' (Infiniband with Portals4 library)")
-string(REGEX REPLACE [A-Za-z]] "\\1" LIBUPC_RUNTIME_MODEL ${LIBUPC_RUNTIME_MODEL})
+string(TOLOWER ${LIBUPC_RUNTIME_MODEL} LIBUPC_RUNTIME_MODEL)
 
 if (LIBUPC_RUNTIME_MODEL STREQUAL portals4)
   # These checks must be done here as we need to add approprite libraries on the
