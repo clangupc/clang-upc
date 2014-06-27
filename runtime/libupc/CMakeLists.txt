@@ -539,7 +539,7 @@ else()
   set(config_dir default)
 endif()
 
-set(CRT_CFLAGS STRING "")
+set(CRT_CFLAGS "")
 if( CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32 )
   if(LLVM_BUILD_32_BITS)
     set(CRT_CFLAGS -m32)
