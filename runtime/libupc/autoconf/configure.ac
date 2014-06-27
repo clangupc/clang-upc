@@ -1891,6 +1891,58 @@ AC_MSG_RESULT([$upc_runtime_tree_fanout])
 AC_DEFINE_UNQUOTED(GUPCR_TREE_FANOUT, [$upc_runtime_tree_fanout],
   [Maximum number of children at each level of a collective operation tree.])
 
+dnl Checking for UPC backtrace
+AC_ARG_WITH(execinfo-lib-path,
+  AS_HELP_STRING([--with-execinfo-lib-path],
+                 [Specify path for execinfo library]),,
+                 withval=none)
+AC_MSG_CHECKING([execinfo lib path])
+case "$withval" in
+  none) ;;
+  *)
+     execinfo_lib_path="$withval" ;;
+esac
+AC_MSG_RESULT([$execinfo_lib_path])
+
+AC_ARG_WITH(execinfo-inc-path,
+  AS_HELP_STRING([--with-execinfo-inc-path],
+                 [Specify path for execinfo include]),,
+                 withval=none)
+AC_MSG_CHECKING([execinfo inc path])
+case "$withval" in
+  none) ;;
+  *)
+     execinfo_inc_path="$withval" ;;
+esac
+AC_MSG_RESULT([$execinfo_inc_path])
+
+dnl Check if backtrace support library is available
+save_CFLAGS="$CFLAGS"
+AC_LANG_PUSH([C])
+if test "x$execinfo_inc_path" != x ; then
+  CFLAGS="$CFLAGS -I$execinfo_inc_path"
+fi
+if test "x$execinfo_lib_path" != x ; then
+  CFLAGS="$CFLAGS -L$execinfo_lib_path"
+fi
+case "$llvm_cv_os_type" in
+  FreeBSD|OpenBSD|NetBSD) CFLAGS="$CFLAGS -lexecinfo" ;;
+  *) ;;
+esac
+AC_LINK_IFELSE(
+[
+  AC_LANG_SOURCE([[
+    #include <execinfo.h>
+    int main () {
+      void *p;
+      return backtrace(&p, 1);
+    }
+  ]])
+],
+[have_backtrace=yes], [have_backtrace=no])
+AC_LANG_POP([C])
+CFLAGS="$save_CFLAGS"
+
 AC_MSG_CHECKING([for UPC backtrace support])
 AC_ARG_ENABLE(upc-backtrace,
 [AS_HELP_STRING([--enable-upc-backtrace],
@@ -1908,12 +1960,27 @@ AC_ARG_ENABLE(upc-backtrace,
 [
   enable_upc_backtrace=yes
 ])
-AC_MSG_RESULT($enable_upc_backtrace)
-if test "$enable_upc_backtrace" = yes; then
+if test "x$enable_upc_backtrace" = xyes &&
+   test "x$have_backtrace" = xyes; then
   AC_DEFINE(HAVE_UPC_BACKTRACE, 1,
     [Define to 1 if UPC backtrace is enabled.])
   LIBUPC_ENABLE_BACKTRACE=1
+  if test "x$execinfo_lib_path" != x ; then
+    AC_DEFINE_UNQUOTED(LIBUPC_EXECINFO_LIB_PATH,"$execinfo_lib_path",                              
+                       [execinfo library path.]) 
+    LIBUPC_EXECINFO_LIB_PATH=$execinfo_lib_path
+    AC_SUBST(LIBUPC_EXECINFO_LIB_PATH)
+  fi
+  if test "x$execinfo_inc_path" != x ; then
+    AC_DEFINE_UNQUOTED(LIBUPC_EXECINFO_INC_PATH,"$execinfo_inc_path",                              
+                       [execinfo include path.]) 
+    LIBUPC_EXECINFO_INC_PATH=$execinfo_inc_path
+    AC_SUBST(LIBUPC_EXECINFO_INC_PATH)
+  fi
+else
+  enable_upc_backtrace=no
 fi
+AC_MSG_RESULT($enable_upc_backtrace)
 AC_SUBST(LIBUPC_ENABLE_BACKTRACE)
 
 # Check for user specified GDB

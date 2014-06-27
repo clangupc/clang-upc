@@ -36,6 +36,12 @@
 /* Define to 1 if UPC backtrace is enabled. */
 #undef LIBUPC_ENABLE_BACKTRACE
 
+/* Define execinfo include path if required (backtrace on BSD). */
+#undef LIBUPC_EXECINFO_INC_PATH
+
+/* Define execinfo library path if required (backtrace on BSD). */
+#undef LIBUPC_EXECINFO_LIB_PATH
+
 /* Portals4 support */
 #undef LIBUPC_PORTALS4
 

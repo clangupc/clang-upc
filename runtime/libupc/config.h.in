@@ -122,6 +122,12 @@
 /* Define to 1 if UPC backtrace signal is enabled. */
 #undef HAVE_UPC_BACKTRACE_SIGNAL
 
+/* Define execinfo include path if required (backtrace on BSD). */
+#undef LIBUPC_EXECINFO_INC_PATH
+
+/* Define execinfo library path if required (backtrace on BSD). */
+#undef LIBUPC_EXECINFO_LIB_PATH
+
 /* Define to 1 if UPC link script is supported. */
 #undef HAVE_UPC_LINK_SCRIPT
 
