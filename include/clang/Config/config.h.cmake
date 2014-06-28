@@ -31,6 +31,9 @@
 /* execinfo library path for UPC backtrace */
 #cmakedefine LIBUPC_EXECINFO_LIB_PATH "${LIBUPC_EXECINFO_LIB_PATH}"
 
+/* execinfo include path for UPC backtrace */
+#cmakedefine LIBUPC_EXECINFO_INC_PATH "${LIBUPC_EXECINFO_INC_PATH}"
+
 /* Portals4 support */
 #cmakedefine LIBUPC_PORTALS4 "${LIBUPC_PORTALS4}"
 

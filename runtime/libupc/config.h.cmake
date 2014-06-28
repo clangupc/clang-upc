@@ -113,6 +113,9 @@
 /* Define to 1 if UPC backtrace is enabled. */
 #cmakedefine HAVE_UPC_BACKTRACE 1
 
+/* execinfo library path required for UPC backtrace on some systems (freebsd). */
+#cmakedefine LIBUPC_EXECINFO_LIB_PATH "${LIBUPC_EXECINFO_LIB_PATH}"
+
 /* execinfo.h path required for UPC backtrace on some systems (freebsd). */
 #cmakedefine LIBUPC_EXECINFO_INC_PATH "${LIBUPC_EXECINFO_INC_PATH}"
 

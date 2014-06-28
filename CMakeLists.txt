@@ -180,7 +180,7 @@ set(UPC_PTS_VADDR_ORDER "first" CACHE STRING "UPC shared pointer field order def
 # Check for Portals4 and SLURM libraries if necessary
 set(LIBUPC_RUNTIME_MODEL smp CACHE STRING "specify the runtime implementation model for UPC, where MODEL may be: '
 smp' (Symmetric Multiprocessing) or 'portals4' (Infiniband with Portals4 library)")
-string(REGEX REPLACE [A-Za-z]] "\\1" LIBUPC_RUNTIME_MODEL ${LIBUPC_RUNTIME_MODEL})
+string(TOLOWER ${LIBUPC_RUNTIME_MODEL} LIBUPC_RUNTIME_MODEL)
 
 if (LIBUPC_RUNTIME_MODEL STREQUAL portals4)
   # These checks must be done here as we need to add approprite libraries on the
@@ -205,18 +205,22 @@ set(LIBUPC_ENABLE_LINK_SCRIPT TRUE CACHE STRING "enable UPC's use of a custom li
 set(LIBUPC_LINK_SCRIPT ${LIBUPC_ENABLE_LINK_SCRIPT})
 
 # Check for backtrace on systems (freebsd,..) that need an extra library
+INCLUDE(CheckIncludeFiles)
+set(LIBUPC_EXECINFO_LIB_PATH "" CACHE STRING "specify directory path for execinfo library (required on BSD systems for backtracing)")
+set(LIBUPC_EXECINFO_INC_PATH "" CACHE STRING "specify directory path for execinfo.h (required on BSD systems for backtracing)")
+# Check for UPC backtrace
 set(LIBUPC_ENABLE_BACKTRACE TRUE CACHE STRING "enable UPC backtrace; enable stack frame backtrace report when UPC run-time fatal errors occur or by user request (via signal)")
 if (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR
     ${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD" OR
     ${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
-  # Check if execinfo include and library paths
-  find_path(EXECINFO_INC_PATH execinfo.h)
-  find_library(EXECINFO_LIB_PATH execinfo)
-  # Check if libexecinfo with backtrace exists
-  CHECK_LIBRARY_EXISTS(execinfo backtrace "" HAVE_EXECINFO_LIB)
-  if (HAVE_EXECINFO_LIB AND EXECINFO_INC_PATH AND EXECINFO_LIB_PATH)
-    get_filename_component(LIBUPC_EXECINFO_LIB_PATH ${EXECINFO_LIB_PATH} DIRECTORY)
+  # Check if execinfo with backtrace exists
+  CHECK_LIBRARY_EXISTS(execinfo backtrace "${LIBUPC_EXECINFO_LIB_PATH}" HAVE_EXECINFO_LIB)
+  if (LIBUPC_EXECINFO_INC_PATH)
+    CHECK_INCLUDE_FILE("${LIBUPC_EXECINFO_INC_PATH}/execinfo.h" HAVE_EXECINFO_INC)
   else()
+    CHECK_INCLUDE_FILE("execinfo.h" HAVE_EXECINFO_INC)
+  endif()
+  if (NOT HAVE_EXECINFO_LIB AND HAVE_EXECINFO_INC)
     set(LIBUPC_ENABLE_BACKTRACE FALSE)
   endif()
 endif()

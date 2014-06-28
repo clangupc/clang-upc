@@ -44,23 +44,32 @@ option(LIBUPC_ENABLE_SHARED "Build libupc as a shared library. (Broken)" OFF)
 
 # Configure libupc
 
+set(LIBUPC_RUNTIME_FLAGS "")
+
 set(LIBUPC_RUNTIME_MODEL smp CACHE STRING "specify the runtime implementation model for UPC, where MODEL may be: 'smp' (Symmetric Multiprocessing) or 'portals4' (Infiniband with Portals4 library)")
-string(REGEX REPLACE [A-Za-z]] "\\1" LIBUPC_RUNTIME_MODEL ${LIBUPC_RUNTIME_MODEL})
+string(TOLOWER ${LIBUPC_RUNTIME_MODEL} LIBUPC_RUNTIME_MODEL)
 
 set(LIBUPC_ENABLE_LINK_SCRIPT TRUE CACHE STRING "enable UPC's use of a custom linker script; this will define the UPC shared section as a no load section on targets where this feature is supported (requires GNU LD)")
 
 # Check for backtrace on systems (freebsd,..) that need an extra library
+set(LIBUPC_EXECINFO_LIB_PATH "" CACHE STRING "specify directory path for execinfo library (required on BSD systems for backtracing)")
+set(LIBUPC_EXECINFO_INC_PATH "" CACHE STRING "specify directory path for execinfo.h (required on BSD systems for backtracing)")
+# Check for UPC backtrace
 set(LIBUPC_ENABLE_BACKTRACE TRUE CACHE STRING "enable UPC backtrace; enable stack frame backtrace report when UPC run-time fatal errors occur or by user request (via signal)")
 if (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR
     ${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD" OR
     ${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
-  # Check if execinfo include and library paths
-  find_path(EXECINFO_INC_PATH execinfo.h)
-  find_library(EXECINFO_LIB_PATH execinfo)
-  # Check if libexecinfo with backtrace exists
-  CHECK_LIBRARY_EXISTS(execinfo backtrace "" HAVE_EXECINFO_LIB)
-  if (HAVE_EXECINFO_LIB AND EXECINFO_INC_PATH AND EXECINFO_LIB_PATH)
-    set(LIBUPC_EXECINFO_INC_PATH ${EXECINFO_INC_PATH})
+  # Check if execinfo with backtrace exists
+  CHECK_LIBRARY_EXISTS(execinfo backtrace "${LIBUPC_EXECINFO_LIB_PATH}" HAVE_EXECINFO_LIB)
+  if (LIBUPC_EXECINFO_INC_PATH)
+    CHECK_INCLUDE_FILE("${LIBUPC_EXECINFO_INC_PATH}/execinfo.h" HAVE_EXECINFO_INC)
+  else()
+    CHECK_INCLUDE_FILE("execinfo.h" HAVE_EXECINFO_INC)
+  endif()
+  if (HAVE_EXECINFO_LIB AND HAVE_EXECINFO_INC)
+    if (LIBUPC_EXECINFO_INC_PATH)
+      set(LIBUPC_RUNTIME_FLAGS "${LIBUPC_RUNTIME_FLAGS} -I${LIBUPC_EXECINFO_INC_PATH}")
+    endif()
   else()
     set(LIBUPC_ENABLE_BACKTRACE FALSE)
   endif()
@@ -170,10 +179,6 @@ elseif(LIBUPC_NODE_LOCAL_MEM STREQUAL "none")
   # okay
 else()
   message(fatal_error "invalid value of LIBUPC_LOCAL_MEM")
-endif()
-
-if (LIBUPC_ENABLE_BACKTRACE AND LIBUPC_EXECINFO_INC_PATH)
-    set(LIBUPC_RUNTIME_FLAGS "-I${LIBUPC_EXECINFO_INC_PATH}")
 endif()
 
 if (LIBUPC_RUNTIME_MODEL STREQUAL portals4)
@@ -547,12 +552,19 @@ else()
   set(config_dir default)
 endif()
 
+set(CRT_CFLAGS "")
+if( CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32 )
+  if(LLVM_BUILD_32_BITS)
+    set(CRT_CFLAGS -m32)
+  endif()
+endif()
+
 macro(add_crt_target name opts)
   set(obj ${LLVM_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}/${name}.o)
   list(APPEND objects ${obj})
   add_custom_target(${name} ALL DEPENDS ${obj})
   add_custom_command(OUTPUT ${obj}
-  COMMAND ${CMAKE_C_COMPILER} -c -o ${obj} ${PROJECT_SOURCE_DIR}/upc-crtstuff.c -I${PROJECT_SOURCE_DIR}/config/${config_dir} -I${PROJECT_BINARY_DIR} ${opts}
+  COMMAND ${CMAKE_C_COMPILER} ${CRT_CFLAGS} -c -o ${obj} ${PROJECT_SOURCE_DIR}/upc-crtstuff.c -I${PROJECT_SOURCE_DIR}/config/${config_dir} -I${PROJECT_BINARY_DIR} ${opts}
   MAIN_DEPENDENCY upc-crtstuff.c
   IMPLICIT_DEPENDENCY upc-crtstuff.c
   VERBATIM)
