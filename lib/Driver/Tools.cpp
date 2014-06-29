@@ -3530,10 +3530,6 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
                    options::OPT_fno_upc_debug, false))
     CmdArgs.push_back("-fupc-debug");
 
-#ifdef LIBUPC_PORTALS4
-    CmdArgs.push_back(("-I" LIBUPC_PORTALS4 "/include"));
-#endif
-
   // -fcaret-diagnostics is default.
   if (!Args.hasFlag(options::OPT_fcaret_diagnostics,
                     options::OPT_fno_caret_diagnostics, true))
