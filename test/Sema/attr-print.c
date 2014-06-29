@@ -7,10 +7,10 @@ int x __attribute__((aligned(4)));
 // CHECK: int y __declspec(align(4));
 __declspec(align(4)) int y;
 
-// CHECK: void foo() __attribute__((const));
+// CHECK: __attribute__((const))void foo();
 void foo() __attribute__((const));
 
-// CHECK: void bar() __attribute__((__const));
+// CHECK: __attribute__((__const))void bar();
 void bar() __attribute__((__const));
 
 // CHECK: int * __ptr32 p32;
