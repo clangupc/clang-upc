@@ -174,6 +174,7 @@ bool serialization::isRedeclarableDeclKind(unsigned Kind) {
   case Decl::ObjCProtocol:
   case Decl::ObjCInterface:
   case Decl::Empty:
+  case Decl::PragmaPupc:
     return true;
 
   // Never redeclarable.

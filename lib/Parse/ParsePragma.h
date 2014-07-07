@@ -53,20 +53,16 @@ public:
 };
 
 class PragmaUPCHandler : public PragmaHandler {
-  Sema &Actions;
 public:
-  explicit PragmaUPCHandler(Sema &A) : PragmaHandler("upc"),
-                                        Actions(A) {}
+  explicit PragmaUPCHandler() : PragmaHandler("upc") {}
 
   virtual void HandlePragma(Preprocessor &PP, PragmaIntroducerKind Introducer,
                             Token &FirstToken);
 };
 
 class PragmaPUPCHandler : public PragmaHandler {
-  Sema &Actions;
 public:
-  explicit PragmaPUPCHandler(Sema &A) : PragmaHandler("pupc"),
-                                        Actions(A) {}
+  explicit PragmaPUPCHandler() : PragmaHandler("pupc") {}
 
   virtual void HandlePragma(Preprocessor &PP, PragmaIntroducerKind Introducer,
                             Token &FirstToken);
