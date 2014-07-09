@@ -2162,6 +2162,24 @@ if test "$upc_runtime_model" = "portals4"; then
   # Use the generic (reference implementation)
   use_generic_collectives="no"
 
+  AC_CHECK_HEADERS([portals4.h],[have_p4=yes],[have_p4=no])             
+  AC_ARG_WITH(portals4,
+  [AS_HELP_STRING([--with-portals4=PATH],
+                  [Specify prefix directory for installed portals4 package])],
+  [
+    if test -f "$withval/include/portals4.h"; then
+      AC_DEFINE_UNQUOTED(LIBUPC_PORTALS4, "$withval", [Portals4 library path] )
+      AC_SUBST(LIBUPC_PORTALS4,$withval)
+    else
+      AC_MSG_ERROR([--with-portals4 specifies wrong prefix for Portals4 package.])
+    fi
+  ],
+  [
+    if test "$have_p4" = "no"; then
+      AC_MSG_ERROR([Portals4 not found - use --with-portals4 to specify one.])
+    fi
+  ])
+
   AC_MSG_CHECKING([for UPC runtime Portals4 PTE base index])
   AC_ARG_WITH(upc-runtime-pte-base,
   [AS_HELP_STRING([--with-upc-runtime-pte-base=BASE],

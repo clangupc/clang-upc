@@ -88,7 +88,7 @@ SOURCES +=\
 	gupcr_lock.upc \
 	gupcr_nb.upc \
 	gupcr_coll_broadcast.upc \
-	guupc_castable.upc \
+	gupcr_castable.upc \
 	gupcr_coll_init.upc \
 	gupcr_coll_reduce.upc
 
