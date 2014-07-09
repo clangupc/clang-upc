@@ -366,6 +366,7 @@ elseif(LIBUPC_RUNTIME_MODEL STREQUAL portals4)
     portals4/gupcr_barrier.c
     portals4/gupcr_backtrace.c
     portals4/gupcr_broadcast.c
+    portals4/gupcr_castable.upc
     portals4/gupcr_clock.c
     portals4/gupcr_coll_sup.c
     portals4/gupcr_env.c
