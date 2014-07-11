@@ -1628,6 +1628,7 @@ else
   fi
   GUPCR_PTS_VADDR_TYPE="void *"
 fi
+AC_MSG_RESULT($GUPCR_PTS_PHASE_SIZE-$GUPCR_PTS_THREAD_SIZE-$GUPCR_PTS_VADDR_SIZE)
 
 # To match the cmake configuration, provide various runtime
 # parameters via compiler options instead of changes to the

@@ -21906,6 +21906,8 @@ else
   fi
   GUPCR_PTS_VADDR_TYPE="void *"
 fi
+{ echo "$as_me:$LINENO: result: $GUPCR_PTS_PHASE_SIZE-$GUPCR_PTS_THREAD_SIZE-$GUPCR_PTS_VADDR_SIZE" >&5
+echo "${ECHO_T}$GUPCR_PTS_PHASE_SIZE-$GUPCR_PTS_THREAD_SIZE-$GUPCR_PTS_VADDR_SIZE" >&6; }
 
 # To match the cmake configuration, provide various runtime
 # parameters via compiler options instead of changes to the
