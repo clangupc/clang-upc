@@ -3124,6 +3124,10 @@ void CodeGenModule::EmitTopLevelDecl(Decl *D) {
     break;
  }
 
+  // Decl is place-holder for a PUPC pragma - no codegen
+  case Decl::PragmaPupc:
+    break;
+
   default:
     // Make sure we handled everything we should, every other kind is a
     // non-top-level decl.  FIXME: Would be nice to have an isTopLevelDeclKind
