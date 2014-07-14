@@ -1424,8 +1424,8 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
   if (Threads < 0) {
     Diags.Report(diag::err_drv_invalid_int_value)
       << Args.getLastArg(OPT_fupc_threads)->getAsString(Args) << Threads;
-  } else if ((uint64_t)Threads > (uint64_t(1u) << Opts.UPCThreadBits)) {
-    Diags.Report(diag::err_drv_invalid_upc_threads) << Threads << (1u << Opts.UPCThreadBits);
+  } else if ((uint64_t)Threads > (uint64_t(1u) << (Opts.UPCThreadBits < 30 ? Opts.UPCThreadBits : 30))) {
+    Diags.Report(diag::err_drv_invalid_upc_threads) << Threads << (1u << (Opts.UPCThreadBits < 30 ? Opts.UPCThreadBits : 30));
   } else {
     Opts.UPCThreads = Threads;
   }
