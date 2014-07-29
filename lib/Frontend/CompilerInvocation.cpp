@@ -1367,6 +1367,9 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
   Opts.PIELevel = getLastArgIntValue(Args, OPT_pie_level, 0, Diags);
   Opts.Static = Args.hasArg(OPT_static_define);
 
+
+  if (Args.hasArg(OPT_pthread) || Args.hasArg(OPT_pthreads))
+    Opts.UPCTLDEnable = 1;
   StringRef UPCPts = Args.getLastArgValue(OPT_fupc_pts_EQ, UPC_PTS);
   if (UPCPts == "packed") {
     StringRef PackedBits = Args.getLastArgValue(OPT_fupc_packed_bits_EQ, UPC_PACKED_BITS);
