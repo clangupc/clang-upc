@@ -180,11 +180,31 @@ llvm::Value *CodeGenFunction::EmitUPCLoad(llvm::Value *Addr,
   return EmitFromMemory(EmitUPCLoad(Addr, isStrict, DestLTy, Align, Loc), Ty);
 }
 
+static const int UPCAddrSpace = 16;
+
+static llvm::Value *ConvertPTStoLLVMPtr(CodeGenFunction& CGF,
+                                        llvm::Value *Ptr, llvm::Type *LTy) {
+  llvm::Value *Addr = CGF.EmitUPCPointerGetAddr(Ptr);
+  llvm::Value *Thread = CGF.EmitUPCPointerGetThread(Ptr);
+  llvm::Value *IntVal = CGF.Builder.CreateOr(Thread, CGF.Builder.CreateShl(Addr, 20));
+  
+  llvm::Type *LLPtsTy = LTy->getPointerTo(UPCAddrSpace);
+  return CGF.Builder.CreateBitCast(IntVal, LLPtsTy);
+}
+
 llvm::Value *CodeGenFunction::EmitUPCLoad(llvm::Value *Addr,
                                           bool isStrict,
                                           llvm::Type *LTy,
                                           CharUnits Align,
                                           SourceLocation Loc) {
+  if(true/*LLVM IR backend enabled*/) {
+    llvm::Value *InternalAddr = ConvertPTStoLLVMPtr(*this, Addr, LTy);
+    llvm::LoadInst * Result = Builder.CreateLoad(InternalAddr);
+    if(isStrict) {
+      Result->setOrdering(llvm::SequentiallyConsistent);
+    }
+    return Result;
+  }
   const ASTContext& Context = getContext();
   const llvm::DataLayout &Target = CGM.getDataLayout();
   uint64_t Size = Target.getTypeSizeInBits(LTy);
