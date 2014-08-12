@@ -2050,6 +2050,18 @@ if test "$enable_upc_backtrace" = yes; then
   fi
 fi
 
+# At least for glibc, clock_gettime is in librt.  But don't pull that           
+# in if it still doesn't give us the function we want.                          
+AC_CHECK_FUNCS([clock_gettime])
+if test $ac_cv_func_clock_gettime = no; then                                    
+  AC_CHECK_LIB(rt, clock_gettime,[ac_cv_func_clock_gettime="yes"])              
+  if test $ac_cv_func_clock_gettime = yes; then                                 
+    LIBS="-lrt $LIBS"                                                           
+    AC_DEFINE(HAVE_CLOCK_GETTIME, 1,                                            
+              [Define to 1 if you have the `clock_gettime' function.])          
+  fi                                                                            
+fi 
+
 if test "$upc_runtime_model" = "smp"; then
 
   targ_runtime_pthreads=no
