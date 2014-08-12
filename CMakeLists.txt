@@ -180,7 +180,7 @@ set(UPC_PTS_VADDR_ORDER "first" CACHE STRING "UPC shared pointer field order def
 # Check for Portals4 and SLURM libraries if necessary
 set(LIBUPC_RUNTIME_MODEL smp CACHE STRING "specify the runtime implementation model for UPC, where MODEL may be: '
 smp' (Symmetric Multiprocessing) or 'portals4' (Infiniband with Portals4 library)")
-string(REGEX REPLACE [A-Za-z]] "\\1" LIBUPC_RUNTIME_MODEL ${LIBUPC_RUNTIME_MODEL})
+string(TOLOWER ${LIBUPC_RUNTIME_MODEL} LIBUPC_RUNTIME_MODEL)
 
 if (LIBUPC_RUNTIME_MODEL STREQUAL portals4)
   # These checks must be done here as we need to add approprite libraries on the
@@ -197,6 +197,22 @@ if (LIBUPC_RUNTIME_MODEL STREQUAL portals4)
     if( NOT LIBUPC_PORTALS4_SLURM )
       message(fatal_error "Portals4 job launcher (${LIBUPC_JOB_LAUNCHER}) not available")
     endif()
+  endif()
+endif()
+
+# UPC link script
+set(LIBUPC_ENABLE_LINK_SCRIPT TRUE CACHE STRING "enable UPC's use of a custom linker script; this will define the UPC shared section as a no load section on targets where this feature is supported (requires GNU LD)")
+set(LIBUPC_LINK_SCRIPT ${LIBUPC_ENABLE_LINK_SCRIPT})
+
+# Check for backtrace on systems (freebsd,..) that need an extra library
+set(LIBUPC_ENABLE_BACKTRACE TRUE CACHE STRING "enable UPC backtrace; enable stack frame backtrace report when UPC run-time fatal errors occur or by user request (via signal)")
+if (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR
+    ${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD" OR
+    ${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
+  # Check if libexecinfo with backtrace exists
+  CHECK_LIBRARY_EXISTS(execinfo backtrace "" HAVE_EXECINFO_LIB)
+  if (NOT HAVE_EXECINFO_LIB)
+    set(LIBUPC_ENABLE_BACKTRACE FALSE)
   endif()
 endif()
 

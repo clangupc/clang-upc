@@ -8,6 +8,9 @@ CC	       = $(LLVM_TOOLS_DIR)/clang
 UPC	       = $(LLVM_TOOLS_DIR)/clang
 C.Flags       += -Wno-variadic-macros
 CPP.Flags     += -I$(PROJ_SRC_DIR)/include -I$(PROJ_SRC_DIR)/collectives
+ifdef LIBUPC_PORTALS4
+CPP.Flags     += -I$(LIBUPC_PORTALS4)/include
+endif
 CPP.Flags     += -DIN_TARGET_LIBS=1
 LIBUPC_LINK_SCRIPT = @LIBUPC_LINK_SCRIPT@
 LIBUPC_ENABLE_BACKTRACE = @LIBUPC_ENABLE_BACKTRACE@

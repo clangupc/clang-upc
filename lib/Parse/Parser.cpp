@@ -110,9 +110,9 @@ Parser::Parser(Preprocessor &pp, Sema &actions, bool skipFunctionBodies)
   }
 
   if (getLangOpts().UPC) {
-    UPCHandler.reset(new PragmaUPCHandler(actions));
+    UPCHandler.reset(new PragmaUPCHandler());
     PP.AddPragmaHandler(UPCHandler.get());
-    PUPCHandler.reset(new PragmaPUPCHandler(actions));
+    PUPCHandler.reset(new PragmaPUPCHandler());
     PP.AddPragmaHandler(PUPCHandler.get());
   }
       

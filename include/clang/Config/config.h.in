@@ -30,6 +30,12 @@
 /* the field order */                                                           
 #undef UPC_PTS_VADDR_ORDER
 
+/* Define to 1 if UPC link script is supported. */
+#undef LIBUPC_LINK_SCRIPT
+
+/* Define to 1 if UPC backtrace is enabled. */
+#undef LIBUPC_ENABLE_BACKTRACE
+
 /* Portals4 support */
 #undef LIBUPC_PORTALS4
 

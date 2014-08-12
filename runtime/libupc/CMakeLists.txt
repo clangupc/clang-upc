@@ -45,11 +45,22 @@ option(LIBUPC_ENABLE_SHARED "Build libupc as a shared library. (Broken)" OFF)
 # Configure libupc
 
 set(LIBUPC_RUNTIME_MODEL smp CACHE STRING "specify the runtime implementation model for UPC, where MODEL may be: 'smp' (Symmetric Multiprocessing) or 'portals4' (Infiniband with Portals4 library)")
-string(REGEX REPLACE [A-Za-z]] "\\1" LIBUPC_RUNTIME_MODEL ${LIBUPC_RUNTIME_MODEL})
+string(TOLOWER ${LIBUPC_RUNTIME_MODEL} LIBUPC_RUNTIME_MODEL)
 
 set(LIBUPC_ENABLE_LINK_SCRIPT TRUE CACHE STRING "enable UPC's use of a custom linker script; this will define the UPC shared section as a no load section on targets where this feature is supported (requires GNU LD)")
 
+# Check for backtrace on systems (freebsd,..) that need an extra library
 set(LIBUPC_ENABLE_BACKTRACE TRUE CACHE STRING "enable UPC backtrace; enable stack frame backtrace report when UPC run-time fatal errors occur or by user request (via signal)")
+if (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR
+    ${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD" OR
+    ${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
+  # Check if libexecinfo with backtrace exists
+  CHECK_LIBRARY_EXISTS(execinfo backtrace "" HAVE_EXECINFO_LIB)
+  if (NOT $HAVE_EXECINFO_LIB)
+    set(LIBUPC_ENABLE_BACKTRACE FALSE)
+  endif()
+else()
+endif()
 set(HAVE_UPC_BACKTRACE ${LIBUPC_ENABLE_BACKTRACE})
 
 set(LIBUPC_ENABLE_BACKTRACE_ADDR2LINE TRUE CACHE STRING "enable the use of addr2line for UPC stack backtrace")
@@ -355,6 +366,7 @@ elseif(LIBUPC_RUNTIME_MODEL STREQUAL portals4)
     portals4/gupcr_barrier.c
     portals4/gupcr_backtrace.c
     portals4/gupcr_broadcast.c
+    portals4/gupcr_castable.upc
     portals4/gupcr_clock.c
     portals4/gupcr_coll_sup.c
     portals4/gupcr_env.c
@@ -528,12 +540,19 @@ else()
   set(config_dir default)
 endif()
 
+set(CRT_CFLAGS "")
+if( CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32 )
+  if(LLVM_BUILD_32_BITS)
+    set(CRT_CFLAGS -m32)
+  endif()
+endif()
+
 macro(add_crt_target name opts)
   set(obj ${LLVM_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}/${name}.o)
   list(APPEND objects ${obj})
   add_custom_target(${name} ALL DEPENDS ${obj})
   add_custom_command(OUTPUT ${obj}
-  COMMAND ${CMAKE_C_COMPILER} -c -o ${obj} ${PROJECT_SOURCE_DIR}/upc-crtstuff.c -I${PROJECT_SOURCE_DIR}/config/${config_dir} -I${PROJECT_BINARY_DIR} ${opts}
+  COMMAND ${CMAKE_C_COMPILER} ${CRT_CFLAGS} -c -o ${obj} ${PROJECT_SOURCE_DIR}/upc-crtstuff.c -I${PROJECT_SOURCE_DIR}/config/${config_dir} -I${PROJECT_BINARY_DIR} ${opts}
   MAIN_DEPENDENCY upc-crtstuff.c
   IMPLICIT_DEPENDENCY upc-crtstuff.c
   VERBATIM)

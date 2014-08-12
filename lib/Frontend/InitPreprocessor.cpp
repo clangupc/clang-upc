@@ -362,11 +362,11 @@ static void InitializeStandardPredefinedMacros(const TargetInfo &TI,
     } else {
       Builder.defineMacro("__UPC_PTS_STRUCT_REP__", "1");
       if (LangOpts.UPCThreadBits == 32) {
-        Builder.defineMacro("__UPC_PHASE_TYPE__", "__INT32_TYPE__");
-        Builder.defineMacro("__UPC_THREAD_TYPE__", "__INT32_TYPE__");
+        Builder.defineMacro("__UPC_PHASE_TYPE__", "unsigned __INT32_TYPE__");
+        Builder.defineMacro("__UPC_THREAD_TYPE__", "unsigned __INT32_TYPE__");
       } else {
-        Builder.defineMacro("__UPC_PHASE_TYPE__", "__INT16_TYPE__");
-        Builder.defineMacro("__UPC_THREAD_TYPE__", "__INT16_TYPE__");
+        Builder.defineMacro("__UPC_PHASE_TYPE__", "unsigned __INT16_TYPE__");
+        Builder.defineMacro("__UPC_THREAD_TYPE__", "unsigned __INT16_TYPE__");
       }
       Builder.defineMacro("__UPC_VADDR_TYPE__", "char *");
     }
