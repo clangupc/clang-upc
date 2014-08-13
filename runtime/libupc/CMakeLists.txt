@@ -123,52 +123,31 @@ set(GUPCR_HAVE_TRACE ${LIBUPC_ENABLE_RUNTIME_TRACE})
 set(LIBUPC_MAX_LOCKS 1024 CACHE STRING "The maximum number of locks that can be held by a single UPC thread")
 set(GUPCR_MAX_LOCKS ${LIBUPC_MAX_LOCKS})
 
-set(LIBUPC_NODE_LOCAL_MEM posix CACHE STRING "specify type of shared memory used for node local memory accesses. (posix, mmap, or none)")
-if(LIBUPC_NODE_LOCAL_MEM STREQUAL "posix")
-  set(CMAKE_REQUIRED_LIBRARIES rt)
-  check_cxx_source_compiles("
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdlib.h>
-int size = 4096;
-int fd;
-
-void * addr;
-
-int main() {
-  fd = shm_open(\"shm-config-test\", O_CREAT|O_RDWR, S_IRUSR|S_IWUSR);
-  (void)shm_unlink(\"shm-config-test\");
-  if (fd < 0) return 1;
-  if (ftruncate(fd, size) < 0) return 1;
-  addr = mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-  (void)close(fd);
-  if (!addr || (addr == MAP_FAILED)) return 1;
-  (void)munmap(addr, size);
-  return 0;
-}
-"
-    HAVE_SHM_OPEN)
-  set(CMAKE_REQUIRED_LIBRARIES)
-
-  if(HAVE_SHM_OPEN)
-    set(GUPCR_NODE_LOCAL_MEM 1)
-    set(GUPCR_NODE_LOCAL_MEM_POSIX 1)
-  else()
-    message(warning "shm_open not found.  LIBUPC_NODE_LOCAL_MEM=posix ignored")
-  endif()
-elseif(LIBUPC_NODE_LOCAL_MEM STREQUAL "mmap")
-  set(GUPCR_NODE_LOCAL_MEM 1)
-  set(GUPCR_NODE_LOCAL_MEM_MMAP 1)
-elseif(LIBUPC_NODE_LOCAL_MEM STREQUAL "none")
-  # okay
-else()
-  message(fatal_error "invalid value of LIBUPC_LOCAL_MEM")
-endif()
-
 if (LIBUPC_RUNTIME_MODEL STREQUAL portals4)
+
+  set(LIBUPC_NODE_LOCAL_MEM posix CACHE STRING "specify type of shared memory used for node local memory accesses. (posix, mmap, or none)")
+  if(LIBUPC_NODE_LOCAL_MEM STREQUAL "posix")
+    include(CheckFunctionExists)
+    include(CheckLibraryExists)
+    CHECK_FUNCTION_EXISTS(shm_open HAVE_SHM_OPEN)
+    if (NOT HAVE_SHM_OPEN)
+      CHECK_LIBRARY_EXISTS(rt shm_open "" HAVE_SHM_OPEN_IN_RT)
+    endif()
+    if(HAVE_SHM_OPEN OR HAVE_SHM_OPEN_IN_RT)
+      set(GUPCR_NODE_LOCAL_MEM 1)
+      set(GUPCR_NODE_LOCAL_MEM_POSIX 1)
+    else()
+      message(warning "shm_open not found.  LIBUPC_NODE_LOCAL_MEM=posix ignored")
+    endif()
+  elseif(LIBUPC_NODE_LOCAL_MEM STREQUAL "mmap")
+    set(GUPCR_NODE_LOCAL_MEM 1)
+    set(GUPCR_NODE_LOCAL_MEM_MMAP 1)
+  elseif(LIBUPC_NODE_LOCAL_MEM STREQUAL "none")
+    # okay
+  else()
+    message(fatal_error "invalid value of LIBUPC_LOCAL_MEM")
+  endif()
+
   set(LIBUPC_PORTALS4 "/usr/local/portals4" CACHE STRING "directory for installed portals4 package")
   if(EXISTS ${LIBUPC_PORTALS4}/include/portals4.h)
     set(LIBUPC_RUNTIME_FLAGS "-I${LIBUPC_PORTALS4}/include -Wno-variadic-macros")
