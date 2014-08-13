@@ -12,7 +12,6 @@ SOURCES=\
 	upc_access.c\
 	upc_accessg.c\
 	upc_addr.c\
-	upc_affinity_stub.c\
 	upc_atomic_sup.c\
 	upc_debug.c\
 	upc_gasp.c\
@@ -21,7 +20,6 @@ SOURCES=\
 	upc_main.c\
 	upc_mem.c\
 	upc_nb.upc\
-	upc_numa_stub.c\
 	upc_pgm_info.c\
 	upc_pupc.c\
 	upc_sysdep.c\
@@ -40,6 +38,17 @@ ifeq ($(LIBUPC_ENABLE_BACKTRACE),1)
 SOURCES +=\
 	upc_backtrace.c
 endif
+ifeq ($(LIBUPC_ENABLE_AFFINITY),1)
+  SOURCES_AFFINITY = upc_affinity.c
+else
+  SOURCES_AFFINITY = upc_affinity_stub.c
+endif
+ifeq ($(LIBUPC_ENABLE_NUMA),1)
+  SOURCES_NUMA = upc_numa.c
+else
+  SOURCES_NUMA = upc_numa_stub.c
+endif
+SOURCES += $(SOURCES_NUMA) $(SOURCES_AFFINITY)
 
 SOURCES +=\
 	upc_coll_broadcast.upc \
