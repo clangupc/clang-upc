@@ -22,6 +22,9 @@
 /* the field order */
 #cmakedefine UPC_PTS_VADDR_ORDER "${UPC_PTS_VADDR_ORDER}"
 
+/* UPC runtime NUMA enable. */
+#cmakedefine LIBUPC_ENABLE_NUMA 1
+
 /* UPC link script enabled. */
 #cmakedefine LIBUPC_LINK_SCRIPT 1
 

@@ -2064,64 +2064,68 @@ fi
 
 if test "$upc_runtime_model" = "smp"; then
 
-  targ_runtime_pthreads=no
-  # LIBGUPC_GCC_TLS_SUPPORTED
-  if test "$upc_cv_gcc_tls_supported"x = "yes"x ; then
-    targ_runtime_pthreads=yes
-  fi
+  AC_CHECK_FUNC(sched_getaffinity,[affinity_available=yes],[affinity_available=no])
   AC_MSG_CHECKING(for Linux scheduling affinity)
-  AC_RUN_IFELSE(
-    AC_LANG_SOURCE(
-    [[#define _GNU_SOURCE
-    #include <sched.h>
-    cpu_set_t mask;
-    main ()
-    {
-      unsigned int len = sizeof(mask);
-      if (sched_getaffinity(0, len, &mask) < 0)
-        return 1;
-      return 0;
-    }]]),
-    [upc_affinity=yes],
-    [upc_affinity=no],
-    [upc_affinity=no]
-  )
-  if test "x$enable_upc_affinity" = "xyes" &&
-    test "x$upc_affinity" = "xno"; then
-      AC_MSG_ERROR([scheduling affinity enabled but not supported
-      - use --disable-upc-affinity])
-  fi
-  if test "x$enable_upc_affinity" = "xno"; then
-    upc_affinity=no;
-  fi
+  AC_ARG_ENABLE(upc-affinity,
+  [AS_HELP_STRING([--enable-upc-affinity],
+                  [enable UPC runtime scheduling affinity [default='yes']])],
+  [
+    case $enableval in
+    yes)
+      if test "x$affinity_available" = "xno"; then
+        AC_MSG_ERROR([Scheduling affinity enabled but not supported - use --disable-upc-affinity])
+      fi
+      upc_affinity=yes ;;
+    no)
+      upc_affinity=no ;;
+    *)
+      AC_MSG_ERROR([--enable-upc-affinity accepts only yes or no])                  
+    esac
+  ],
+  [
+    if test "x$affinity_available" = "xyes"; then
+      upc_affinity=yes
+    else
+      upc_affinity=no
+    fi
+  ])
   AC_MSG_RESULT([$upc_affinity])
-  dnl Check if NUMA available
-  AC_MSG_CHECKING(if NUMA available)
-  save_LIBS="$LIBS"
-  LIBS="-lnuma"
-  AC_RUN_IFELSE(
-    AC_LANG_SOURCE(
-    [[#include <numa.h>
-    int
-    main ()
-    {
-      if (numa_available() < 0) return 1;
-      else return 0;
-    }]]),
-    [upc_numa=yes],
-    [upc_numa=no],
-    [upc_numa=no],
-  )
-  LIBS="$save_LIBS"
-  if test "x$enable_upc_numa" = "xyes" &&
-    test "x$upc_numa" = "xno"; then
-      AC_MSG_ERROR([NUMA enabled but not supported - use --disable-upc-numa])
+  if test "$upc_affinity" = yes; then
+    LIBUPC_ENABLE_AFFINITY=1
   fi
-  if test "x$enable_upc_numa" = "xno" \
-	  -o "x$enable_upc_affinity" = "xno"; then
-    upc_numa=no;
-  fi
+  AC_SUBST(LIBUPC_ENABLE_AFFINITY)
+
+  AC_CHECK_HEADERS([numa.h],[numa_available=yes],[numa_available=no])
+  AC_MSG_CHECKING([if NUMA is available])
+  AC_ARG_ENABLE(upc-numa,
+  [AS_HELP_STRING([--enable-upc-numa],
+                  [enable UPC runtime NUMA support [default='yes']])],
+  [
+    case $enableval in
+    yes)
+      if test "x$numa_available" = "xno"; then
+        AC_MSG_ERROR([NUMA enabled but not supported - use --disable-upc-numa])
+      fi
+      upc_numa=yes ;;
+    no)
+      upc_numa=no ;;
+    *)
+      AC_MSG_ERROR([--enable-upc-numa accepts only yes or no])                  
+    esac
+  ],
+  [
+    if test "x$numa_available" = "xyes"; then
+      upc_numa=yes
+    else
+      upc_numa=no
+    fi
+  ])
   AC_MSG_RESULT([$upc_numa])
+  if test "$upc_numa" = yes; then
+    LIBUPC_ENABLE_NUMA=1
+  fi
+  AC_SUBST(LIBUPC_ENABLE_NUMA)
+
   AC_MSG_CHECKING([for UPC GUM debugging support])
   AC_ARG_ENABLE(upc-gum-debug,
   [AS_HELP_STRING([--enable-upc-gum-debug],
@@ -2460,49 +2464,12 @@ if test "$upc_runtime_model" = "portals4"; then
 
 fi #### End: Portals4 runtime configuration
 
-# TODO
-# Get target configury.
-# . ${srcdir}/configure.tgt
-
-# configure.tgt sets these substitution variables.
-# It also sets 'upc_crtstuff=yes' if upc-crtstuff needs
-# to be compiled.
-# AC_SUBST(config_path)
-# AC_SUBST(bfdinc)
-# AC_SUBST(XCFLAGS)
-# AC_SUBST(XLDFLAGS)
-# AC_SUBST(link_upc_spec)
-# AC_SUBST(upc_crtstuff_cflags)
-# AC_SUBST(upc_crtbegin_spec)
-# AC_SUBST(upc_crtend_spec)
-# AC_SUBST(upc_crtstuff_mak)
-# AC_SUBST(upc_crtstuff_objs)
-
 dnl Define ARG_UNUSED macro
 AH_BOTTOM([
 #ifndef ARG_UNUSED
 # define ARG_UNUSED(NAME) NAME __attribute__ ((__unused__))
 #endif
 ])
-
-dnl Build the runtime, based upon the --with-upc-runtime setting.
-AM_CONDITIONAL(LIBGUPC_SMP_RUNTIME, [test "$upc_runtime_model" = "smp"])
-AM_CONDITIONAL(LIBGUPC_PORTALS4_RUNTIME, [test "$upc_runtime_model" = "portals4"])
-AM_CONDITIONAL(LIBGUPC_RUNTIME_DEBUG, [test "$enable_upc_runtime_debug" = "yes"])
-
-AM_CONDITIONAL(LIBGUPC_CRTSTUFF, [test "$upc_crtstuff" = "yes"])
-AM_CONDITIONAL(LIBGUPC_LINK_SCRIPT, [test "$enable_upc_link_script" = "yes"])
-AM_CONDITIONAL(LIBGUPC_GENERIC_COLLECTIVES,
-               [test "$use_generic_collectives" = "yes"])
-AM_CONDITIONAL(LIBGUPC_BACKTRACE, [test "$enable_upc_backtrace" = "yes"])
-
-dnl 'smp' runtime specific settings
-AM_CONDITIONAL(LIBGUPC_PTHREADS, [test "$targ_runtime_pthreads" = "yes"])
-AM_CONDITIONAL(LIBGUPC_AFFINITY, [test "$upc_affinity" = "yes"])
-AM_CONDITIONAL(LIBGUPC_NUMA, [test "$upc_numa" = "yes"])
-AM_CONDITIONAL(LIBGUPC_GUM, [test "$upc_gum_debug" = "yes"])
-AM_CONDITIONAL(LIBGUPC_NODE_LOCAL_MEM_POSIX, [test "$upc_node_local" = "posix"])
-AM_CONDITIONAL(LIBGUPC_NODE_LOCAL_MEM_MMAP, [test "$upc_node_local" = "mmap"])
 
 dnl Configure configuration files
 AC_CONFIG_HEADERS(config.h)
