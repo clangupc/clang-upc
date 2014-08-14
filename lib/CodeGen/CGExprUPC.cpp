@@ -189,7 +189,7 @@ static llvm::Value *ConvertPTStoLLVMPtr(CodeGenFunction& CGF,
   llvm::Value *IntVal = CGF.Builder.CreateOr(Thread, CGF.Builder.CreateShl(Addr, 20));
   
   llvm::Type *LLPtsTy = LTy->getPointerTo(UPCAddrSpace);
-  return CGF.Builder.CreateBitCast(IntVal, LLPtsTy);
+  return CGF.Builder.CreateIntToPtr(IntVal, LLPtsTy);
 }
 
 llvm::Value *CodeGenFunction::EmitUPCLoad(llvm::Value *Addr,
@@ -271,7 +271,14 @@ void CodeGenFunction::EmitUPCStore(llvm::Value *Value,
                                    bool isStrict,
                                    CharUnits Align,
                                    SourceLocation Loc) {
-
+  if(true/*LLVM IR backend enabled*/) {
+    llvm::Value *InternalAddr = ConvertPTStoLLVMPtr(*this, Addr, Value->getType());
+    llvm::StoreInst * Result = Builder.CreateStore(InternalAddr, Value);
+    if(isStrict) {
+      Result->setOrdering(llvm::SequentiallyConsistent);
+    }
+    return;
+  }
   const ASTContext& Context = getContext();
   const llvm::DataLayout &Target = CGM.getDataLayout();
   uint64_t Size = Target.getTypeSizeInBits(Value->getType());
