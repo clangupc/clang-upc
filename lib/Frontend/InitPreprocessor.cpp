@@ -378,6 +378,9 @@ static void InitializeStandardPredefinedMacros(const TargetInfo &TI,
     if (LangOpts.UPCInlineLib) {
       Builder.defineMacro("__UPC_INLINE_LIB__", "1");
     }
+    if (LangOpts.UPCGenIr) {
+      Builder.defineMacro("__UPC_SHARED_IR__", "1");
+    }
   }
 
   // Not "standard" per se, but available even with the -undef flag.

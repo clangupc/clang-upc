@@ -802,6 +802,10 @@ def fno_upc_pre_include : Flag<["-"], "fno-upc-pre-include">,
 def fupc_debug : Flag<["-"], "fupc-debug">, Group<f_Group>,
                  Flags<[CC1Option]>;
 def fno_upc_debug : Flag<["-"], "fno-upc-debug">, Group<f_Group>;
+def fupc_ir : Flag<["-"], "fupc-ir">,
+                      Group<f_Group>, Flags<[CC1Option]>;
+def fno_upc_ir : Flag<["-"], "fno-upc-ir">,
+                         Group<f_Group>, Flags<[CC1Option]>;
 def foperator_arrow_depth_EQ : Joined<["-"], "foperator-arrow-depth=">,
                                Group<f_Group>;
 def ftest_coverage : Flag<["-"], "ftest-coverage">, Group<f_Group>;

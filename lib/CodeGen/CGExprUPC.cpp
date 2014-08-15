@@ -197,7 +197,8 @@ llvm::Value *CodeGenFunction::EmitUPCLoad(llvm::Value *Addr,
                                           llvm::Type *LTy,
                                           CharUnits Align,
                                           SourceLocation Loc) {
-  if(true/*LLVM IR backend enabled*/) {
+  const LangOptions& Opts = getContext().getLangOpts();
+  if (Opts.UPCGenIr) {
     llvm::Value *InternalAddr = ConvertPTStoLLVMPtr(*this, Addr, LTy);
     llvm::LoadInst * Result = Builder.CreateLoad(InternalAddr);
     if(isStrict) {
@@ -271,7 +272,8 @@ void CodeGenFunction::EmitUPCStore(llvm::Value *Value,
                                    bool isStrict,
                                    CharUnits Align,
                                    SourceLocation Loc) {
-  if(true/*LLVM IR backend enabled*/) {
+  const LangOptions& Opts = getContext().getLangOpts();
+  if (Opts.UPCGenIr) {
     llvm::Value *InternalAddr = ConvertPTStoLLVMPtr(*this, Addr, Value->getType());
     llvm::StoreInst * Result = Builder.CreateStore(InternalAddr, Value);
     if(isStrict) {
