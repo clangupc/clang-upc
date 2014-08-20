@@ -47,7 +47,7 @@ struct PrintingPolicy {
       Bool(LO.Bool), TerseOutput(false), PolishForDeclaration(false),
       MSWChar(LO.MicrosoftExt && !LO.WChar),
       IncludeTagDefinition(false), IncludeLineDirectives(false),
-      SM(0) { }
+      SM(0), Helper(0) { }
 
   /// \brief What language we're printing.
   LangOptions LangOpts;
