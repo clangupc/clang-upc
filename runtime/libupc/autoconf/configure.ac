@@ -1840,13 +1840,16 @@ AC_ARG_ENABLE(upc-link-script,
   esac
 ],
 [
-  case "$target" in                                                           
-    # disable linker script for Apple Mac OS X                                
-    *-*-darwin*)                                                              
-      enable_upc_link_script=no                                               
-      ;;                                                                      
-    *)                                                                        
-      enable_upc_link_script=yes                                              
+  case "$target" in
+    # disable linker script for Apple Mac OS X and SunOS
+    *-*-darwin*)
+      enable_upc_link_script=no
+      ;;
+    *-*-solaris*)
+      enable_upc_link_script=no
+      ;;
+    *)
+      enable_upc_link_script=yes
       ;; 
   esac
 ])
@@ -2050,16 +2053,16 @@ if test "$enable_upc_backtrace" = yes; then
   fi
 fi
 
-# At least for glibc, clock_gettime is in librt.  But don't pull that           
-# in if it still doesn't give us the function we want.                          
+# At least for glibc, clock_gettime is in librt.  But don't pull that
+# in if it still doesn't give us the function we want.
 AC_CHECK_FUNCS([clock_gettime])
-if test $ac_cv_func_clock_gettime = no; then                                    
-  AC_CHECK_LIB(rt, clock_gettime,[ac_cv_func_clock_gettime="yes"])              
-  if test $ac_cv_func_clock_gettime = yes; then                                 
-    LIBS="-lrt $LIBS"                                                           
-    AC_DEFINE(HAVE_CLOCK_GETTIME, 1,                                            
-              [Define to 1 if you have the `clock_gettime' function.])          
-  fi                                                                            
+if test $ac_cv_func_clock_gettime = no; then
+  AC_CHECK_LIB(rt, clock_gettime,[ac_cv_func_clock_gettime="yes"])
+  if test $ac_cv_func_clock_gettime = yes; then
+    LIBS="-lrt $LIBS"
+    AC_DEFINE(HAVE_CLOCK_GETTIME, 1,
+              [Define to 1 if you have the `clock_gettime' function.])
+  fi
 fi 
 
 if test "$upc_runtime_model" = "smp"; then
@@ -2079,7 +2082,7 @@ if test "$upc_runtime_model" = "smp"; then
     no)
       upc_affinity=no ;;
     *)
-      AC_MSG_ERROR([--enable-upc-affinity accepts only yes or no])                  
+      AC_MSG_ERROR([--enable-upc-affinity accepts only yes or no])
     esac
   ],
   [
@@ -2110,7 +2113,7 @@ if test "$upc_runtime_model" = "smp"; then
     no)
       upc_numa=no ;;
     *)
-      AC_MSG_ERROR([--enable-upc-numa accepts only yes or no])                  
+      AC_MSG_ERROR([--enable-upc-numa accepts only yes or no])
     esac
   ],
   [
@@ -2179,7 +2182,7 @@ if test "$upc_runtime_model" = "portals4"; then
   # Use the generic (reference implementation)
   use_generic_collectives="no"
 
-  AC_CHECK_HEADERS([portals4.h],[have_p4=yes],[have_p4=no])             
+  AC_CHECK_HEADERS([portals4.h],[have_p4=yes],[have_p4=no])
   AC_ARG_WITH(portals4,
   [AS_HELP_STRING([--with-portals4=PATH],
                   [Specify prefix directory for installed portals4 package])],

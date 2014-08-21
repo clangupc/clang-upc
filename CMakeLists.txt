@@ -212,6 +212,10 @@ endif()
 
 # UPC link script
 set(LIBUPC_ENABLE_LINK_SCRIPT TRUE CACHE STRING "enable UPC's use of a custom linker script; this will define the UPC shared section as a no load section on targets where this feature is supported (requires GNU LD)")
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR
+    ${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
+  set(LIBUPC_ENABLE_LINK_SCRIPT FALSE)
+endif()
 set(LIBUPC_LINK_SCRIPT ${LIBUPC_ENABLE_LINK_SCRIPT})
 
 # Check for backtrace on systems (freebsd,..) that need an extra library
