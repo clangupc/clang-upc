@@ -22,12 +22,16 @@ namespace clang {
 class LangOptions;
 class SourceManager;
 class Stmt;
+class Decl;
 class TagDecl;
+struct PrintingPolicy;
 
 class PrinterHelper {
 public:
   virtual ~PrinterHelper();
   virtual bool handledStmt(Stmt* E, raw_ostream& OS) = 0;
+  virtual bool handledDecl(Decl* D, PrintingPolicy const&, raw_ostream& OS)
+  { return false; };
 };
 
 /// \brief Describes how types, statements, expressions, and
@@ -43,7 +47,7 @@ struct PrintingPolicy {
       Bool(LO.Bool), TerseOutput(false), PolishForDeclaration(false),
       MSWChar(LO.MicrosoftExt && !LO.WChar),
       IncludeTagDefinition(false), IncludeLineDirectives(false),
-      SM(0) { }
+      SM(0), Helper(0) { }
 
   /// \brief What language we're printing.
   LangOptions LangOpts;
@@ -164,6 +168,8 @@ struct PrintingPolicy {
   bool IncludeLineDirectives : 1;
 
   SourceManager *SM;
+
+  PrinterHelper *Helper;
 };
 
 } // end namespace clang

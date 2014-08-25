@@ -156,6 +156,7 @@ LANGOPT(UPCPtsRep, 1, 1, "UPC pointer representation (1 packed, 0 struct)")
 LANGOPT(UPCVaddrFirst, 1, 0, "UPC pointer field order")
 LANGOPT(UPCInlineLib, 1, 0, "inline the UPC runtime")
 LANGOPT(UPCPreInclude, 1, 0, "pre-include UPC runtime header files")
+LANGOPT(UPCTLDEnable, 1, 0, "enable support for Thread Local Data")
 
 LANGOPT(MRTD , 1, 0, "-mrtd calling convention")
 BENIGN_LANGOPT(DelayedTemplateParsing , 1, 0, "delayed template parsing")
