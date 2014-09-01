@@ -50,8 +50,11 @@
 /* Portals4 support */
 #cmakedefine LIBUPC_PORTALS4 "${LIBUPC_PORTALS4}"
 
-/* Portals4 SLURM support */                                                    
-#cmakedefine LIBUPC_PORTALS4_SLURM ${LIBUPC_PORTALS4_SLURM}
+/* Libfabric support */
+#cmakedefine LIBUPC_FABRIC "${LIBUPC_FABRIC}"
+
+/* SLURM job launcher support */                                                    
+#cmakedefine LIBUPC_JOB_LAUNCHER_SLURM ${LIBUPC_JOB_LAUNCHER_SLURM}
 
 /* Define if we have libxml2 */
 #cmakedefine CLANG_HAVE_LIBXML ${CLANG_HAVE_LIBXML}

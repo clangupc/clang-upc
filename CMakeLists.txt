@@ -283,7 +283,7 @@ set(UPC_IR_RP_ADDRSPACE ${UPC_IR_RP_ADDRSPACE})
 
 # Check for Portals4 and SLURM libraries if necessary
 set(LIBUPC_RUNTIME_MODEL smp CACHE STRING "specify the runtime implementation model for UPC, where MODEL may be: '
-smp' (Symmetric Multiprocessing) or 'portals4' (Infiniband with Portals4 library)")
+smp' (Symmetric Multiprocessing), 'portals4' (Infiniband), or 'fabric' (Infiniband)")
 string(TOLOWER ${LIBUPC_RUNTIME_MODEL} LIBUPC_RUNTIME_MODEL)
 
 if (LIBUPC_RUNTIME_MODEL STREQUAL smp)
@@ -297,20 +297,28 @@ endif()
 endif()
 
 if (LIBUPC_RUNTIME_MODEL STREQUAL portals4)
-  # These checks must be done here as we need to add approprite libraries on the
+  # These checks must be done here as we need to add appropriate libraries on the
   # linker command line
   set(LIBUPC_PORTALS4 "/usr/local/portals4" CACHE STRING "directory for installed portals4 package")
   if( NOT EXISTS ${LIBUPC_PORTALS4}/include/portals4.h )
     message(fatal_error "Portals4 not installed or wrong LIBUPC_PORTALS4(${LIBUPC_PORTALS4}) specified")
   endif()
+endif()
+if (LIBUPC_RUNTIME_MODEL STREQUAL fabric)
+  # These checks must be done here as we need to add appropriate libraries on the
+  # linker command line
+  set(LIBUPC_FABRIC "/usr/local/libfabric" CACHE STRING "directory for installed Libfabric package")
+  if( NOT EXISTS ${LIBUPC_FABRIC}/include/rdma/fabric.h )
+    message(fatal_error "Libfabric not installed or wrong LIBUPC_FABRIC(${LIBUPC_FABRIC}) specified")
+  endif()
+endif()
 
-  include(CheckIncludeFiles)
-  set(LIBUPC_JOB_LAUNCHER slurm CACHE STRING "select UPC Portals4 job launcher (default=slurm).")
-  if( LIBUPC_JOB_LAUNCHER STREQUAL "slurm" )
-    CHECK_INCLUDE_FILES("slurm/slurm.h" LIBUPC_PORTALS4_SLURM)
-    if( NOT LIBUPC_PORTALS4_SLURM )
-      message(fatal_error "Portals4 job launcher (${LIBUPC_JOB_LAUNCHER}) not available")
-    endif()
+include(CheckIncludeFiles)
+set(LIBUPC_JOB_LAUNCHER slurm CACHE STRING "select UPC job launcher (default=slurm).")
+if( LIBUPC_JOB_LAUNCHER STREQUAL "slurm" )
+  CHECK_INCLUDE_FILES("slurm/slurm.h" LIBUPC_SLURM)
+  if( NOT LIBUPC_SLURM )
+    message(fatal_error "UPC job launcher (${LIBUPC_JOB_LAUNCHER}) not available")
   endif()
 endif()
 

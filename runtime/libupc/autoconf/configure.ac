@@ -1698,8 +1698,8 @@ AC_MSG_CHECKING([for UPC runtime model])
 AC_ARG_WITH(upc-runtime,
 [AS_HELP_STRING([--with-upc-runtime=MODEL],
 		[Specify the runtime implementation model for UPC,
-		 where MODEL may be: 'SMP' (Symmetric Multiprocessing)
-		 or 'Portals4'.  [default='SMP']])],
+		 where MODEL may be: 'SMP' (Symmetric Multiprocessing),
+		 'Portals4', or "Fabric'.  [default='SMP']])],
 [
   case "$withval" in
 changequote(,)dnl
@@ -1708,6 +1708,9 @@ changequote(,)dnl
       ;;
     [Pp][Oo][Rr][Tt][Aa][Ll][Ss]4)
       upc_runtime_model=portals4
+      ;;
+    [Ff][Aa][Bb][Rr][Ii][Cc])
+      upc_runtime_model=fabric
       ;;
 changequote([,])dnl
     *)
@@ -2152,26 +2155,6 @@ if test "$upc_runtime_model" = "smp"; then
   # Use the generic (reference implementation)
   use_generic_collectives="yes"
 
-  AC_MSG_CHECKING([for UPC runtime maximum number of locks held per thread])
-  AC_ARG_WITH(upc-runtime-max-locks,
-  [AS_HELP_STRING([--with-upc-runtime-max-locks=MAX_LOCKS],
-                  [specify the maximum number of locks that can be held by
-                   a single UPC thread [default=1024]])],
-  [
-    # $withval must be a decimal integer
-    if ! echo "$withval" | grep '^[[0-9]][[0-9]]*$' >/dev/null 2>&1; then
-      AC_MSG_ERROR([$withval is an invalid option to
-      --with-upc-runtime-max-locks])
-    fi
-    upc_runtime_max_locks="$withval"
-  ],
-  [
-    upc_runtime_max_locks=1024
-  ])
-  AC_MSG_RESULT([$upc_runtime_max_locks])
-  AC_DEFINE_UNQUOTED(GUPCR_MAX_LOCKS,[$upc_runtime_max_locks],
-    [Maximum number of locks held per thread])
-
 fi #### End: SMP runtime configuration
 
 if test "$upc_runtime_model" = "portals4"; then
@@ -2217,26 +2200,39 @@ if test "$upc_runtime_model" = "portals4"; then
   AC_MSG_RESULT([$upc_runtime_pte_base])
   AC_DEFINE_UNQUOTED(GUPCR_PTE_BASE,[$upc_runtime_pte_base],
     [Portals4 PTE base index.])
+fi
 
-  AC_MSG_CHECKING([for UPC runtime maximum number of locks held per thread])
-  AC_ARG_WITH(upc-runtime-max-locks,
-  [AS_HELP_STRING([--with-upc-runtime-max-locks=MAX_LOCKS],
-		  [Specify the maximum number of locks that can be held by
-		   a single UPC thread [default=1024]])],
+if test "$upc_runtime_model" = "fabric"; then
+
+  #### Fabric runtime library configuration ####
+
+  # Use the generic (reference implementation)
+  use_generic_collectives="no"
+
+  AC_CHECK_HEADERS([fabric.h],[have_fabric=yes],[have_fabric=no])             
+  AC_ARG_WITH(fabric,
+  [AS_HELP_STRING([--with-fabric=PATH],
+                  [Specify prefix directory for installed libfabric package])],
   [
-    # $withval must be a decimal integer
-    if ! echo "$withval" | grep '^[[0-9]][[0-9]]*$' >/dev/null 2>&1; then
-      AC_MSG_ERROR([$withval is an invalid option to
-      --with-upc-runtime-max-locks])
+    if test -f "$withval/include/rdma/fabric.h"; then
+      AC_DEFINE_UNQUOTED(LIBUPC_FABRIC, "$withval", [Libfabric library path] )
+      AC_SUBST(LIBUPC_FABRIC,$withval)
+    else
+      AC_MSG_ERROR([--with-fabric specifies wrong prefix for Libfabric package.])
     fi
-    upc_runtime_max_locks="$withval"
   ],
   [
-    upc_runtime_max_locks=1024
+    if test "$have_fabric" = "no"; then
+      AC_MSG_ERROR([Libfabric not found - use --with-fabric to specify one.])
+    fi
   ])
-  AC_MSG_RESULT([$upc_runtime_max_locks])
-  AC_DEFINE_UNQUOTED(GUPCR_MAX_LOCKS,[$upc_runtime_max_locks],
-    [Maximum number of locks held per thread])
+
+fi #### End: Fabric configuration
+
+if test "$upc_runtime_model" = "portals4" &&
+   test "$upc_runtime_model" = "fabric"; then
+
+  #### Infiniband based runtime library configuration ####
 
   AC_MSG_CHECKING([for UPC runtime bounce buffer size])
   AC_ARG_WITH(upc-runtime-bounce-buffer-size,
@@ -2282,10 +2278,10 @@ if test "$upc_runtime_model" = "portals4"; then
   AC_DEFINE_UNQUOTED(GUPCR_MAX_OUTSTANDING_PUTS,[$upc_max_puts_count],
     [Maximum number of outstanding remote puts])
 
-  AC_MSG_CHECKING([for UPC runtime Portals4 triggered operation support])
+  AC_MSG_CHECKING([for UPC runtime triggered operation support])
   AC_ARG_ENABLE(upc-runtime-triggered-ops,
   [AS_HELP_STRING([--enable-upc-runtime-triggered-ops],
-		  [Enable UPC runtime support for Portals4 triggered
+		  [Enable UPC runtime support for triggered
 		   operations [default=yes]])],
   [
     case $enableval in
@@ -2299,11 +2295,11 @@ if test "$upc_runtime_model" = "portals4"; then
   ])
   AC_MSG_RESULT($enable_upc_runtime_triggered_ops)
   if test "$enable_upc_runtime_triggered_ops" = "yes"; then
-    AC_DEFINE(GUPCR_USE_PORTALS4_TRIGGERED_OPS, 1,
-      [Define to 1 if UPC runtime will use Portals4 triggered operations.])
+    AC_DEFINE(GUPCR_USE_TRIGGERED_OPS, 1,
+      [Define to 1 if UPC runtime will use triggered operations.])
   fi
 
-# Portals4 node local memory optimization
+  # Node local memory optimization
 
   AC_MSG_CHECKING([for UPC runtime node local memory access])
   AC_ARG_ENABLE(upc-node-local-mem,
@@ -2401,12 +2397,12 @@ if test "$upc_runtime_model" = "portals4"; then
     # END - check for shared memory type
   fi
 
-  # Check for portals job launcher
+  # Check for job launcher
   AC_CHECK_HEADER([slurm/slurm.h],[have_slurm=yes],[have_slurm=no])
-  AC_MSG_CHECKING([for UPC runtime Portals4 job launcher])
+  AC_MSG_CHECKING([for UPC runtime job launcher])
   AC_ARG_WITH(upc-job-launcher,
   [AS_HELP_STRING([--with-upc-job-launcher],
-		  [Select UPC Portals4 job launcher
+		  [Select UPC job launcher
 		   [default=slurm]])],
   [
     case $withval in
@@ -2429,8 +2425,7 @@ if test "$upc_runtime_model" = "portals4"; then
   if test "$upc_job_launcher" = "slurm"; then
     if test "$have_slurm" = "yes"; then
       AC_DEFINE(GUPCR_JOB_LAUNCHER_SLURM, 1,
-      [Use SLURM for UPC Portals4 job launcher])
-      portals4libs="$portals4libs -lpmi"
+      [Use SLURM for UPC job launcher])
     else
       AC_MSG_ERROR([--with-upc-job-launcher specified slurm,
                     but slurm is not available.])
@@ -2438,33 +2433,52 @@ if test "$upc_runtime_model" = "portals4"; then
   else
     AC_DEFINE(GUPCR_JOB_LAUNCHER_YOD, 1,
     [Use YOD for UPC Portals4 job launcher])
-    portals4libs="$portals4libs -lportals_runtime"
   fi
-
-  # Check for target memory page size
-  AC_MSG_CHECKING([for memory page size])
-  AC_ARG_WITH(upc-memory-page-size,
-  [AS_HELP_STRING([--with-upc-memory-page-size],
-		  [Select target memory page size
-		   [default=4096]])],
-  [
-    # $withval must be a decimal integer
-    if ! echo "$withval" | grep '^[[0-9]][[0-9]]*$' >/dev/null 2>&1; then
-      AC_MSG_ERROR([$withval is an invalid option to --with-upc-memory-page-size])
-    fi
-    memory_page_size="$withval"
-  ],
-  [
-    memory_page_size="4096"
-  ])
-  AC_MSG_RESULT($memory_page_size)
-  AC_DEFINE_UNQUOTED(GUPCR_MEMORY_PAGE_SIZE, [$memory_page_size],
-    [Target system memory page size.])
 
   AC_DEFINE(GUPCR_GLOBAL_EXIT_TIMEOUT, [2],
     [upc_global_exit() timeout in seconds.])
 
-fi #### End: Portals4 runtime configuration
+fi #### End: Infiniband based runtime configuration
+
+# Check for target memory page size
+AC_MSG_CHECKING([for memory page size])
+AC_ARG_WITH(upc-memory-page-size,
+[AS_HELP_STRING([--with-upc-memory-page-size],
+		[Select target memory page size
+		[default=4096]])],
+[
+  # $withval must be a decimal integer
+  if ! echo "$withval" | grep '^[[0-9]][[0-9]]*$' >/dev/null 2>&1; then
+    AC_MSG_ERROR([$withval is an invalid option to --with-upc-memory-page-size])
+  fi
+  memory_page_size="$withval"
+],
+[
+  memory_page_size="4096"
+])
+AC_MSG_RESULT($memory_page_size)
+AC_DEFINE_UNQUOTED(GUPCR_MEMORY_PAGE_SIZE, [$memory_page_size],
+  [Target system memory page size.])
+
+AC_MSG_CHECKING([for UPC runtime maximum number of locks held per thread])
+AC_ARG_WITH(upc-runtime-max-locks,
+[AS_HELP_STRING([--with-upc-runtime-max-locks=MAX_LOCKS],
+                [specify the maximum number of locks that can be held by
+                 a single UPC thread [default=1024]])],
+[
+  # $withval must be a decimal integer
+  if ! echo "$withval" | grep '^[[0-9]][[0-9]]*$' >/dev/null 2>&1; then
+    AC_MSG_ERROR([$withval is an invalid option to
+    --with-upc-runtime-max-locks])
+  fi
+  upc_runtime_max_locks="$withval"
+],
+[
+  upc_runtime_max_locks=1024
+])
+AC_MSG_RESULT([$upc_runtime_max_locks])
+AC_DEFINE_UNQUOTED(GUPCR_MAX_LOCKS,[$upc_runtime_max_locks],
+  [Maximum number of locks held per thread])
 
 dnl Define ARG_UNUSED macro
 AH_BOTTOM([

@@ -26,17 +26,17 @@
 use strict;
 use warnings;
 my @type_config = (
-    ['signed char', 'C', 1, "UPC_COLL_TO_PTL_CHAR"],
-    ['unsigned char', 'UC', 1, "UPC_COLL_TO_PTL_UCHAR"],
-    ['signed short', 'S', 1, "UPC_COLL_TO_PTL_SHORT"],
-    ['unsigned short', 'US', 1, "UPC_COLL_TO_PTL_USHORT"],
-    ['signed int', 'I', 1, "UPC_COLL_TO_PTL_INT"],
-    ['unsigned int', 'UI', 1, "UPC_COLL_TO_PTL_UINT"],
-    ['signed long', 'L', 1, "UPC_COLL_TO_PTL_LONG"],
-    ['unsigned long', 'UL', 1, "UPC_COLL_TO_PTL_ULONG"],
-    ['float', 'F', 0, "UPC_COLL_TO_PTL_FLOAT"],
-    ['double', 'D', 0, "UPC_COLL_TO_PTL_DOUBLE"],
-    ['long double', 'LD', 0, "UPC_COLL_TO_PTL_LONG_DOUBLE"]
+    ['signed char', 'C', 1, "UPC_COLL_TO_COM_CHAR"],
+    ['unsigned char', 'UC', 1, "UPC_COLL_TO_COM_UCHAR"],
+    ['signed short', 'S', 1, "UPC_COLL_TO_COM_SHORT"],
+    ['unsigned short', 'US', 1, "UPC_COLL_TO_COM_USHORT"],
+    ['signed int', 'I', 1, "UPC_COLL_TO_COM_INT"],
+    ['unsigned int', 'UI', 1, "UPC_COLL_TO_COM_UINT"],
+    ['signed long', 'L', 1, "UPC_COLL_TO_COM_LONG"],
+    ['unsigned long', 'UL', 1, "UPC_COLL_TO_COM_ULONG"],
+    ['float', 'F', 0, "UPC_COLL_TO_COM_FLOAT"],
+    ['double', 'D', 0, "UPC_COLL_TO_COM_DOUBLE"],
+    ['long double', 'LD', 0, "UPC_COLL_TO_COM_LONG_DOUBLE"]
   );
 my $src;
 {
@@ -52,7 +52,7 @@ for my $t (@type_config) {
   for ($out) {
     s/_GENERIC/$chars/smg;
     s/_UPC_RED_T/$name/smg;
-    s/_UPC_TO_PTL_TYPECVT/$data_type/smg;
+    s/_UPC_TO_COM_TYPECVT/$data_type/smg;
     if ($is_int)
       {
         s/^#ifndef\s+_UPC_NONINT_T.*?\n(.*?)^#endif.*?\n/$1/smg;

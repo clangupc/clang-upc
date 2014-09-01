@@ -44,7 +44,8 @@ option(LIBUPC_ENABLE_SHARED "Build libupc as a shared library. (Broken)" OFF)
 
 # Configure libupc
 
-set(LIBUPC_RUNTIME_MODEL smp CACHE STRING "specify the runtime implementation model for UPC, where MODEL may be: 'smp' (Symmetric Multiprocessing) or 'portals4' (Infiniband with Portals4 library)")
+set(LIBUPC_RUNTIME_MODEL smp CACHE STRING "specify the runtime implementation
+model for UPC, where MODEL may be: 'smp' (Symmetric Multiprocessing), 'portals4' (Infiniband with Portals4 library), or 'fabric' (Infiniband with libfabric library)")
 string(TOLOWER ${LIBUPC_RUNTIME_MODEL} LIBUPC_RUNTIME_MODEL)
 
 set(LIBUPC_ENABLE_LINK_SCRIPT TRUE CACHE STRING "enable UPC's use of a custom linker script; this will define the UPC shared section as a no load section on targets where this feature is supported (requires GNU LD)")
@@ -178,10 +179,23 @@ if (LIBUPC_RUNTIME_MODEL STREQUAL portals4)
   set(LIBUPC_PTE_BASE 16 CACHE STRING
 	"specify the base index of the first Portals4 PTE used by the UPC runtime")
   set(GUPCR_PTE_BASE ${LIBUPC_PTE_BASE})
+endif()
+
+if (LIBUPC_RUNTIME_MODEL STREQUAL fabric)
+  set(LIBUPC_FABRIC "/usr/local/libfabric" CACHE STRING "directory for installed libfabric package")
+  if(EXISTS ${LIBUPC_FABRIC}/include/rdma/fabric.h)
+    set(LIBUPC_RUNTIME_FLAGS "-I${LIBUPC_FABRIC}/include -Wno-variadic-macros -Wno-c11-extensions -Wno-unused-variable -Wno-unused-function")
+  else()
+    message(fatal_error "Libfabric not installed or wrong LIBUPC_FBRIC(${LIBUPC_FABRIC}) specified")
+  endif()
+endif()
+
+if (LIBUPC_RUNTIME_MODEL STREQUAL portals4 OR
+    LIBUPC_RUNTIME_MODEL STREQUAL fabric)
 
   set(LIBUPC_ENABLE_TRIGGERED_OPS TRUE CACHE STRING
-	"enable UPC runtime support for Portals4 triggered operations.")
-  set(GUPCR_USE_PORTALS4_TRIGGERED_OPS ${LIBUPC_ENABLE_TRIGGERED_OPS})
+	"enable UPC runtime support for triggered operations.")
+  set(GUPCR_USE_TRIGGERED_OPS ${LIBUPC_ENABLE_TRIGGERED_OPS})
 
   set(LIBUPC_MAX_OUTSTANDING_PUTS 256 CACHE STRING
 	"specify the maximum number of outstanding remote put requests (default=256)")
@@ -195,13 +209,28 @@ if (LIBUPC_RUNTIME_MODEL STREQUAL portals4)
   else()
     message(fatal_error "Unrecognized job launcher (${LIBUPC_JOB_LAUNCHER}). Use slurm or yod.")
   endif()
+
+  set(LIBUPC_ENABLE_TRIGGERED_OPS TRUE CACHE STRING
+	"enable UPC runtime support for libfabric triggered operations.")
+  set(GUPCR_USE_LIBFABRIC_TRIGGERED_OPS ${LIBUPC_ENABLE_TRIGGERED_OPS})
+
+  set(LIBUPC_MAX_OUTSTANDING_PUTS 256 CACHE STRING
+	"specify the maximum number of outstanding remote put requests (default=256)")
+  set(GUPCR_MAX_OUTSTANDING_PUTS ${LIBUPC_MAX_OUTSTANDING_PUTS})
+
+  set(LIBUPC_JOB_LAUNCHER slurm CACHE STRING "select UPC job launcher (default=slurm).")
+  if (LIBUPC_JOB_LAUNCHER STREQUAL "slurm")
+    set(GUPCR_JOB_LAUNCHER_SLURM 1)
+  else()
+    message(fatal_error "Unrecognized job launcher (${LIBUPC_JOB_LAUNCHER}). Use slurm.")
+  endif()
+
+  set(LIBUPC_GLOBAL_EXIT_TIMEOUT 2 CACHE STRING "Select upc_global_exit() timeout in seconds (default=2).")
+  set(GUPCR_GLOBAL_EXIT_TIMEOUT ${LIBUPC_GLOBAL_EXIT_TIMEOUT})
 endif()
 
 set(LIBUPC_MEMORY_PAGE_SIZE 4096 CACHE STRING "Select target memory page size (default=4096).")
 set(GUPCR_MEMORY_PAGE_SIZE ${LIBUPC_MEMORY_PAGE_SIZE})
-
-set(LIBUPC_GLOBAL_EXIT_TIMEOUT 2 CACHE STRING "Select upc_global_exit() timeout in seconds (default=2).")
-set(GUPCR_GLOBAL_EXIT_TIMEOUT ${LIBUPC_GLOBAL_EXIT_TIMEOUT})
 
 set(LIBUPC_TREE_FANOUT 4 CACHE STRING "The maximum number of children in each sub-tree used to implement UPC collectives operations (e. g. upc_barrier)")
 set(GUPCR_TREE_FANOUT ${LIBUPC_TREE_FANOUT})
@@ -291,9 +320,9 @@ configure_file(config.h.cmake config.h)
 # Setup Source Code
 #===============================================================================
 
-include_directories(include collectives)
-
 if(LIBUPC_RUNTIME_MODEL STREQUAL smp)
+
+  include_directories(include collectives)
 
   set(LIBUPC_SOURCES
     smp/upc_access.c
@@ -361,6 +390,9 @@ endif()
   )
 
 elseif(LIBUPC_RUNTIME_MODEL STREQUAL portals4)
+
+  include_directories(include collectives)
+
   set(LIBUPC_SOURCES
     portals4/gupcr_access.c
     portals4/gupcr_llvm_access.c
@@ -428,6 +460,82 @@ elseif(LIBUPC_RUNTIME_MODEL STREQUAL portals4)
     ${PROJECT_SOURCE_DIR}/portals4/gupcr_sup.h
     ${PROJECT_SOURCE_DIR}/portals4/gupcr_sync.h
     ${PROJECT_SOURCE_DIR}/portals4/gupcr_utils.h
+  )
+
+elseif(LIBUPC_RUNTIME_MODEL STREQUAL fabric)
+
+  include_directories(include fabric)
+  include_directories(include common)
+  include_directories(include collectives)
+
+  set(LIBUPC_SOURCES
+    common/gupcr_alloc.upc
+    common/gupcr_castable.upc
+    common/gupcr_clock.c
+    common/gupcr_env.c
+    common/gupcr_lock.upc
+    common/gupcr_nb.upc
+    common/gupcr_node.c
+    common/gupcr_pgm_info.c
+    common/gupcr_tick.c
+    common/gupcr_utils.c
+  )
+
+  list(APPEND LIBUPC_SOURCES
+    fabric/gupcr_access.c
+    fabric/gupcr_addr.c
+    fabric/gupcr_atomic_sup.c
+    fabric/gupcr_atomic.upc
+    fabric/gupcr_barrier.c
+    fabric/gupcr_backtrace.c
+    fabric/gupcr_broadcast.c
+    fabric/gupcr_coll_sup.c
+    fabric/gupcr_gmem.c
+    fabric/gupcr_lock_sup.c
+    fabric/gupcr_main.c
+    fabric/gupcr_mem.c
+    fabric/gupcr_nb_sup.c
+    fabric/gupcr_fabric.c
+    fabric/gupcr_runtime.c
+    fabric/gupcr_shutdown.c
+  )
+
+  if(LIBUPC_NODE_LOCAL_MEM STREQUAL "mmap")
+    list(APPEND LIBUPC_SOURCES common/gupcr_node_mem_mmap.c)
+  else()
+    list(APPEND LIBUPC_SOURCES common/gupcr_node_mem_posix.c)
+  endif()
+
+  list(APPEND LIBUPC_SOURCES
+    collectives/upc_coll_err.upc
+    collectives/upc_coll_exchange.upc
+    collectives/upc_coll_gather.upc
+    collectives/upc_coll_gather_all.upc
+    collectives/upc_coll_permute.upc
+    collectives/upc_coll_prefix_reduce.upc
+    collectives/upc_coll_scatter.upc
+    collectives/upc_coll_sort.upc
+  )
+
+  list(APPEND LIBUPC_SOURCES
+    common/gupcr_coll_broadcast.upc
+    fabric/gupcr_coll_init.upc
+    fabric/gupcr_coll_reduce.upc
+  )
+
+  set(LIBUPC_SOURCES_INLINE
+    ${PROJECT_SOURCE_DIR}/fabric/gupcr_access.c
+    ${PROJECT_SOURCE_DIR}/common/gupcr_defs.h
+    ${PROJECT_SOURCE_DIR}/common/gupcr_node.h
+    ${PROJECT_SOURCE_DIR}/common/gupcr_pts.h
+    ${PROJECT_SOURCE_DIR}/common/gupcr_sync.h
+    ${PROJECT_SOURCE_DIR}/common/gupcr_utils.h
+    ${PROJECT_SOURCE_DIR}/fabric/gupcr_access.h
+    ${PROJECT_SOURCE_DIR}/fabric/gupcr_config.h
+    ${PROJECT_SOURCE_DIR}/fabric/gupcr_gmem.h
+    ${PROJECT_SOURCE_DIR}/common/gupcr_iface.h
+    ${PROJECT_SOURCE_DIR}/fabric/gupcr_fabric.h
+    ${PROJECT_SOURCE_DIR}/fabric/gupcr_sup.h
   )
 
 else()
@@ -635,6 +743,26 @@ set(lib_upc_prefix_reduce_source ${PROJECT_SOURCE_DIR}/collectives/upc_coll_pref
 add_custom_target(upc-coll-prefix-reduce ALL DEPENDS ${lib_upc_prefix_reduce})
 add_custom_command(OUTPUT ${lib_upc_prefix_reduce}
   COMMAND cd ${PROJECT_SOURCE_DIR}/portals4 &&
+          ${PERL_EXECUTABLE} ${lib_upc_reduce_cmd} ${lib_upc_prefix_reduce_source} > ${lib_upc_prefix_reduce}
+  DEPENDS ${lib_upc_prefix_reduce_source} ${lib_upc_reduce_cmd}
+  VERBATIM)
+
+elseif(LIBUPC_RUNTIME_MODEL STREQUAL fabric)
+set(lib_upc_reduce_cmd ${PROJECT_SOURCE_DIR}/collectives/gen-upc-coll-reduce.pl)
+set(lib_upc_reduce ${PROJECT_SOURCE_DIR}/fabric/gupcr_coll_reduce.upc)
+set(lib_upc_reduce_source ${PROJECT_SOURCE_DIR}/fabric/gupcr_coll_reduce.in)
+add_custom_target(upc-coll-reduce ALL DEPENDS ${lib_upc_reduce})
+add_custom_command(OUTPUT ${lib_upc_reduce}
+  COMMAND cd ${PROJECT_SOURCE_DIR}/fabric &&
+          ${PERL_EXECUTABLE} ${lib_upc_reduce_cmd} ${lib_upc_reduce_source} > ${lib_upc_reduce}
+  DEPENDS ${lib_upc_reduce_source} ${lib_upc_reduce_cmd}
+  VERBATIM)
+
+set(lib_upc_prefix_reduce ${PROJECT_SOURCE_DIR}/collectives/upc_coll_prefix_reduce.upc)
+set(lib_upc_prefix_reduce_source ${PROJECT_SOURCE_DIR}/collectives/upc_coll_prefix_reduce.in)
+add_custom_target(upc-coll-prefix-reduce ALL DEPENDS ${lib_upc_prefix_reduce})
+add_custom_command(OUTPUT ${lib_upc_prefix_reduce}
+  COMMAND cd ${PROJECT_SOURCE_DIR}/fabric &&
           ${PERL_EXECUTABLE} ${lib_upc_reduce_cmd} ${lib_upc_prefix_reduce_source} > ${lib_upc_prefix_reduce}
   DEPENDS ${lib_upc_prefix_reduce_source} ${lib_upc_reduce_cmd}
   VERBATIM)

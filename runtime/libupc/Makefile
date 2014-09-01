@@ -121,6 +121,61 @@ SOURCES_INLINE = config.h gupcr_access.c gupcr_access.h gupcr_config.h \
 	gupcr_defs.h gupcr_gmem.h gupcr_node.h gupcr_portals.h \
 	gupcr_pts.h gupcr_sup.h gupcr_sync.h gupcr_utils.h
 
+else ifeq ($(LIBUPC_RUNTIME_MODEL),fabric)
+
+SOURCES =\
+	gupcr_access.c \
+	gupcr_addr.c \
+	gupcr_atomic_sup.c \
+	gupcr_atomic.upc \
+	gupcr_barrier.c \
+	gupcr_backtrace.c \
+	gupcr_broadcast.c \
+	gupcr_clock.c \
+	gupcr_coll_sup.c \
+	gupcr_env.c \
+	gupcr_gmem.c \
+	gupcr_lock_sup.c \
+	gupcr_main.c \
+	gupcr_mem.c \
+	gupcr_nb_sup.c \
+	gupcr_node.c \
+	gupcr_pgm_info.c \
+	gupcr_fabric.c \
+	gupcr_runtime.c \
+	gupcr_shutdown.c \
+	gupcr_tick.c \
+	gupcr_utils.c
+
+SOURCES +=\
+	gupcr_alloc.upc \
+	gupcr_lock.upc \
+	gupcr_nb.upc \
+	gupcr_coll_broadcast.upc \
+	gupcr_castable.upc \
+	gupcr_coll_init.upc \
+	gupcr_coll_reduce.upc
+
+ifeq ($(LIBUPC_NODE_LOCAL_MEM STREQUAL),mmap)
+SOURCES += gupcr_node_mem_mmap.c
+else
+SOURCES += gupcr_node_mem_posix.c
+endif
+
+SOURCES +=\
+	upc_coll_err.upc \
+	upc_coll_exchange.upc \
+	upc_coll_gather.upc \
+	upc_coll_gather_all.upc \
+	upc_coll_permute.upc \
+	upc_coll_prefix_reduce.upc \
+	upc_coll_scatter.upc \
+	upc_coll_sort.upc
+
+SOURCES_INLINE = config.h gupcr_access.c gupcr_access.h gupcr_config.h \
+	gupcr_defs.h gupcr_gmem.h gupcr_node.h gupcr_fabric.h \
+	gupcr_pts.h gupcr_sup.h gupcr_sync.h gupcr_utils.h
+
 else
 $(error Wrong runtime model ($(LIBUPC_RUNTIME_MODEL)) or it is not specified)
 endif

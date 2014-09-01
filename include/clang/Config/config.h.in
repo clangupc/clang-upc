@@ -53,8 +53,11 @@
 /* Portals4 support */
 #undef LIBUPC_PORTALS4
 
-/* Portals4 SLURM support */
-#undef LIBUPC_PORTALS4_SLURM
+/* Libfabric support */
+#undef LIBUPC_FABRIC
+
+/* SLURM support */
+#undef LIBUPC_SLURM
 
 /* Define if we have libxml2 */
 #undef CLANG_HAVE_LIBXML

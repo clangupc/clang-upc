@@ -1,0 +1,166 @@
+/*===-- upc-lib.in - UPC Runtime Support Library -------------==---------===*
+|*
+|*                     The LLVM Compiler Infrastructure
+|*
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
+|* This file is distributed under a BSD-style Open Source License.
+|* See LICENSE-INTREPID.TXT for details.
+|*
+|*===---------------------------------------------------------------------===*/
+
+#ifndef _GCC_UPC_LIB_H_
+#define _GCC_UPC_LIB_H_ 1
+
+#ifdef IN_TARGET_LIBS
+#include "config.h"
+#include <unistd.h>
+#endif /* IN_TARGET_LIBS */
+
+/* required, for size_t definition */
+#include <stddef.h>
+
+#pragma upc c_code
+
+/* helper macros for expanding the value of a macro as a string. */
+#define __UPC_STR__(S) #S
+#define __UPC_XSTR__(S) __UPC_STR__(S)
+
+#ifdef __UPC_STATIC_THREADS__
+/* defined at compile time by the -fupc-threads-N switch */
+#define __UPC_N_THREADS__ THREADS
+#define __UPC_STR__(S) #S
+#define __UPC_XSTR__(S) __UPC_STR__(S)
+#define __UPC_THREADS_CONFIG__ " staticthreads=" __UPC_XSTR__(THREADS)
+#else
+/* defined at run time */
+#define __UPC_N_THREADS__ -1
+#define __UPC_THREADS_CONFIG__ "dynamicthreads"
+#endif
+
+#define __UPC_THREADS_MODEL__ "process"
+
+/* Support for atomics - UPC Specification 1.3.  */
+#define __UPC_ATOMIC__ 1
+
+/* Support for castability - UPC Specification 1.3.  */
+#define __UPC_CASTABLE__ 1
+
+/* Support for UPC collectives.  */
+#define __UPC_COLLECTIVE__ 1
+
+/* Support for non-blocking transfer operations - UPC Specification 1.3.  */
+#define __UPC_NB__ 1
+
+/* Support for GASP - http://gasp.hcs.ufl.edu/.  */ 
+#define __UPC_PUPC__ 1
+
+/* Support for high-performance wall-clock timer - UPC Specification 1.3.  */
+#define __UPC_TICK__ 1
+
+#pragma upc upc_code
+/* Opaque data type for referencing UPC atomic domains.  */
+typedef shared struct upc_atomicdomain_struct upc_atomicdomain_t;
+#pragma upc c_code
+
+/* Place configuration information required by the Berkeley
+   UPC compilation system into the object file. */
+static const char GCCUPCConfig[]
+#if __MACH__
+  __attribute__ ((section ("__DATA,upc_pgm_info"))) __attribute__ ((used)) =
+#else
+  __attribute__ ((section ("upc_pgm_info"))) __attribute__ ((used)) =
+#endif
+  "$GCCUPCConfig: (" __BASE_FILE__ ") "
+  __UPC_THREADS_CONFIG__ " " __UPC_THREADS_MODEL__ "$";
+
+#undef __UPC_XSTR__
+#undef __UPC_STR__
+
+/* Depth count used to implement the semantics of
+   nested upc_forall statements.  */
+extern int __upc_forall_depth;
+
+/* Clang allows for pointer to shared type (struct/packed) and packed
+   pointer field sizes to be specified on the command line.  Set the
+   run-time macro definitions to correct values.  */
+#define GUPCR_PTS_PHASE_SIZE __UPC_PHASE_SIZE__
+#define GUPCR_PTS_THREAD_SIZE __UPC_THREAD_SIZE__
+#define GUPCR_PTS_VADDR_SIZE __UPC_VADDR_SIZE__
+#ifdef __UPC_PTS_PACKED_REP__
+#define GUPCR_PTS_PACKED_REP 1
+#elif defined(__UPC_PTS_STRUCT_REP__)
+#define GUPCR_PTS_STRUCT_REP 1
+#endif
+#ifdef __UPC_VADDR_FIRST__
+#define GUPCR_PTS_VADDR_FIRST 1
+#endif
+
+/* The UPC runtime's main program must run first,
+ * we rename the user's main to upc_main(). */
+#if __MACH__
+extern int
+main ()
+__asm__ ("_upc_main");
+#else
+extern int
+main ()
+__asm__ ("upc_main");
+#endif
+
+/* Remap calls to exit so that they invoke the UPC runtime's
+   implementation of exit instead. */
+#define exit __upc_exit
+
+/* Implementation of upc_fence.  */
+#define upc_fence __upc_fence()
+
+/* upc_shared_ptr_t is predefined as the representation of
+   a shared pointer type. */
+
+/* Runtime variables used by optimized code generation
+   on some targets. */
+/* The base address of the UPC shared section */
+extern char __upc_shared_start[1];
+
+//include detect_target64
+
+/* Runtime shared access procedures */
+//include mode_types
+/* Shared pointer definitions */
+//include lib_pts_defs
+/* Runtime procedures */
+//include lib_runtime_api
+
+#if defined(__UPC_INLINE_LIB__) || defined(IN_TARGET_LIBS)
+
+/* Library routines have access to runtime internals.  */
+
+//include gupcr_config_h
+//include lib_min_max
+//include lib_config_heap
+//include lib_config_shared_section
+
+#endif /* __UPC_INLINE_LIB__ || IN_TARGET_LIBS */
+
+#ifdef __UPC_INLINE_LIB__
+
+//include lib_mem_barrier
+//include lib_gmem
+//include lib_node_local
+//include lib_max_threads_def
+/* Must include stdio.h because of FILE def */
+#include <stdio.h>
+//include lib_utils_api
+//include lib_fabric
+//include lib_inline_gmem
+/* We need to include <string.h> to define memcpy() */
+#include <string.h>
+//include lib_inline_access
+
+#else
+
+//include lib_access_prototypes
+
+#endif /* __UPC_INLINE_LIB__ */
+
+#endif /* !_GCC_UPC_LIB_H_ */

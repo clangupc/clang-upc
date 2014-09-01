@@ -1,4 +1,4 @@
-/*===-- upc_coll_prefix_reduce.upc - UPC Runtime Support Library ---------===
+/*===-- upc_coll_prefix_reduce.in - UPC Runtime Support Library ----------===
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
