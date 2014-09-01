@@ -1,0 +1,162 @@
+/*===-- gupcr_access.h - UPC Runtime Support Library ---------------------===
+|*
+|*                     The LLVM Compiler Infrastructure
+|*
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
+|* This file is distributed under a BSD-style Open Source License.
+|* See LICENSE-INTREPID.TXT for details.
+|*
+|*===---------------------------------------------------------------------===*/
+
+#ifndef _GUPCR_ACCESS_H_
+#define _GUPCR_ACCESS_H_
+
+/**
+ * @file gupcr_access.h
+ * GUPC compiler access functions prototypes.
+ */
+
+//begin lib_access_prototypes
+/* Relaxed accesses.  */
+
+extern u_intQI_t __getqi2 (upc_shared_ptr_t);
+extern u_intHI_t __gethi2 (upc_shared_ptr_t);
+extern u_intSI_t __getsi2 (upc_shared_ptr_t);
+extern u_intDI_t __getdi2 (upc_shared_ptr_t);
+#if GUPCR_TARGET64
+extern u_intTI_t __getti2 (upc_shared_ptr_t);
+#endif
+extern float __getsf2 (upc_shared_ptr_t);
+extern double __getdf2 (upc_shared_ptr_t);
+extern long double __gettf2 (upc_shared_ptr_t);
+extern long double __getxf2 (upc_shared_ptr_t);
+extern void __getblk3 (void *, upc_shared_ptr_t, size_t);
+
+extern void __putqi2 (upc_shared_ptr_t, u_intQI_t);
+extern void __puthi2 (upc_shared_ptr_t, u_intHI_t);
+extern void __putsi2 (upc_shared_ptr_t, u_intSI_t);
+extern void __putdi2 (upc_shared_ptr_t, u_intDI_t);
+#if GUPCR_TARGET64
+extern void __putti2 (upc_shared_ptr_t, u_intTI_t);
+#endif
+extern void __putsf2 (upc_shared_ptr_t, float);
+extern void __putdf2 (upc_shared_ptr_t, double);
+extern void __puttf2 (upc_shared_ptr_t, long double);
+extern void __putxf2 (upc_shared_ptr_t, long double);
+extern void __putblk3 (upc_shared_ptr_t, void *, size_t);
+extern void __copyblk3 (upc_shared_ptr_t, upc_shared_ptr_t, size_t);
+
+/* Strict accesses.  */
+
+extern u_intQI_t __getsqi2 (upc_shared_ptr_t);
+extern u_intHI_t __getshi2 (upc_shared_ptr_t);
+extern u_intSI_t __getssi2 (upc_shared_ptr_t);
+extern u_intDI_t __getsdi2 (upc_shared_ptr_t);
+#if GUPCR_TARGET64
+extern u_intTI_t __getsti2 (upc_shared_ptr_t);
+#endif
+extern float __getssf2 (upc_shared_ptr_t);
+extern double __getsdf2 (upc_shared_ptr_t);
+extern long double __getstf2 (upc_shared_ptr_t);
+extern long double __getsxf2 (upc_shared_ptr_t);
+extern void __getsblk3 (void *, upc_shared_ptr_t, size_t);
+
+extern void __putsqi2 (upc_shared_ptr_t, u_intQI_t);
+extern void __putshi2 (upc_shared_ptr_t, u_intHI_t);
+extern void __putssi2 (upc_shared_ptr_t, u_intSI_t);
+extern void __putsdi2 (upc_shared_ptr_t, u_intDI_t);
+#if GUPCR_TARGET64
+extern void __putsti2 (upc_shared_ptr_t, u_intTI_t);
+#endif
+extern void __putssf2 (upc_shared_ptr_t, float);
+extern void __putsdf2 (upc_shared_ptr_t, double);
+extern void __putstf2 (upc_shared_ptr_t, long double);
+extern void __putsxf2 (upc_shared_ptr_t, long double);
+extern void __putsblk3 (upc_shared_ptr_t, void *, size_t);
+extern void __copysblk3 (upc_shared_ptr_t, upc_shared_ptr_t, size_t);
+
+/* Relaxed accesses (profiled).  */
+
+extern u_intQI_t __getgqi3 (upc_shared_ptr_t, const char *file, int line);
+extern u_intHI_t __getghi3 (upc_shared_ptr_t, const char *file, int line);
+extern u_intSI_t __getgsi3 (upc_shared_ptr_t, const char *file, int line);
+extern u_intDI_t __getgdi3 (upc_shared_ptr_t, const char *file, int line);
+#if GUPCR_TARGET64
+extern u_intTI_t __getgti3 (upc_shared_ptr_t, const char *file, int line);
+#endif
+extern float __getgsf3 (upc_shared_ptr_t, const char *file, int line);
+extern double __getgdf3 (upc_shared_ptr_t, const char *file, int line);
+extern long double __getgtf3 (upc_shared_ptr_t, const char *file, int line);
+extern long double __getgxf3 (upc_shared_ptr_t, const char *file, int line);
+extern void __getgblk5 (void *, upc_shared_ptr_t, size_t, const char *file,
+			int line);
+
+extern void __putgqi4 (upc_shared_ptr_t, u_intQI_t, const char *file,
+		       int line);
+extern void __putghi4 (upc_shared_ptr_t, u_intHI_t, const char *file,
+		       int line);
+extern void __putgsi4 (upc_shared_ptr_t, u_intSI_t, const char *file,
+		       int line);
+extern void __putgdi4 (upc_shared_ptr_t, u_intDI_t, const char *file,
+		       int line);
+#if GUPCR_TARGET64
+extern void __putgti4 (upc_shared_ptr_t, u_intTI_t, const char *file,
+		       int line);
+#endif
+extern void __putgsf4 (upc_shared_ptr_t, float, const char *file, int line);
+extern void __putgdf4 (upc_shared_ptr_t, double, const char *file, int line);
+extern void __putgtf4 (upc_shared_ptr_t, long double, const char *file,
+		       int line);
+extern void __putgxf4 (upc_shared_ptr_t, long double, const char *file,
+		       int line);
+extern void __putgblk5 (upc_shared_ptr_t, void *, size_t, const char *file,
+			int line);
+extern void __copygblk5 (upc_shared_ptr_t, upc_shared_ptr_t, size_t,
+			 const char *file, int line);
+
+/* Strict accesses (profiled).  */
+
+extern u_intQI_t __getsgqi3 (upc_shared_ptr_t, const char *file, int line);
+extern u_intHI_t __getsghi3 (upc_shared_ptr_t, const char *file, int line);
+extern u_intSI_t __getsgsi3 (upc_shared_ptr_t, const char *file, int line);
+extern u_intDI_t __getsgdi3 (upc_shared_ptr_t, const char *file, int line);
+#if GUPCR_TARGET64
+extern u_intTI_t __getsgti3 (upc_shared_ptr_t, const char *file, int line);
+#endif
+extern float __getsgsf3 (upc_shared_ptr_t, const char *file, int line);
+extern double __getsgdf3 (upc_shared_ptr_t, const char *file, int line);
+extern long double __getsgtf3 (upc_shared_ptr_t, const char *file, int line);
+extern long double __getsgxf3 (upc_shared_ptr_t, const char *file, int line);
+extern void __getsgblk5 (void *, upc_shared_ptr_t, size_t, const char *file,
+			 int line);
+
+extern void __putsgqi4 (upc_shared_ptr_t, u_intQI_t, const char *file,
+			int line);
+extern void __putsghi4 (upc_shared_ptr_t, u_intHI_t, const char *file,
+			int line);
+extern void __putsgsi4 (upc_shared_ptr_t, u_intSI_t, const char *file,
+			int line);
+extern void __putsgdi4 (upc_shared_ptr_t, u_intDI_t, const char *file,
+			int line);
+#if GUPCR_TARGET64
+extern void __putsgti4 (upc_shared_ptr_t, u_intTI_t, const char *file,
+			int line);
+#endif
+extern void __putsgsf4 (upc_shared_ptr_t, float, const char *file, int line);
+extern void __putsgdf4 (upc_shared_ptr_t, double, const char *file, int line);
+extern void __putsgtf4 (upc_shared_ptr_t, long double, const char *file,
+			int line);
+extern void __putsgxf4 (upc_shared_ptr_t, long double, const char *file,
+			int line);
+extern void __putsgblk5 (upc_shared_ptr_t, void *, size_t, const char *file,
+			 int line);
+extern void __copysgblk5 (upc_shared_ptr_t, upc_shared_ptr_t, size_t,
+			  const char *file, int line);
+
+/* Miscellaneous access related prototypes.  */
+extern void __upc_fence (void);
+
+//end lib_access_prototypes
+
+
+#endif /* gupcr_access.h */

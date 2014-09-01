@@ -64,10 +64,10 @@
 /* Maximum number of children at each level of a collective operation tree. */
 #cmakedefine GUPCR_TREE_FANOUT @GUPCR_TREE_FANOUT@
 
-/* Define to 1 if UPC runtime will use Portals4 triggered operations. */
-#cmakedefine GUPCR_USE_PORTALS4_TRIGGERED_OPS 1
+/* Define to 1 if UPC runtime will use triggered operations. */
+#cmakedefine GUPCR_USE_TRIGGERED_OPS 1
 
-/* Maximum number of Portals4 outstanding put operations. */
+/* Maximum number of outstanding put operations. */
 #cmakedefine GUPCR_MAX_OUTSTANDING_PUTS @GUPCR_MAX_OUTSTANDING_PUTS@
 
 /* Define to 1 if UPC runtime will use slurm for job launching. */

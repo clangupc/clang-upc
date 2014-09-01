@@ -6784,13 +6784,22 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
 #ifdef LIBUPC_PORTALS4
     CmdArgs.push_back("-L" LIBUPC_PORTALS4 "/lib");
     CmdArgs.push_back("-lportals");
-#ifdef LIBUPC_PORTALS4_SLURM
+#ifdef LIBUPC_SLURM
     CmdArgs.push_back("-lpmi");
 #else
     CmdArgs.push_back("-lportals_runtime");
 #endif
     CmdArgs.push_back("-lpthread");
 #endif
+#ifdef LIBUPC_FABRIC
+    CmdArgs.push_back("-L" LIBUPC_FABRIC "/lib");
+    CmdArgs.push_back("-lfabric");
+#ifdef LIBUPC_SLURM
+    CmdArgs.push_back("-lpmi");
+#endif
+    CmdArgs.push_back("-lpthread");
+#endif
+
     CmdArgs.push_back("-lrt");
   }
 

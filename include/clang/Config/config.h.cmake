@@ -31,5 +31,8 @@
 /* Portals4 support */
 #cmakedefine LIBUPC_PORTALS4 "${LIBUPC_PORTALS4}"
 
-/* Portals4 SLURM support */                                                    
-#cmakedefine LIBUPC_PORTALS4_SLURM ${LIBUPC_PORTALS4_SLURM}
+/* Libfabric support */
+#cmakedefine LIBUPC_FABRIC "${LIBUPC_FABRIC}"
+
+/* SLURM support */                                                    
+#cmakedefine LIBUPC_SLURM ${LIBUPC_SLURM}

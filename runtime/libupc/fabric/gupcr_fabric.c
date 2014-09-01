@@ -1,0 +1,387 @@
+/*===--- gupcr_fabric.c - UPC Runtime Support Library --------------------===
+|*
+|*                     The LLVM Compiler Infrastructure
+|*
+|* Copyright 2012-2014, Intel Corporation.  All rights reserved.
+|* This file is distributed under a BSD-style Open Source License.
+|* See LICENSE-INTEL.TXT for details.
+|*
+|*===---------------------------------------------------------------------===*/
+
+/**
+ * @file gupcr_fabric.c
+ * GUPC Llibfabric Initialization.
+ */
+
+#include "gupcr_config.h"
+#include "gupcr_defs.h"
+#include "gupcr_utils.h"
+#include "gupcr_fabric.h"
+#include "gupcr_runtime.h"
+
+int gupcr_child[GUPCR_TREE_FANOUT];
+int gupcr_child_cnt;
+int gupcr_parent_thread;
+
+size_t gupcr_max_ordered_size;
+size_t gupcr_max_msg_size;
+size_t gupcr_max_volatile_size;
+
+/**
+ * @addtogroup FABRIC_RUNTIME GUPCR Libfabric runtime interface
+ * @{
+ */
+
+/**
+ * Return Libfabric error description string.
+ *
+ * @param [in] errnum Libfabric error number
+ * @retval Error description string
+ */
+const char *
+gupcr_strfaberror (int errnum)
+{
+  static char gupcr_strfaberror_buf[64];
+  switch (errnum)
+    {
+    case 0:
+      return "fabric operation successful";
+    default:
+      break;
+    }
+  sprintf (gupcr_strfaberror_buf, "unknown fabric status code: %d", errnum);
+  return gupcr_strfaberror_buf;
+}
+
+/**
+ * Return Event Queue type description string.
+ *
+ * @param [in] eqtype Event queue type
+ * @retval Event queue type description string
+ */
+const char *
+gupcr_streqtype (uint64_t eqtype)
+{
+  switch (eqtype)
+    {
+      default:
+	break;
+    }
+  return "UNKNOWN EVENT TYPE";
+}
+
+/**
+ * Return Data type description string.
+ 
+ * @param [in] datatype Data type
+ * @retval Data type description string
+ */
+const char *
+gupcr_strdatatype (enum fi_datatype datatype)
+{
+  switch (datatype)
+    {
+    case FI_INT8:
+      return "FI_INT8";
+    case FI_UINT8:
+      return "FI_UINT8";
+    case FI_INT16:
+      return "FI_INT16";
+    case FI_UINT16:
+      return "FI_UINT16";
+    case FI_INT32:
+      return "FI_INT32";
+    case FI_UINT32:
+      return "FI_UINT32";
+    case FI_FLOAT:
+      return "FI_FLOAT";
+    case FI_INT64:
+      return "FI_INT64";
+    case FI_UINT64:
+      return "FI_UINT64";
+    case FI_DOUBLE:
+      return "FI_DOUBLE";
+    case FI_FLOAT_COMPLEX:
+      return "FI_FLOAT_COMPLEX";
+    case FI_DOUBLE_COMPLEX:
+      return "FI_DOUBLE_COMPLEX";
+    case FI_LONG_DOUBLE:
+      return "FI_LONG_DOUBLE";
+    case FI_LONG_DOUBLE_COMPLEX:
+      return "FI_LONG_DOUBLE_COMPLEX";
+    default:
+      return "UNKNOWN DATA TYPE";
+    }
+}
+
+/**
+ * Return Atomic operation description string.
+ *
+ * @param [in] op Atomic operation type
+ * @retval Atomic operation description string
+ */
+const char *
+gupcr_strop (enum fi_op op)
+{
+  switch (op)
+    {
+    case FI_MIN:
+      return "FI_MIN";
+    case FI_MAX:
+      return "FI_MAX";
+    case FI_SUM:
+      return "FI_SUM";
+    case FI_PROD:
+      return "FI_PROD";
+    case FI_LOR:
+      return "FI_LOR";
+    case FI_LAND:
+      return "FI_LAND";
+    case FI_BOR:
+      return "FI_BOR";
+    case FI_BAND:
+      return "FI_BAND";
+    case FI_LXOR:
+      return "FI_LXOR";
+    case FI_BXOR:
+      return "FI_BXOR";
+    case FI_ATOMIC_READ:
+      return "FI_ATOMIC_READ";
+    case FI_ATOMIC_WRITE:
+      return "FI_ATOMIC_WRITE";
+    case FI_CSWAP:
+      return "FI_CSWAP";
+    case FI_CSWAP_NE:
+      return "FI_CSWAP_NE";
+    case FI_CSWAP_LE:
+      return "FI_CSWAP_LE";
+    case FI_CSWAP_LT:
+      return "FI_CSWAP_LT";
+    case FI_CSWAP_GE:
+      return "FI_CSWAP_GE";
+    case FI_CSWAP_GT:
+      return "FI_CSWAP_GT";
+    case FI_MSWAP:
+      return "FI_MSWAP";
+    default:
+      return "UNKNOWN ATOMIC OPERATION TYPE";
+    }
+}
+
+/**
+ * Return Network Interface error description string.
+ *
+ * @param [in] nitype NI failure type
+ * @retval NI failure description string.
+ */
+const char *
+gupcr_nifailtype (int nitype)
+{
+  switch (nitype)
+    {
+      default:
+        ;
+    }
+  return "NI_FAILURE_UNKNOWN";
+}
+
+/**
+ * Return atomic data type from the specified size.
+ */
+enum fi_datatype
+gupcr_get_atomic_datatype (int size)
+{
+  switch (size)
+    {
+    case 1:
+      return FI_UINT8;
+    case 2:
+      return FI_UINT16;
+    case 4:
+      return FI_UINT32;
+    case 8:
+      return FI_UINT64;
+    case 16:
+      return FI_DOUBLE_COMPLEX;
+    default:
+      gupcr_fatal_error
+	("Unable to convert size of %d into atomic data type.", size);
+    }
+  return -1;
+}
+
+/**
+ * Return data size from the specified atomic type.
+ *
+ * @param [in] type atomic data type
+ * @retval atomic data type size
+ */
+size_t
+gupcr_get_atomic_size (enum fi_datatype type)
+{
+  switch (type)
+    {
+    case FI_INT8:
+    case FI_UINT8:
+      return 1;
+    case FI_INT16:
+    case FI_UINT16:
+      return 2;
+    case FI_INT32:
+    case FI_UINT32:
+      return 4;
+    case FI_INT64:
+    case FI_UINT64:
+      return 8;
+    case FI_FLOAT:
+      return __SIZEOF_FLOAT__;
+    case FI_FLOAT_COMPLEX:
+      return 2 * __SIZEOF_FLOAT__;
+    case FI_DOUBLE:
+      return __SIZEOF_DOUBLE__;
+    case FI_DOUBLE_COMPLEX:
+      return 2 * __SIZEOF_DOUBLE__;
+#ifdef __SIZEOF_LONG_DOUBLE__
+    case FI_LONG_DOUBLE:
+      return __SIZEOF_LONG_DOUBLE__;
+    case FI_LONG_DOUBLE_COMPLEX:
+      return 2 * __SIZEOF_LONG_DOUBLE__;
+#endif
+    default:
+      gupcr_fatal_error ("unknown atomic type %d", (int) type);
+    }
+  return -1;
+}
+
+/**
+ * @fn gupcr_process_fail_events (struct fid_eq eq)
+ * Show information on failed events.
+ *
+ * This procedure prints the contents of the event queue.  As barrier
+ * implementation does not use full events, the event queue contains
+ * only failure events.  This procedure is called only if any of the
+ * counting events reported a failure.
+ *
+ * @param [in] eq Event Queue ID
+ */
+void
+gupcr_process_fail_events (struct fid_eq eq)
+{
+  int status;
+}
+
+/**
+ * Get current thread rank.
+ * @retval Rank of the current thread
+ */
+int
+gupcr_get_rank (void)
+{
+  return 0;
+}
+
+/**
+ * Get number of running threads.
+ * @retval Number of running threads
+ */
+int
+gupcr_get_threads_count (void)
+{
+  return 0;
+}
+
+/**
+ * Get process PID for specified rank.
+ * @param [in] rank Rank of the thread
+ * @retval PID of the thread
+ */
+int
+gupcr_get_rank_pid (int rank)
+{
+  return rank;
+}
+
+/**
+ * Get process NID for specified rank.
+ * @param [in] rank Rank of the thread
+ * @retval NID of the thread
+ */
+int
+gupcr_get_rank_nid (int rank)
+{
+  return rank;
+}
+
+/**
+ * Wait for all threads to complete initialization.
+ */
+void
+gupcr_startup_barrier (void)
+{
+  gupcr_runtime_barrier ();
+}
+
+/** @} */
+
+/**
+ * @addtogroup INIT GUPCR Initialization
+ * @{
+ */
+
+/**
+ * Initialize Libfabric.
+ */
+void
+gupcr_fabric_init (void)
+{
+}
+
+/**
+ * Close Libfabric.
+ */
+void
+gupcr_fabric_fini (void)
+{
+}
+
+/**
+ * Initialize Networking Interface.
+ */
+void
+gupcr_fabric_ni_init (void)
+{
+}
+
+/**
+ * Close Fabric Networking Interface.
+ */
+void
+gupcr_fabric_ni_fini (void)
+{
+}
+
+/**
+ * Find the node's parent and all its children.
+ */
+void
+gupcr_nodetree_setup (void)
+{
+  int i;
+  gupcr_log ((FC_BARRIER | FC_BROADCAST),
+	     "node tree initialized with fanout of %d", GUPCR_TREE_FANOUT);
+  for (i = 0; i < GUPCR_TREE_FANOUT; i++)
+    {
+      int child = GUPCR_TREE_FANOUT * MYTHREAD + i + 1;
+      if (child < THREADS)
+	{
+	  gupcr_child_cnt++;
+	  gupcr_child[i] = child;
+	}
+    }
+  if (MYTHREAD == 0)
+    gupcr_parent_thread = ROOT_PARENT;
+  else
+    gupcr_parent_thread = (MYTHREAD - 1) / GUPCR_TREE_FANOUT;
+}
+
+/** @} */
