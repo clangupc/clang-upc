@@ -43,6 +43,8 @@ namespace {
       : Out(Out), Policy(Policy), Indentation(Indentation),
         PrintInstantiation(PrintInstantiation) { }
 
+    void Visit(Decl *D);
+
     void VisitDeclContext(DeclContext *DC, bool Indent = true);
 
     void VisitTranslationUnitDecl(TranslationUnitDecl *D);
@@ -216,6 +218,13 @@ void DeclPrinter::Print(AccessSpecifier AS) {
 //----------------------------------------------------------------------------
 // Common C declarations
 //----------------------------------------------------------------------------
+
+void DeclPrinter::Visit(Decl *D) {
+  if(Policy.Helper && Policy.Helper->handledDecl(D, Policy, Out))
+    return;
+  else
+    DeclVisitor<DeclPrinter>::Visit(D);
+}
 
 void DeclPrinter::VisitDeclContext(DeclContext *DC, bool Indent) {
   if (Policy.TerseOutput)

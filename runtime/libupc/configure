@@ -22287,8 +22287,11 @@ echo "$as_me: error: --enable-upc-link-script accepts only yes or no" >&2;}
 else
 
   case "$target" in
-    # disable linker script for Apple Mac OS X
+    # disable linker script for Apple Mac OS X and SunOS
     *-*-darwin*)
+      enable_upc_link_script=no
+      ;;
+    *-*-solaris*)
       enable_upc_link_script=no
       ;;
     *)
