@@ -275,7 +275,7 @@ void CodeGenFunction::EmitUPCStore(llvm::Value *Value,
   const LangOptions& Opts = getContext().getLangOpts();
   if (Opts.UPCGenIr) {
     llvm::Value *InternalAddr = ConvertPTStoLLVMPtr(*this, Addr, Value->getType());
-    llvm::StoreInst * Result = Builder.CreateStore(InternalAddr, Value);
+    llvm::StoreInst * Result = Builder.CreateStore(Value, InternalAddr);
     if(isStrict) {
       Result->setOrdering(llvm::SequentiallyConsistent);
     }
