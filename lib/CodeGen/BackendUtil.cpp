@@ -36,6 +36,7 @@
 #include "llvm/Transforms/Instrumentation.h"
 #include "llvm/Transforms/ObjCARC.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/UPC.h"
 using namespace clang;
 using namespace llvm;
 
@@ -222,6 +223,11 @@ static void addDataFlowSanitizerPass(const PassManagerBuilder &Builder,
   PM.add(createDataFlowSanitizerPass(CGOpts.SanitizerBlacklistFile));
 }
 
+static void addLowerUPCPointersPass(const PassManagerBuilder &Builder,
+                                    PassManagerBase &PM) {
+  PM.add(llvm::createLowerUPCPointersPass());
+}
+
 void EmitAssemblyHelper::CreatePasses(TargetMachine *TM) {
   unsigned OptLevel = CodeGenOpts.OptimizationLevel;
   CodeGenOptions::InliningMethod Inlining = CodeGenOpts.getInlining();
@@ -291,6 +297,11 @@ void EmitAssemblyHelper::CreatePasses(TargetMachine *TM) {
                            addDataFlowSanitizerPass);
     PMBuilder.addExtension(PassManagerBuilder::EP_EnabledOnOptLevel0,
                            addDataFlowSanitizerPass);
+  }
+
+  if (LangOpts.UPCGenIr) {
+    PMBuilder.addExtension(PassManagerBuilder::EP_EarlyAsPossible,
+                           addLowerUPCPointersPass);
   }
 
   // Figure out TargetLibraryInfo.

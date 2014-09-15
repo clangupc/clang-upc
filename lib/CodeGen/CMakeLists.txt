@@ -7,6 +7,7 @@ set(LLVM_LINK_COMPONENTS
   ipo
   linker
   vectorize
+  upc
   )
 
 add_clang_library(clangCodeGen
