@@ -204,6 +204,7 @@ llvm::Value *CodeGenFunction::EmitUPCLoad(llvm::Value *Addr,
     if(isStrict) {
       Result->setOrdering(llvm::SequentiallyConsistent);
     }
+    Result->setAlignment(Align.getQuantity());
     return Result;
   }
   const ASTContext& Context = getContext();
@@ -279,6 +280,7 @@ void CodeGenFunction::EmitUPCStore(llvm::Value *Value,
     if(isStrict) {
       Result->setOrdering(llvm::SequentiallyConsistent);
     }
+    Result->setAlignment(Align.getQuantity());
     return;
   }
   const ASTContext& Context = getContext();
