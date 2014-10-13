@@ -17,6 +17,7 @@
 #include "clang/Basic/TargetInfo.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/ADT/SmallVector.h"
+#include "clang/Config/config.h" // for UPC_IR_RP_THREAD/ADDR
 using namespace clang;
 using namespace CodeGen;
 
@@ -180,13 +181,13 @@ llvm::Value *CodeGenFunction::EmitUPCLoad(llvm::Value *Addr,
   return EmitFromMemory(EmitUPCLoad(Addr, isStrict, DestLTy, Align, Loc), Ty);
 }
 
-static const int UPCAddrSpace = 16;
+static const int UPCAddrSpace = UPC_IR_RP_ADDRSPACE;
 
 static llvm::Value *ConvertPTStoLLVMPtr(CodeGenFunction& CGF,
                                         llvm::Value *Ptr, llvm::Type *LTy) {
   llvm::Value *Addr = CGF.EmitUPCPointerGetAddr(Ptr);
   llvm::Value *Thread = CGF.EmitUPCPointerGetThread(Ptr);
-  llvm::Value *IntVal = CGF.Builder.CreateOr(Thread, CGF.Builder.CreateShl(Addr, 20));
+  llvm::Value *IntVal = CGF.Builder.CreateOr(Thread, CGF.Builder.CreateShl(Addr, UPC_IR_RP_THREAD));
   
   llvm::Type *LLPtsTy = LTy->getPointerTo(UPCAddrSpace);
   return CGF.Builder.CreateIntToPtr(IntVal, LLPtsTy);

@@ -27,8 +27,17 @@
 /* the number of bits in each field. */                                         
 #undef UPC_PACKED_BITS
                                                                                 
-/* the field order */                                                           
+/* the field order. */
 #undef UPC_PTS_VADDR_ORDER
+
+/* UPC Remote Pointer thread field size. */
+#undef UPC_IR_RP_THREAD
+
+/* UPC Remote Pointer address field size. */
+#undef UPC_IR_RP_ADDR
+
+/* UPC Remote Pointer address space. */
+#undef UPC_IR_RP_ADDRSPACE
 
 /* Define to 1 if UPC runtime NUMA is supported. */
 #undef LIBUPC_ENABLE_NUMA
