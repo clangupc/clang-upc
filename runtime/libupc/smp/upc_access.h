@@ -148,6 +148,11 @@ extern void __copysgblk5 (upc_shared_ptr_t, upc_shared_ptr_t, size_t,
 /* Miscellaneous access related prototypes.  */
 extern void __upc_fence (void);
 
+extern void upcr_llvm_getn (long, long, void *, size_t);
+extern void upcr_llvm_getns (long, long, void *, size_t);
+extern void upcr_llvm_putn (const void *, long, long, size_t);
+extern void upcr_llvm_putns (const void *, long, long, size_t);
+
 //end lib_access_prototypes
 
 /* memory-to-memory operations (profiled) */

@@ -304,17 +304,14 @@ __upc_vm_alloc (upc_page_num_t alloc_pages)
    in the current thread's address space.  */
 
 void *
-__upc_vm_map_addr (upc_shared_ptr_t p)
+__upc_vm_map_remote_offset (int t, size_t offset)
 {
-  size_t offset, p_offset;
+  size_t p_offset;
   upc_page_num_t pn;
-  int t;
   void *page_base;
   void *addr;
-  offset = GUPCR_PTS_OFFSET(p);
   p_offset = (offset & GUPCR_VM_OFFSET_MASK);
   pn = (offset >> GUPCR_VM_OFFSET_BITS) & GUPCR_VM_PAGE_MASK;
-  t = GUPCR_PTS_THREAD(p);
   /* If the page number exceeds the current value maintained
      by the referencing thread, update to the most current value,
      and check again.  */
@@ -344,3 +341,11 @@ __upc_vm_map_addr (upc_shared_ptr_t p)
   addr = (char *)page_base + p_offset;
   return addr;
 }
+
+void *
+__upc_vm_map_addr (upc_shared_ptr_t p)
+{
+  return __upc_vm_map_remote_offset (GUPCR_PTS_THREAD(p),
+				     (size_t) GUPCR_PTS_VADDR(p));
+}
+
