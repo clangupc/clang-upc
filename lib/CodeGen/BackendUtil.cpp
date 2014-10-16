@@ -299,7 +299,10 @@ void EmitAssemblyHelper::CreatePasses(TargetMachine *TM) {
                            addDataFlowSanitizerPass);
   }
 
-  if (LangOpts.UPCGenIr) {
+  // This pass should be added iff optimizations are enabled
+  // OR we are not generating llvm output.  The case where
+  // we are generating assembly/object code is handled elsewhere.
+  if (LangOpts.UPCGenIr && OptLevel != 0) {
     PMBuilder.addExtension(PassManagerBuilder::EP_EarlyAsPossible,
                            addLowerUPCPointersPass);
   }
@@ -546,6 +549,17 @@ bool EmitAssemblyHelper::AddEmitPasses(BackendAction Action,
   if (LangOpts.ObjCAutoRefCount &&
       CodeGenOpts.OptimizationLevel > 0)
     PM->add(createObjCARCContractPass());
+
+  // Add LLVM UPC lowering pass unless we're generating LLVM output
+  if (LangOpts.UPCGenIr) {
+    switch(Action) {
+    case Backend_EmitLL:
+    case Backend_EmitBC:
+      break;
+    default:
+      PM->add(llvm::createLowerUPCPointersPass());
+    }
+  }
 
   if (TM->addPassesToEmitFile(*PM, OS, CGFT,
                               /*DisableVerify=*/!CodeGenOpts.VerifyModule)) {
