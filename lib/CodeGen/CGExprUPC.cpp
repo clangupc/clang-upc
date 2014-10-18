@@ -193,20 +193,6 @@ static llvm::Value *ConvertPTStoLLVMPtr(CodeGenFunction& CGF,
   return CGF.Builder.CreateIntToPtr(IntVal, LLPtsTy);
 }
 
-static llvm::Type *ConvertToIntTy(CodeGenFunction &CGF, llvm::Type * Ty) {
-  const llvm::DataLayout &Target = CGF.CGM.getDataLayout();
-  uint64_t Size = Target.getTypeSizeInBits(Ty);
-  return llvm::Type::getIntNTy(CGF.getLLVMContext(), Size);
-}
-
-static llvm::Value * CastThroughMemory(CodeGenFunction &CGF, llvm::Value * Src, llvm::Type *Ty) {
-  llvm::AllocaInst * Mem = CGF.CreateTempAlloca(Ty);
-  Mem->setAlignment(CGF.CGM.getDataLayout().getABITypeAlignment(Ty));
-  llvm::Value *Ptr = CGF.Builder.CreateBitCast(Mem, Src->getType()->getPointerTo());
-  CGF.Builder.CreateStore(Src, Ptr);
-  return CGF.Builder.CreateLoad(Mem);
-}
-
 llvm::Value *CodeGenFunction::EmitUPCLoad(llvm::Value *Addr,
                                           bool isStrict,
                                           llvm::Type *LTy,
@@ -215,20 +201,12 @@ llvm::Value *CodeGenFunction::EmitUPCLoad(llvm::Value *Addr,
   const LangOptions& Opts = getContext().getLangOpts();
   if (Opts.UPCGenIr) {
     llvm::Value *InternalAddr = ConvertPTStoLLVMPtr(*this, Addr, LTy);
-    if(isStrict) {
-      llvm::Type *IntTy = ConvertToIntTy(*this, LTy);
-      InternalAddr = Builder.CreateBitCast(InternalAddr, IntTy->getPointerTo(UPCAddrSpace));
-    }
     llvm::LoadInst * Result = Builder.CreateLoad(InternalAddr);
     if(isStrict) {
       Result->setOrdering(llvm::SequentiallyConsistent);
     }
     Result->setAlignment(Align.getQuantity());
-    if(isStrict) {
-      return CastThroughMemory(*this, Result, LTy);
-    } else {
-      return Result;
-    }
+    return Result;
   }
   const ASTContext& Context = getContext();
   const llvm::DataLayout &Target = CGM.getDataLayout();
@@ -299,11 +277,6 @@ void CodeGenFunction::EmitUPCStore(llvm::Value *Value,
   const LangOptions& Opts = getContext().getLangOpts();
   if (Opts.UPCGenIr) {
     llvm::Value *InternalAddr = ConvertPTStoLLVMPtr(*this, Addr, Value->getType());
-    if(isStrict) {
-      llvm::Type *IntTy = ConvertToIntTy(*this, Value->getType());
-      InternalAddr = Builder.CreateBitCast(InternalAddr, IntTy->getPointerTo(UPCAddrSpace));
-      Value = CastThroughMemory(*this, Value, IntTy);
-    }
     llvm::StoreInst * Result = Builder.CreateStore(Value, InternalAddr);
     if(isStrict) {
       Result->setOrdering(llvm::SequentiallyConsistent);
