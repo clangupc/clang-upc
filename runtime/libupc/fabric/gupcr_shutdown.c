@@ -143,6 +143,8 @@ gupcr_shutdown_terminate_pthread (void)
 
   gupcr_shutdown_send_status = 0;
   // TODO - network put to our own thread
+  //        For now just cancel
+  pthread_cancel (gupcr_shutdown_pthread_id);
   pthread_join (gupcr_shutdown_pthread_id, NULL);
 }
 

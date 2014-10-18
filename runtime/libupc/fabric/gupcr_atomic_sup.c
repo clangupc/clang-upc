@@ -167,7 +167,7 @@ gupcr_atomic_op (size_t dthread, size_t doffset, void *fetch_ptr,
   char atomic_tmp_buf[GUPC_MAX_ATOMIC_SIZE];
   size_t size = gupcr_get_atomic_size (type);
   gupcr_debug (FC_ATOMIC, "%lu:0x%lx %s:%s v(%s)", dthread, doffset,
-	       gupcr_strptlop (op), gupcr_strptldatatype (type),
+	       gupcr_strop (op), gupcr_strdatatype (type),
 	       gupcr_get_buf_as_hex (tmpbuf, value, size));
   if (fetch_ptr)
     {

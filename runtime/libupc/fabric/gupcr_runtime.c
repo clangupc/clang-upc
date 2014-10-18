@@ -1,3 +1,13 @@
+/*===------ gupcr_runtime.c - Runtime Support Library --------------------===
+|*
+|*                     The LLVM Compiler Infrastructure
+|*
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
+|* This file is distributed under a BSD-style Open Source License.
+|* See LICENSE-INTREPID.TXT for details.
+|*
+|*===---------------------------------------------------------------------===*/
+
 /* Copyright (c) 2011-2012, Sandia Corporation.
    All rights reserved.
 
@@ -54,7 +64,7 @@ static int rank = -1;
 static int size = 0;
 
 static int max_name_len, max_key_len, max_val_len;
-static char *name, *key, *val;
+static char *kvs_name, *kvs_key, *kvs_val;
 
 static int
 encode (const void *inval, int invallen, char *outval, int outvallen)
@@ -141,27 +151,27 @@ gupcr_runtime_init (void)
     {
       return 5;
     }
-  name = (char *) malloc (max_name_len);
-  if (NULL == name)
+  kvs_name = (char *) malloc (max_name_len);
+  if (NULL == kvs_name)
     return 5;
 
   if (PMI_SUCCESS != PMI_KVS_Get_key_length_max (&max_key_len))
     {
       return 5;
     }
-  key = (char *) malloc (max_key_len);
-  if (NULL == key)
+  kvs_key = (char *) malloc (max_key_len);
+  if (NULL == kvs_key)
     return 5;
 
   if (PMI_SUCCESS != PMI_KVS_Get_value_length_max (&max_val_len))
     {
       return 5;
     }
-  val = (char *) malloc (max_val_len);
-  if (NULL == val)
+  kvs_val = (char *) malloc (max_val_len);
+  if (NULL == kvs_val)
     return 5;
 
-  if (PMI_SUCCESS != PMI_KVS_Get_my_name (name, max_name_len))
+  if (PMI_SUCCESS != PMI_KVS_Get_my_name (kvs_name, max_name_len))
     {
       return 5;
     }
@@ -176,8 +186,81 @@ gupcr_runtime_fini (void)
   return 0;
 }
 
+
+/**
+ * Share the key via PMI.
+ */
+int
+gupcr_runtime_put (const char *key, void *val, size_t len)
+{
+  int status;
+  snprintf (kvs_key, max_key_len, "gupcr-%s-%lu", key, (long unsigned) rank);
+  status = encode (val, len, kvs_val, max_val_len);
+  if (status)
+    return 1;
+  status = PMI_KVS_Put(kvs_name, kvs_key, kvs_val);
+  if (status != PMI_SUCCESS)
+    return 2;
+  return 0;
+}
+
+/**
+ * Get the key from PMI.
+ */
+int
+gupcr_runtime_get(int rank, const char *key, void *val, size_t len)
+{
+  int status;
+  snprintf(kvs_key, max_key_len, "gupcr-%s-%lu", key, (long unsigned) rank);
+  status = PMI_KVS_Get(kvs_name, kvs_key, kvs_val, max_val_len);
+  if (status != PMI_SUCCESS)
+    return 1;
+  status = decode(kvs_val, val, len);
+  return status;
+}
+
+/**
+ * Register and exchange predetermined keys.
+ */
+int
+gupcr_runtime_exchange (const char *key, void *val, size_t len, void *res)
+{
+  int i, status;
+  char *dst;
+
+  status = gupcr_runtime_put (key, val, len);
+  if (status)
+    return 1;
+
+  /* Commit local values.  */
+  status = PMI_KVS_Commit(kvs_name);
+  if (status != PMI_SUCCESS)
+    return 2;
+
+  /* Wait for others.  */
+  status = PMI_Barrier();
+  if (status != PMI_SUCCESS)
+    return 3;
+
+  /* Collect info on other threads.  */
+  dst = res;
+  for (i = 0; i < size; ++i)
+    {
+      if (i == rank)
+        memcpy (dst, val, len);
+      else
+        status = gupcr_runtime_get (i, key, dst, len);
+        if (status)
+	  return 4;
+      dst += len;
+    }
+
+  return 0;
+}
+
 void
-gupcr_runtime_get_mapping (void)
+gupcr_runtime_get_ni_mapping 
+(char *key, void *val, size_t len, void *res)
 {
 }
 

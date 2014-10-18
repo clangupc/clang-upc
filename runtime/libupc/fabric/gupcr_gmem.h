@@ -54,12 +54,10 @@ typedef struct gupcr_gmem_xfer_info_struct
   size_t num_completed;
   /** Memory descriptor options */
   unsigned int md_options;
-  /** Memory event handle */
-  struct fid_eq eq_handle;
   /** Memory counting events handle */
-  struct fid_cntr ct_handle;
+  fab_cntr_t ct_handle;
   /** Memory region handle */
-  struct fid_mr md;
+  fab_mr_t md;
   /** Volatile memory region handle */
   struct fid_mr md_volatile;
 } gupcr_gmem_xfer_info_t;

@@ -80,6 +80,7 @@
 #include "gupcr_fabric.h"
 #include "gupcr_iface.h"
 #include "gupcr_utils.h"
+#include "gupcr_runtime.h"
 
 /** Per-thread flag set by upc_notify() and cleared by upc_wait() */
 static int gupcr_barrier_active = 0;
@@ -244,6 +245,7 @@ __upc_wait (int barrier_id)
 		   gupcr_barrier_id, barrier_id);
     }
 
+  gupcr_runtime_barrier ();
   if (THREADS == 1)
     {
       gupcr_barrier_active = 0;
@@ -361,8 +363,11 @@ __upc_wait (int barrier_id)
 void
 __upc_barrier (int barrier_id)
 {
+  gupcr_runtime_barrier ();
+#if 0
   __upc_notify (barrier_id);
   __upc_wait (barrier_id);
+#endif
 }
 
 /* This broadcast implementation uses barrier resources

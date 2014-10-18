@@ -174,7 +174,7 @@ gupcr_coll_put_atomic (size_t dthread, size_t doffset, size_t soffset,
 	       MYTHREAD, (long unsigned) soffset,
 	       (long unsigned) dthread, (long unsigned) doffset,
 	       (long unsigned) nbytes,
-	       gupcr_strptlop (op), gupcr_strptldatatype (datatype));
+	       gupcr_strop (op), gupcr_strdatatype (datatype));
 }
 
 /**
@@ -200,7 +200,7 @@ gupcr_coll_trigput_atomic (size_t dthread, size_t doffset, size_t soffset,
 	       MYTHREAD, (long unsigned) soffset,
 	       (long unsigned) dthread, (long unsigned) doffset,
 	       (long unsigned) nbytes,
-	       gupcr_strptlop (op), gupcr_strptldatatype (datatype),
+	       gupcr_strop (op), gupcr_strdatatype (datatype),
 	       (long unsigned) cnt);
 }
 

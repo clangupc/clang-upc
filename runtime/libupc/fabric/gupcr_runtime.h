@@ -21,4 +21,7 @@ extern int gupcr_runtime_fini (void);
 extern int gupcr_runtime_get_rank (void);
 extern int gupcr_runtime_get_size (void);
 extern void gupcr_runtime_barrier (void);
+extern int gupcr_runtime_put (const char *, void *, size_t);
+extern int gupcr_runtime_get (int, const char *, void *, size_t);
+extern int gupcr_runtime_exchange (const char *, void *, size_t, void *);
 #endif /* gupcr_runtime.h */

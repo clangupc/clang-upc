@@ -19,7 +19,6 @@
 #include <rdma/fi_errno.h>
 #include <rdma/fi_prov.h>
 #include <rdma/fi_rma.h>
-#include <rdma/fi_ucma.h>
 
 /**
  * @file gupcr_fabric.h
@@ -46,19 +45,50 @@
 #define	GUPCR_SERVICE_COLL		5
 /** Non-blocking transfers network connection */
 #define	GUPCR_SERVICE_NB		6
+#define	GUPCR_SERVICE_COUNT		7
 /** @} */
 
 //begin lib_fabric
 
+typedef struct fi_info*     fab_info_t;
+typedef struct fi_resource  fab_res_t;
+typedef struct fid_fabric*  fab_t;
+typedef struct fid_domain*  fab_domain_t;
+typedef struct fid_ep*      fab_ep_t;
+typedef struct fid_av*      fab_av_t;
+typedef struct fid_eq*      fab_eq_t;
+typedef struct fid_cntr*    fab_cntr_t;
+typedef struct fid_mr*      fab_mr_t;
+typedef struct fi_cntr_attr cntr_attr_t;
+typedef struct fi_eq_attr   eq_attr_t;
+typedef struct fi_av_attr   av_attr_t;
+
+/** Endpoint to/form Rank/Service mapping */
+extern fab_ep_t gupcr_ep;
+
+/** Get endpoint for Rank/Service */
+#define GUPCR_GET_EP(rank, service) \
+	gupcr_assert (gupcr_ep); \
+	&gupcr_ep[rank][service]
+/** Set endpoint for Rank/Service */
+#define GUPCR_SET_EP(rank, service, ep) \
+	gupcr_assert (gupcr_ep); \
+	gupcr_assert (ep); \
+	memcpy (&gupcr_ep[rank][service], ep, sizeof (struct fid_ep));
+
+/** Fabric info */
+extern fab_info_t gupcr_fi;
+/** Fabric domain */
+extern fab_domain_t gupcr_fd;
 /** Max ordered size - per network interface */
 extern size_t gupcr_max_ordered_size;
 #define GUPCR_MAX_PUT_ORDERED_SIZE gupcr_max_ordered_size
-/** Max size of a message (put, get, or reply) */
+/** Max size of data (put, get, or reply) */
 extern size_t gupcr_max_msg_size;
 #define GUPCR_MAX_MSG_SIZE gupcr_max_msg_size
-/** Max size of a message that can use volatile memory descriptor */
-extern size_t gupcr_max_volatile_size;
-#define GUPCR_MAX_VOLATILE_SIZE gupcr_max_volatile_size
+/** Max size of data that can use optimized put operations */
+extern size_t gupcr_max_optim_size;
+#define GUPCR_MAX_OPTIM_SIZE gupcr_max_optim_size
 
 //end lib_fabric
 
@@ -72,20 +102,15 @@ extern size_t gupcr_max_volatile_size;
 	  gupcr_fatal_error ("UPC runtime fabric call "			\
 	                     "`%s' on thread %d failed: %s\n", 		\
 			     __STRING(fabric_func), gupcr_get_rank (),	\
-	                     gupcr_strptlerror (pstatus));		\
+	                     gupcr_strfaberror (pstatus));		\
       }									\
     while (0)
 
-/** Execute fabric call and return status if there is no fatal error */
-#define gupcr_fabric_call_with_status(fabric_func, pstatus, args)	\
+/** Execute fabric call and return status */
+#define gupcr_fabric_call_nc(fabric_func, pstatus, args)	\
     do									\
       {									\
         pstatus = fabric_func args;					\
-	if (pstatus)							\
-	  gupcr_fatal_error ("UPC runtime fabric call "			\
-	                     "`%s' on thread %d failed: %s\n",		\
-			     __STRING(fabric_func), gupcr_get_rank (),	\
-	                     gupcr_strptlerror (pstatus));		\
       }									\
     while (0)
 
@@ -113,11 +138,11 @@ extern int gupcr_parent_thread;
 
 /** @} */
 
-extern const char *gupcr_strptlerror (int);
+extern const char *gupcr_strfaberror (int);
 extern const char *gupcr_streqtype (uint64_t);
-extern const char *gupcr_strptlop (enum fi_op);
-extern const char *gupcr_strptldatatype (enum fi_datatype);
-extern void gupcr_process_fail_events (struct fid_eq);
+extern const char *gupcr_strop (enum fi_op);
+extern const char *gupcr_strdatatype (enum fi_datatype);
+extern void gupcr_process_fail_events (fab_eq_t);
 extern enum fi_datatype gupcr_get_atomic_datatype (int);
 extern size_t gupcr_get_atomic_size (enum fi_datatype);
 extern int gupcr_get_rank (void);
