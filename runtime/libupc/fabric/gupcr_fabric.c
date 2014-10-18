@@ -19,18 +19,74 @@
 #include "gupcr_fabric.h"
 #include "gupcr_runtime.h"
 
-int gupcr_child[GUPCR_TREE_FANOUT];
-int gupcr_child_cnt;
-int gupcr_parent_thread;
-
-size_t gupcr_max_ordered_size;
-size_t gupcr_max_msg_size;
-size_t gupcr_max_volatile_size;
+#include <net/if.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
 
 /**
  * @addtogroup FABRIC_RUNTIME GUPCR Libfabric runtime interface
  * @{
  */
+
+int gupcr_rank;
+int gupcr_rank_cnt;
+int gupcr_child[GUPCR_TREE_FANOUT];
+int gupcr_child_cnt;
+int gupcr_parent_thread;
+struct fid_ep *gupcr_ep = NULL;
+
+size_t gupcr_max_ordered_size;
+size_t gupcr_max_msg_size;
+size_t gupcr_max_optim_size;
+
+static char *fi_src_addr;
+static fab_info_t fi_hints;
+static fab_t gupcr_fab;
+fab_info_t gupcr_fi;
+fab_domain_t gupcr_fd;
+
+// TODO: Hack for getting network address.  We can get this from the
+//       fi_getinfo (?) but current implementation does not fill out src_addr
+/** Infiniband interface.  */
+const char *ifname = "ib0";
+/** Interface IPv4 address */
+in_addr_t net_addr;
+/** IPv4 addresses for all ranks */
+in_addr_t *net_addr_map;
+
+/**
+ * Get IPv4 address of the specified interface
+ */
+in_addr_t
+check_ip_address (const char *ifname)
+{
+  int fd;
+  struct ifreq devinfo;
+  struct sockaddr_in *sin = (struct sockaddr_in *)&devinfo.ifr_addr;
+  in_addr_t addr;
+
+  fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+  if (fd < 0)
+    {
+      gupcr_fatal_error ("error initializing socket");
+      gupcr_abort ();
+    }
+
+  strncpy(devinfo.ifr_name, ifname, IFNAMSIZ);
+
+  if (ioctl(fd, SIOCGIFADDR, &devinfo) == 0)
+    {
+      addr = sin->sin_addr.s_addr;
+      gupcr_log (FC_FABRIC, "IB IPv4 address for %s is %d",
+	         devinfo.ifr_name, addr);
+    }
+  else
+    addr = INADDR_ANY;
+  close(fd);
+  return addr;
+}
 
 /**
  * Return Libfabric error description string.
@@ -257,17 +313,34 @@ gupcr_get_atomic_size (enum fi_datatype type)
  * @fn gupcr_process_fail_events (struct fid_eq eq)
  * Show information on failed events.
  *
- * This procedure prints the contents of the event queue.  As barrier
- * implementation does not use full events, the event queue contains
+ * This procedure prints the contents of the event queue.  As
+ * completion events are not reported, the event queue contains
  * only failure events.  This procedure is called only if any of the
  * counting events reported a failure.
  *
  * @param [in] eq Event Queue ID
  */
 void
-gupcr_process_fail_events (struct fid_eq eq)
+gupcr_process_fail_events (fab_eq_t eq)
 {
-  int status;
+  int ret;
+  struct fi_eq_comp_entry eq_entry;
+  gupcr_fabric_call_nc (fi_eq_read, ret, (eq, (void *)&eq_entry,
+					  sizeof (eq_entry)));
+  if (ret < 0)
+    {
+      char buf[256];
+      const char *errstr;
+      struct fi_eq_err_entry eq_error;
+      gupcr_fabric_call_nc (fi_eq_readerr, ret,
+			    (eq, (void *)&eq_error, sizeof (eq_error), 0));
+      gupcr_fabric_call_nc (fi_eq_strerror, errstr,
+			    (eq, eq_error.prov_errno, eq_error.prov_data,
+			     buf, sizeof (buf)));
+      gupcr_error ("%s", buf);
+    }
+  else
+    gupcr_fatal_error ("ctr reported an error, but eq has none");
 }
 
 /**
@@ -277,7 +350,7 @@ gupcr_process_fail_events (struct fid_eq eq)
 int
 gupcr_get_rank (void)
 {
-  return 0;
+  return gupcr_rank;
 }
 
 /**
@@ -287,7 +360,7 @@ gupcr_get_rank (void)
 int
 gupcr_get_threads_count (void)
 {
-  return 0;
+  return gupcr_rank_cnt;
 }
 
 /**
@@ -309,7 +382,7 @@ gupcr_get_rank_pid (int rank)
 int
 gupcr_get_rank_nid (int rank)
 {
-  return rank;
+  return (int)net_addr_map[rank];
 }
 
 /**
@@ -334,6 +407,40 @@ gupcr_startup_barrier (void)
 void
 gupcr_fabric_init (void)
 {
+  struct fi_info hints = {0};
+
+  /* TODO - fix for new version of libfabric  */
+  /* Find fabric provider based on the hints.  */
+  hints.type = FID_RDM;	/* Reliable datagram message.  */
+  hints.protocol = FI_PROTO_UNSPEC;
+  /* Endpoint capabilities.  */
+  hints.ep_cap = FI_RMA |	   /* Request RMA capability,  */
+		 FI_ATOMICS |	   /* atomics capability,  */
+		 FI_REMOTE_WRITE | /* inbound remote writes,  */
+		 FI_REMOTE_READ;   /* inbound remote reads.  */
+  hints.domain_cap = FI_DYNAMIC_MR;     /* Allow for registration of memory regions  */
+					/* without physical backing.  */
+  hints.op_flags = FI_EVENT |	        /* Generate completion entries,  */
+		   FI_REMOTE_COMPLETE ; /* on the remote side.  */
+  hints.addr_format = FI_ADDR_INDEX; /* Use index into address vector.  */
+  hints.src_addrlen = sizeof(struct fi_info_addr);
+
+  /*  '8' hardcoded for Portals PTE.  */
+  gupcr_fabric_call (fi_getinfo, (NULL, "8", FI_SOURCE, &hints, &gupcr_fi));
+  gupcr_fabric_call (fi_fabric, (gupcr_fi->fabric_name, 0, &gupcr_fab, NULL));
+  gupcr_fabric_call (fi_fdomain, (gupcr_fab, gupcr_fi, &gupcr_fd, NULL));
+
+  gupcr_rank = gupcr_runtime_get_rank ();
+  gupcr_rank_cnt = gupcr_runtime_get_size ();
+
+  /* TODO: Sat various fabric properties:
+     gupcr_max_message_size
+     gupcr_max_orderd_size
+     gupcr_max_optim_size  (inject calls)
+
+     The new interface has this parameters as part of the fabric info.
+     The old one has it as part of the endpoint properties.
+  */
 }
 
 /**
@@ -342,6 +449,7 @@ gupcr_fabric_init (void)
 void
 gupcr_fabric_fini (void)
 {
+  gupcr_fabric_call (fi_close, (&gupcr_fab->fid));
 }
 
 /**
@@ -350,6 +458,22 @@ gupcr_fabric_fini (void)
 void
 gupcr_fabric_ni_init (void)
 {
+  int status;
+  /* Find the network id.  */
+  net_addr = check_ip_address (ifname);
+  if (net_addr == INADDR_ANY)
+    {
+      gupcr_fatal_error ("IPv4 is not available on interface %s", ifname);
+      gupcr_abort ();
+    }
+  /* Allocate space for network addresses.  */
+  net_addr_map = calloc (THREADS * sizeof (in_addr_t), 1);
+  if (!net_addr_map)
+    gupcr_fatal_error ("cannot allocate memory for net node map");
+  /* Exchange network id with other nodes.  */
+  status = gupcr_runtime_exchange ("NI", &net_addr, sizeof (in_addr_t),
+				   net_addr_map);
+
 }
 
 /**
