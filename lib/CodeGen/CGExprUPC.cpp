@@ -187,6 +187,14 @@ static llvm::Value *ConvertPTStoLLVMPtr(CodeGenFunction& CGF,
                                         llvm::Value *Ptr, llvm::Type *LTy) {
   llvm::Value *Addr = CGF.EmitUPCPointerGetAddr(Ptr);
   llvm::Value *Thread = CGF.EmitUPCPointerGetThread(Ptr);
+
+  const LangOptions& LangOpts = CGF.getContext().getLangOpts();
+  if(!LangOpts.UPCPtsRep) {
+    llvm::Value *SectionStart = CGF.CGM.getModule().getOrInsertGlobal("__upc_shared_start", CGF.Int8Ty);
+    llvm::Value *StartInt = CGF.Builder.CreatePtrToInt(SectionStart, CGF.PtrDiffTy, "sect.cast");
+    Addr = CGF.Builder.CreateSub(Addr, StartInt, "addr.sub");
+  }
+
   llvm::Value *IntVal = CGF.Builder.CreateOr(Thread, CGF.Builder.CreateShl(Addr, UPC_IR_RP_THREAD));
   
   llvm::Type *LLPtsTy = LTy->getPointerTo(UPCAddrSpace);
