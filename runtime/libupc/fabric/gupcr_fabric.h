@@ -56,10 +56,12 @@ typedef struct fid_fabric*  fab_t;
 typedef struct fid_domain*  fab_domain_t;
 typedef struct fid_ep*      fab_ep_t;
 typedef struct fid_av*      fab_av_t;
+typedef struct fid_cq*      fab_cq_t;
 typedef struct fid_eq*      fab_eq_t;
 typedef struct fid_cntr*    fab_cntr_t;
 typedef struct fid_mr*      fab_mr_t;
 typedef struct fi_cntr_attr cntr_attr_t;
+typedef struct fi_cq_attr   cq_attr_t;
 typedef struct fi_eq_attr   eq_attr_t;
 typedef struct fi_av_attr   av_attr_t;
 
@@ -81,14 +83,16 @@ extern fab_info_t gupcr_fi;
 /** Fabric domain */
 extern fab_domain_t gupcr_fd;
 /** Max ordered size - per network interface */
-extern size_t gupcr_max_ordered_size;
-#define GUPCR_MAX_PUT_ORDERED_SIZE gupcr_max_ordered_size
+extern size_t gupcr_max_order_size;
+#define GUPCR_MAX_PUT_ORDERED_SIZE gupcr_max_order_size
 /** Max size of data (put, get, or reply) */
 extern size_t gupcr_max_msg_size;
 #define GUPCR_MAX_MSG_SIZE gupcr_max_msg_size
 /** Max size of data that can use optimized put operations */
 extern size_t gupcr_max_optim_size;
 #define GUPCR_MAX_OPTIM_SIZE gupcr_max_optim_size
+/** Max time to wait for operation complete (10s) */
+#define GUPCR_TRANSFER_TIMEOUT 10000
 
 //end lib_fabric
 
@@ -142,7 +146,7 @@ extern const char *gupcr_strfaberror (int);
 extern const char *gupcr_streqtype (uint64_t);
 extern const char *gupcr_strop (enum fi_op);
 extern const char *gupcr_strdatatype (enum fi_datatype);
-extern void gupcr_process_fail_events (fab_eq_t);
+extern void gupcr_process_fail_events (fab_cq_t);
 extern enum fi_datatype gupcr_get_atomic_datatype (int);
 extern size_t gupcr_get_atomic_size (enum fi_datatype);
 extern int gupcr_get_rank (void);
