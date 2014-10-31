@@ -182,6 +182,16 @@ set(LIBUPC_RUNTIME_MODEL smp CACHE STRING "specify the runtime implementation mo
 smp' (Symmetric Multiprocessing), 'portals4' (Infiniband), or 'fabric' (Infiniband)")
 string(TOLOWER ${LIBUPC_RUNTIME_MODEL} LIBUPC_RUNTIME_MODEL)
 
+if (LIBUPC_RUNTIME_MODEL STREQUAL smp)
+
+set(LIBUPC_ENABLE_NUMA TRUE CACHE BOOL "enable UPC runtime NUMA policy")
+check_include_file(numa.h HAVE_NUMA_H)
+if (NOT HAVE_NUMA_H)
+  set(LIBUPC_ENABLE_NUMA FALSE)
+endif()
+
+endif()
+
 if (LIBUPC_RUNTIME_MODEL STREQUAL portals4)
   # These checks must be done here as we need to add appropriate libraries on the
   # linker command line
@@ -210,6 +220,10 @@ endif()
 
 # UPC link script
 set(LIBUPC_ENABLE_LINK_SCRIPT TRUE CACHE STRING "enable UPC's use of a custom linker script; this will define the UPC shared section as a no load section on targets where this feature is supported (requires GNU LD)")
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR
+    ${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
+  set(LIBUPC_ENABLE_LINK_SCRIPT FALSE)
+endif()
 set(LIBUPC_LINK_SCRIPT ${LIBUPC_ENABLE_LINK_SCRIPT})
 
 # Check for backtrace on systems (freebsd,..) that need an extra library

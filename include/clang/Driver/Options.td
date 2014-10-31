@@ -783,24 +783,22 @@ def ftemplate_depth_EQ : Joined<["-"], "ftemplate-depth=">, Group<f_Group>;
 def ftemplate_depth_ : Joined<["-"], "ftemplate-depth-">, Group<f_Group>;
 def ftemplate_backtrace_limit_EQ : Joined<["-"], "ftemplate-backtrace-limit=">,
                                    Group<f_Group>;
-def fupc_threads_ : Joined<["-"], "fupc-threads-">,
-                      Group<f_Group>;
-def fupc_pts_EQ : Joined<["-"], "fupc-pts=">,
-                  Group<f_Group>, Flags<[CC1Option]>;
-def fupc_packed_bits_EQ : Joined<["-"], "fupc-packed-bits=">,
-                          Group<f_Group>, Flags<[CC1Option]>;
-def fupc_pts_vaddr_order_EQ : Joined<["-"], "fupc-pts-vaddr-order=">,
-                              Group<f_Group>, Flags<[CC1Option]>;
-def fupc_inline_lib : Flag<["-"], "fupc-inline-lib">,
-                      Group<f_Group>, Flags<[CC1Option]>;
-def fno_upc_inline_lib : Flag<["-"], "fno-upc-inline-lib">,
-                         Group<f_Group>, Flags<[CC1Option]>;
-def fupc_pre_include : Flag<["-"], "fupc-pre-include">,
-                      Group<f_Group>, Flags<[CC1Option]>;
-def fno_upc_pre_include : Flag<["-"], "fno-upc-pre-include">,
-                      Group<f_Group>, Flags<[CC1Option]>;
-def fupc_debug : Flag<["-"], "fupc-debug">, Group<f_Group>,
-                 Flags<[CC1Option]>;
+def fupc_threads_ : Joined<["-"], "fupc-threads-">, Group<f_Group>,
+  HelpText<"Specify the number of UPC threads at compile time">;
+def fupc_pts_EQ : Joined<["-"], "fupc-pts=">, Group<f_Group>, Flags<[CC1Option]>,
+  HelpText<"Specify the UPC pointer-to-shared representation (packed or struct)">;
+def fupc_packed_bits_EQ : Joined<["-"], "fupc-packed-bits=">, Group<f_Group>, Flags<[CC1Option]>,
+  HelpText<"Specify the UPC packed pointer-to-shared representation (e.g. 20,10,34)">;
+def fupc_pts_vaddr_order_EQ : Joined<["-"], "fupc-pts-vaddr-order=">, Group<f_Group>, Flags<[CC1Option]>,
+  HelpText<"Specify the UPC pointer-to-shared address field order (first or last)">;
+def fupc_inline_lib : Flag<["-"], "fupc-inline-lib">, Group<f_Group>, Flags<[CC1Option]>;
+def fno_upc_inline_lib : Flag<["-"], "fno-upc-inline-lib">, Group<f_Group>, Flags<[CC1Option]>,
+  HelpText<"Disable inlining of UPC runtime calls">;
+def fupc_pre_include : Flag<["-"], "fupc-pre-include">, Group<f_Group>, Flags<[CC1Option]>;
+def fno_upc_pre_include : Flag<["-"], "fno-upc-pre-include">, Group<f_Group>, Flags<[CC1Option]>,
+  HelpText<"Disable pre-include of UPC specific include files">;
+def fupc_debug : Flag<["-"], "fupc-debug">, Group<f_Group>, Flags<[CC1Option]>,
+  HelpText<"Generate UPC runtime calls that include debugging information">;
 def fno_upc_debug : Flag<["-"], "fno-upc-debug">, Group<f_Group>;
 def foperator_arrow_depth_EQ : Joined<["-"], "foperator-arrow-depth=">,
                                Group<f_Group>;

@@ -6799,7 +6799,9 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
 #endif
     CmdArgs.push_back("-lpthread");
 #endif
-
+#ifdef LIBUPC_ENABLE_NUMA
+    CmdArgs.push_back("-lnuma");
+#endif
     CmdArgs.push_back("-lrt");
   }
 

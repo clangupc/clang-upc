@@ -49,6 +49,10 @@ model for UPC, where MODEL may be: 'smp' (Symmetric Multiprocessing), 'portals4'
 string(TOLOWER ${LIBUPC_RUNTIME_MODEL} LIBUPC_RUNTIME_MODEL)
 
 set(LIBUPC_ENABLE_LINK_SCRIPT TRUE CACHE STRING "enable UPC's use of a custom linker script; this will define the UPC shared section as a no load section on targets where this feature is supported (requires GNU LD)")
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR
+    ${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
+  set(LIBUPC_ENABLE_LINK_SCRIPT FALSE)
+endif()
 
 # Check for backtrace on systems (freebsd,..) that need an extra library
 set(LIBUPC_ENABLE_BACKTRACE TRUE CACHE STRING "enable UPC backtrace; enable stack frame backtrace report when UPC run-time fatal errors occur or by user request (via signal)")
@@ -124,52 +128,47 @@ set(GUPCR_HAVE_TRACE ${LIBUPC_ENABLE_RUNTIME_TRACE})
 set(LIBUPC_MAX_LOCKS 1024 CACHE STRING "The maximum number of locks that can be held by a single UPC thread")
 set(GUPCR_MAX_LOCKS ${LIBUPC_MAX_LOCKS})
 
-set(LIBUPC_NODE_LOCAL_MEM posix CACHE STRING "specify type of shared memory used for node local memory accesses. (posix, mmap, or none)")
-if(LIBUPC_NODE_LOCAL_MEM STREQUAL "posix")
-  set(CMAKE_REQUIRED_LIBRARIES rt)
-  check_cxx_source_compiles("
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdlib.h>
-int size = 4096;
-int fd;
+include(CheckFunctionExists)
+include(CheckLibraryExists)
 
-void * addr;
+if (LIBUPC_RUNTIME_MODEL STREQUAL smp)
 
-int main() {
-  fd = shm_open(\"shm-config-test\", O_CREAT|O_RDWR, S_IRUSR|S_IWUSR);
-  (void)shm_unlink(\"shm-config-test\");
-  if (fd < 0) return 1;
-  if (ftruncate(fd, size) < 0) return 1;
-  addr = mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
-  (void)close(fd);
-  if (!addr || (addr == MAP_FAILED)) return 1;
-  (void)munmap(addr, size);
-  return 0;
-}
-"
-    HAVE_SHM_OPEN)
-  set(CMAKE_REQUIRED_LIBRARIES)
+set(LIBUPC_ENABLE_AFFINITY TRUE CACHE BOOL "enable UPC runtime Linux scheduling affinity")
+CHECK_FUNCTION_EXISTS(sched_getaffinity HAVE_GETAFFINITY)
+if (NOT HAVE_GETAFFINITY)
+  set(LIBUPC_ENABLE_AFFINITY FALSE)
+endif()
+set(LIBUPC_ENABLE_NUMA TRUE CACHE BOOL "enable UPC runtime NUMA policy")
+check_include_file(numa.h HAVE_NUMA_H)
+if (NOT HAVE_NUMA_H)
+  set(LIBUPC_ENABLE_NUMA FALSE)
+endif()
 
-  if(HAVE_SHM_OPEN)
-    set(GUPCR_NODE_LOCAL_MEM 1)
-    set(GUPCR_NODE_LOCAL_MEM_POSIX 1)
-  else()
-    message(warning "shm_open not found.  LIBUPC_NODE_LOCAL_MEM=posix ignored")
-  endif()
-elseif(LIBUPC_NODE_LOCAL_MEM STREQUAL "mmap")
-  set(GUPCR_NODE_LOCAL_MEM 1)
-  set(GUPCR_NODE_LOCAL_MEM_MMAP 1)
-elseif(LIBUPC_NODE_LOCAL_MEM STREQUAL "none")
-  # okay
-else()
-  message(fatal_error "invalid value of LIBUPC_LOCAL_MEM")
 endif()
 
 if (LIBUPC_RUNTIME_MODEL STREQUAL portals4)
+
+  set(LIBUPC_NODE_LOCAL_MEM posix CACHE STRING "specify type of shared memory used for node local memory accesses. (posix, mmap, or none)")
+  if(LIBUPC_NODE_LOCAL_MEM STREQUAL "posix")
+    CHECK_FUNCTION_EXISTS(shm_open HAVE_SHM_OPEN)
+    if (NOT HAVE_SHM_OPEN)
+      CHECK_LIBRARY_EXISTS(rt shm_open "" HAVE_SHM_OPEN_IN_RT)
+    endif()
+    if(HAVE_SHM_OPEN OR HAVE_SHM_OPEN_IN_RT)
+      set(GUPCR_NODE_LOCAL_MEM 1)
+      set(GUPCR_NODE_LOCAL_MEM_POSIX 1)
+    else()
+      message(warning "shm_open not found.  LIBUPC_NODE_LOCAL_MEM=posix ignored")
+    endif()
+  elseif(LIBUPC_NODE_LOCAL_MEM STREQUAL "mmap")
+    set(GUPCR_NODE_LOCAL_MEM 1)
+    set(GUPCR_NODE_LOCAL_MEM_MMAP 1)
+  elseif(LIBUPC_NODE_LOCAL_MEM STREQUAL "none")
+    # okay
+  else()
+    message(fatal_error "invalid value of LIBUPC_LOCAL_MEM")
+  endif()
+
   set(LIBUPC_PORTALS4 "/usr/local/portals4" CACHE STRING "directory for installed portals4 package")
   if(EXISTS ${LIBUPC_PORTALS4}/include/portals4.h)
     set(LIBUPC_RUNTIME_FLAGS "-I${LIBUPC_PORTALS4}/include -Wno-variadic-macros")
@@ -329,8 +328,6 @@ if(LIBUPC_RUNTIME_MODEL STREQUAL smp)
     smp/upc_access.c
     smp/upc_accessg.c
     smp/upc_addr.c
-    # smp/upc_affinity.c
-    smp/upc_affinity_stub.c
     smp/upc_allocg.upc
     smp/upc_alloc.upc
     smp/upc_atomic_generic.upc
@@ -341,13 +338,10 @@ if(LIBUPC_RUNTIME_MODEL STREQUAL smp)
     smp/upc_gasp.c
     smp/upc_gum.c
     smp/upc_libg.c
-    # smp/upc_lock_sup.c
     smp/upc_lock.upc
     smp/upc_main.c
     smp/upc_mem.c
     smp/upc_nb.upc
-    # smp/upc_numa.c
-    smp/upc_numa_stub.c
     smp/upc_pgm_info.c
     smp/upc_pupc.c
     smp/upc_sysdep.c
@@ -357,6 +351,16 @@ if(LIBUPC_RUNTIME_MODEL STREQUAL smp)
 
 if(LIBUPC_ENABLE_BACKTRACE)
     list(APPEND LIBUPC_SOURCES smp/upc_backtrace.c)
+endif()
+if(LIBUPC_ENABLE_NUMA)
+    list(APPEND LIBUPC_SOURCES smp/upc_numa.c)
+else()
+    list(APPEND LIBUPC_SOURCES smp/upc_numa_stub.c)
+endif()
+if(LIBUPC_ENABLE_AFFINITY)
+    list(APPEND LIBUPC_SOURCES smp/upc_affinity.c)
+else()
+    list(APPEND LIBUPC_SOURCES smp/upc_affinity_stub.c)
 endif()
 
   list(APPEND LIBUPC_SOURCES

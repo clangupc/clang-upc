@@ -30,6 +30,9 @@
 /* the field order */                                                           
 #undef UPC_PTS_VADDR_ORDER
 
+/* Define to 1 if UPC runtime NUMA is supported. */
+#undef LIBUPC_ENABLE_NUMA
+
 /* Define to 1 if UPC link script is supported. */
 #undef LIBUPC_LINK_SCRIPT
 

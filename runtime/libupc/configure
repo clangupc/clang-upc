@@ -803,34 +803,10 @@ enable_upc_runtime_debug
 LIBUPC_LINK_SCRIPT
 LIBUPC_ENABLE_BACKTRACE
 PATH_TO_GDB
+LIBUPC_ENABLE_AFFINITY
+LIBUPC_ENABLE_NUMA
 LIBUPC_PORTALS4
 LIBUPC_FABRIC
-LIBGUPC_SMP_RUNTIME_TRUE
-LIBGUPC_SMP_RUNTIME_FALSE
-LIBGUPC_PORTALS4_RUNTIME_TRUE
-LIBGUPC_PORTALS4_RUNTIME_FALSE
-LIBGUPC_RUNTIME_DEBUG_TRUE
-LIBGUPC_RUNTIME_DEBUG_FALSE
-LIBGUPC_CRTSTUFF_TRUE
-LIBGUPC_CRTSTUFF_FALSE
-LIBGUPC_LINK_SCRIPT_TRUE
-LIBGUPC_LINK_SCRIPT_FALSE
-LIBGUPC_GENERIC_COLLECTIVES_TRUE
-LIBGUPC_GENERIC_COLLECTIVES_FALSE
-LIBGUPC_BACKTRACE_TRUE
-LIBGUPC_BACKTRACE_FALSE
-LIBGUPC_PTHREADS_TRUE
-LIBGUPC_PTHREADS_FALSE
-LIBGUPC_AFFINITY_TRUE
-LIBGUPC_AFFINITY_FALSE
-LIBGUPC_NUMA_TRUE
-LIBGUPC_NUMA_FALSE
-LIBGUPC_GUM_TRUE
-LIBGUPC_GUM_FALSE
-LIBGUPC_NODE_LOCAL_MEM_POSIX_TRUE
-LIBGUPC_NODE_LOCAL_MEM_POSIX_FALSE
-LIBGUPC_NODE_LOCAL_MEM_MMAP_TRUE
-LIBGUPC_NODE_LOCAL_MEM_MMAP_FALSE
 LIBOBJS
 LTLIBOBJS'
 ac_subst_files=''
@@ -1502,6 +1478,9 @@ Optional Features:
   --enable-upc-backtrace-signal
                           Enable signal support for UPC stack backtrace
                           [default='yes']
+  --enable-upc-affinity   enable UPC runtime scheduling affinity
+                          [default='yes']
+  --enable-upc-numa       enable UPC runtime NUMA support [default='yes']
   --enable-upc-gum-debug  enable UPC's source level debugging with GDB and GUM
                           support (requires UPC aware GDB)
   --enable-upc-runtime-triggered-ops
@@ -10580,7 +10559,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 10583 "configure"
+#line 10562 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -22312,8 +22291,11 @@ echo "$as_me: error: --enable-upc-link-script accepts only yes or no" >&2;}
 else
 
   case "$target" in
-    # disable linker script for Apple Mac OS X
+    # disable linker script for Apple Mac OS X and SunOS
     *-*-darwin*)
+      enable_upc_link_script=no
+      ;;
+    *-*-solaris*)
       enable_upc_link_script=no
       ;;
     *)
@@ -22630,114 +22612,404 @@ _ACEOF
   fi
 fi
 
+# At least for glibc, clock_gettime is in librt.  But don't pull that
+# in if it still doesn't give us the function we want.
+
+for ac_func in clock_gettime
+do
+as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
+{ echo "$as_me:$LINENO: checking for $ac_func" >&5
+echo $ECHO_N "checking for $ac_func... $ECHO_C" >&6; }
+if { as_var=$as_ac_var; eval "test \"\${$as_var+set}\" = set"; }; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+/* Define $ac_func to an innocuous variant, in case <limits.h> declares $ac_func.
+   For example, HP-UX 11i <limits.h> declares gettimeofday.  */
+#define $ac_func innocuous_$ac_func
+
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char $ac_func (); below.
+    Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
+    <limits.h> exists even on freestanding compilers.  */
+
+#ifdef __STDC__
+# include <limits.h>
+#else
+# include <assert.h>
+#endif
+
+#undef $ac_func
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char $ac_func ();
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined __stub_$ac_func || defined __stub___$ac_func
+choke me
+#endif
+
+int
+main ()
+{
+return $ac_func ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag" || test ! -s conftest.err'
+  { (case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_try") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest$ac_exeext'
+  { (case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_try") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  eval "$as_ac_var=yes"
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	eval "$as_ac_var=no"
+fi
+
+rm -f core conftest.err conftest.$ac_objext \
+      conftest$ac_exeext conftest.$ac_ext
+fi
+ac_res=`eval echo '${'$as_ac_var'}'`
+	       { echo "$as_me:$LINENO: result: $ac_res" >&5
+echo "${ECHO_T}$ac_res" >&6; }
+if test `eval echo '${'$as_ac_var'}'` = yes; then
+  cat >>confdefs.h <<_ACEOF
+#define `echo "HAVE_$ac_func" | $as_tr_cpp` 1
+_ACEOF
+
+fi
+done
+
+if test $ac_cv_func_clock_gettime = no; then
+  { echo "$as_me:$LINENO: checking for clock_gettime in -lrt" >&5
+echo $ECHO_N "checking for clock_gettime in -lrt... $ECHO_C" >&6; }
+if test "${ac_cv_lib_rt_clock_gettime+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lrt  $LIBS"
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char clock_gettime ();
+int
+main ()
+{
+return clock_gettime ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag" || test ! -s conftest.err'
+  { (case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_try") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest$ac_exeext'
+  { (case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_try") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_lib_rt_clock_gettime=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_lib_rt_clock_gettime=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext \
+      conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_lib_rt_clock_gettime" >&5
+echo "${ECHO_T}$ac_cv_lib_rt_clock_gettime" >&6; }
+if test $ac_cv_lib_rt_clock_gettime = yes; then
+  ac_cv_func_clock_gettime="yes"
+fi
+
+  if test $ac_cv_func_clock_gettime = yes; then
+    LIBS="-lrt $LIBS"
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_CLOCK_GETTIME 1
+_ACEOF
+
+  fi
+fi
+
 if test "$upc_runtime_model" = "smp"; then
 
-  targ_runtime_pthreads=no
-  # LIBGUPC_GCC_TLS_SUPPORTED
-  if test "$upc_cv_gcc_tls_supported"x = "yes"x ; then
-    targ_runtime_pthreads=yes
-  fi
+  { echo "$as_me:$LINENO: checking for sched_getaffinity" >&5
+echo $ECHO_N "checking for sched_getaffinity... $ECHO_C" >&6; }
+if test "${ac_cv_func_sched_getaffinity+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+/* Define sched_getaffinity to an innocuous variant, in case <limits.h> declares sched_getaffinity.
+   For example, HP-UX 11i <limits.h> declares gettimeofday.  */
+#define sched_getaffinity innocuous_sched_getaffinity
+
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char sched_getaffinity (); below.
+    Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
+    <limits.h> exists even on freestanding compilers.  */
+
+#ifdef __STDC__
+# include <limits.h>
+#else
+# include <assert.h>
+#endif
+
+#undef sched_getaffinity
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char sched_getaffinity ();
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined __stub_sched_getaffinity || defined __stub___sched_getaffinity
+choke me
+#endif
+
+int
+main ()
+{
+return sched_getaffinity ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag" || test ! -s conftest.err'
+  { (case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_try") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest$ac_exeext'
+  { (case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_try") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_func_sched_getaffinity=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_func_sched_getaffinity=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext \
+      conftest$ac_exeext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_func_sched_getaffinity" >&5
+echo "${ECHO_T}$ac_cv_func_sched_getaffinity" >&6; }
+if test $ac_cv_func_sched_getaffinity = yes; then
+  affinity_available=yes
+else
+  affinity_available=no
+fi
+
   { echo "$as_me:$LINENO: checking for Linux scheduling affinity" >&5
 echo $ECHO_N "checking for Linux scheduling affinity... $ECHO_C" >&6; }
-  if test "$cross_compiling" = yes; then
-  upc_affinity=no
-
-else
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-#define _GNU_SOURCE
-    #include <sched.h>
-    cpu_set_t mask;
-    main ()
-    {
-      unsigned int len = sizeof(mask);
-      if (sched_getaffinity(0, len, &mask) < 0)
-        return 1;
-      return 0;
-    }
-_ACEOF
-rm -f conftest$ac_exeext
-if { (ac_try="$ac_link"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
-  (eval "$ac_link") 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && { ac_try='./conftest$ac_exeext'
-  { (case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
-  (eval "$ac_try") 2>&5
-  ac_status=$?
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); }; }; then
-  upc_affinity=yes
-else
-  echo "$as_me: program exited with status $ac_status" >&5
-echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-( exit $ac_status )
-upc_affinity=no
-fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
-fi
-
-
-  if test "x$enable_upc_affinity" = "xyes" &&
-    test "x$upc_affinity" = "xno"; then
-      { { echo "$as_me:$LINENO: error: scheduling affinity enabled but not supported
-      - use --disable-upc-affinity" >&5
-echo "$as_me: error: scheduling affinity enabled but not supported
-      - use --disable-upc-affinity" >&2;}
+  # Check whether --enable-upc-affinity was given.
+if test "${enable_upc_affinity+set}" = set; then
+  enableval=$enable_upc_affinity;
+    case $enableval in
+    yes)
+      if test "x$affinity_available" = "xno"; then
+        { { echo "$as_me:$LINENO: error: Scheduling affinity enabled but not supported - use --disable-upc-affinity" >&5
+echo "$as_me: error: Scheduling affinity enabled but not supported - use --disable-upc-affinity" >&2;}
    { (exit 1); exit 1; }; }
-  fi
-  if test "x$enable_upc_affinity" = "xno"; then
-    upc_affinity=no;
-  fi
+      fi
+      upc_affinity=yes ;;
+    no)
+      upc_affinity=no ;;
+    *)
+      { { echo "$as_me:$LINENO: error: --enable-upc-affinity accepts only yes or no" >&5
+echo "$as_me: error: --enable-upc-affinity accepts only yes or no" >&2;}
+   { (exit 1); exit 1; }; }
+    esac
+
+else
+
+    if test "x$affinity_available" = "xyes"; then
+      upc_affinity=yes
+    else
+      upc_affinity=no
+    fi
+
+fi
+
   { echo "$as_me:$LINENO: result: $upc_affinity" >&5
 echo "${ECHO_T}$upc_affinity" >&6; }
-    { echo "$as_me:$LINENO: checking if NUMA available" >&5
-echo $ECHO_N "checking if NUMA available... $ECHO_C" >&6; }
-  save_LIBS="$LIBS"
-  LIBS="-lnuma"
-  if test "$cross_compiling" = yes; then
-  upc_numa=no
+  if test "$upc_affinity" = yes; then
+    LIBUPC_ENABLE_AFFINITY=1
+  fi
+
+
+
+for ac_header in numa.h
+do
+as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
+if { as_var=$as_ac_Header; eval "test \"\${$as_var+set}\" = set"; }; then
+  { echo "$as_me:$LINENO: checking for $ac_header" >&5
+echo $ECHO_N "checking for $ac_header... $ECHO_C" >&6; }
+if { as_var=$as_ac_Header; eval "test \"\${$as_var+set}\" = set"; }; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+fi
+ac_res=`eval echo '${'$as_ac_Header'}'`
+	       { echo "$as_me:$LINENO: result: $ac_res" >&5
+echo "${ECHO_T}$ac_res" >&6; }
 else
-  cat >conftest.$ac_ext <<_ACEOF
+  # Is the header compilable?
+{ echo "$as_me:$LINENO: checking $ac_header usability" >&5
+echo $ECHO_N "checking $ac_header usability... $ECHO_C" >&6; }
+cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
-#include <numa.h>
-    int
-    main ()
-    {
-      if (numa_available() < 0) return 1;
-      else return 0;
-    }
+$ac_includes_default
+#include <$ac_header>
 _ACEOF
-rm -f conftest$ac_exeext
-if { (ac_try="$ac_link"
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
 case "(($ac_try" in
   *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
   *) ac_try_echo=$ac_try;;
 esac
 eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
-  (eval "$ac_link") 2>&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag" || test ! -s conftest.err'
+  { (case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_try") 2>&5
   ac_status=$?
   echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && { ac_try='./conftest$ac_exeext'
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
   { (case "(($ac_try" in
   *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
   *) ac_try_echo=$ac_try;;
@@ -22747,32 +23019,155 @@ eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
   ac_status=$?
   echo "$as_me:$LINENO: \$? = $ac_status" >&5
   (exit $ac_status); }; }; then
-  upc_numa=yes
+  ac_header_compiler=yes
 else
-  echo "$as_me: program exited with status $ac_status" >&5
-echo "$as_me: failed program was:" >&5
+  echo "$as_me: failed program was:" >&5
 sed 's/^/| /' conftest.$ac_ext >&5
 
-( exit $ac_status )
-upc_numa=no
-fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
+	ac_header_compiler=no
 fi
 
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+{ echo "$as_me:$LINENO: result: $ac_header_compiler" >&5
+echo "${ECHO_T}$ac_header_compiler" >&6; }
 
-  LIBS="$save_LIBS"
-  if test "x$enable_upc_numa" = "xyes" &&
-    test "x$upc_numa" = "xno"; then
-      { { echo "$as_me:$LINENO: error: NUMA enabled but not supported - use --disable-upc-numa" >&5
+# Is the header present?
+{ echo "$as_me:$LINENO: checking $ac_header presence" >&5
+echo $ECHO_N "checking $ac_header presence... $ECHO_C" >&6; }
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <$ac_header>
+_ACEOF
+if { (ac_try="$ac_cpp conftest.$ac_ext"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_cpp conftest.$ac_ext") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } >/dev/null; then
+  if test -s conftest.err; then
+    ac_cpp_err=$ac_c_preproc_warn_flag
+    ac_cpp_err=$ac_cpp_err$ac_c_werror_flag
+  else
+    ac_cpp_err=
+  fi
+else
+  ac_cpp_err=yes
+fi
+if test -z "$ac_cpp_err"; then
+  ac_header_preproc=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+  ac_header_preproc=no
+fi
+
+rm -f conftest.err conftest.$ac_ext
+{ echo "$as_me:$LINENO: result: $ac_header_preproc" >&5
+echo "${ECHO_T}$ac_header_preproc" >&6; }
+
+# So?  What about this header?
+case $ac_header_compiler:$ac_header_preproc:$ac_c_preproc_warn_flag in
+  yes:no: )
+    { echo "$as_me:$LINENO: WARNING: $ac_header: accepted by the compiler, rejected by the preprocessor!" >&5
+echo "$as_me: WARNING: $ac_header: accepted by the compiler, rejected by the preprocessor!" >&2;}
+    { echo "$as_me:$LINENO: WARNING: $ac_header: proceeding with the compiler's result" >&5
+echo "$as_me: WARNING: $ac_header: proceeding with the compiler's result" >&2;}
+    ac_header_preproc=yes
+    ;;
+  no:yes:* )
+    { echo "$as_me:$LINENO: WARNING: $ac_header: present but cannot be compiled" >&5
+echo "$as_me: WARNING: $ac_header: present but cannot be compiled" >&2;}
+    { echo "$as_me:$LINENO: WARNING: $ac_header:     check for missing prerequisite headers?" >&5
+echo "$as_me: WARNING: $ac_header:     check for missing prerequisite headers?" >&2;}
+    { echo "$as_me:$LINENO: WARNING: $ac_header: see the Autoconf documentation" >&5
+echo "$as_me: WARNING: $ac_header: see the Autoconf documentation" >&2;}
+    { echo "$as_me:$LINENO: WARNING: $ac_header:     section \"Present But Cannot Be Compiled\"" >&5
+echo "$as_me: WARNING: $ac_header:     section \"Present But Cannot Be Compiled\"" >&2;}
+    { echo "$as_me:$LINENO: WARNING: $ac_header: proceeding with the preprocessor's result" >&5
+echo "$as_me: WARNING: $ac_header: proceeding with the preprocessor's result" >&2;}
+    { echo "$as_me:$LINENO: WARNING: $ac_header: in the future, the compiler will take precedence" >&5
+echo "$as_me: WARNING: $ac_header: in the future, the compiler will take precedence" >&2;}
+    ( cat <<\_ASBOX
+## ------------------------------ ##
+## Report this to bugs@yourdomain ##
+## ------------------------------ ##
+_ASBOX
+     ) | sed "s/^/$as_me: WARNING:     /" >&2
+    ;;
+esac
+{ echo "$as_me:$LINENO: checking for $ac_header" >&5
+echo $ECHO_N "checking for $ac_header... $ECHO_C" >&6; }
+if { as_var=$as_ac_Header; eval "test \"\${$as_var+set}\" = set"; }; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  eval "$as_ac_Header=\$ac_header_preproc"
+fi
+ac_res=`eval echo '${'$as_ac_Header'}'`
+	       { echo "$as_me:$LINENO: result: $ac_res" >&5
+echo "${ECHO_T}$ac_res" >&6; }
+
+fi
+if test `eval echo '${'$as_ac_Header'}'` = yes; then
+  cat >>confdefs.h <<_ACEOF
+#define `echo "HAVE_$ac_header" | $as_tr_cpp` 1
+_ACEOF
+ numa_available=yes
+else
+  numa_available=no
+fi
+
+done
+
+  { echo "$as_me:$LINENO: checking if NUMA is available" >&5
+echo $ECHO_N "checking if NUMA is available... $ECHO_C" >&6; }
+  # Check whether --enable-upc-numa was given.
+if test "${enable_upc_numa+set}" = set; then
+  enableval=$enable_upc_numa;
+    case $enableval in
+    yes)
+      if test "x$numa_available" = "xno"; then
+        { { echo "$as_me:$LINENO: error: NUMA enabled but not supported - use --disable-upc-numa" >&5
 echo "$as_me: error: NUMA enabled but not supported - use --disable-upc-numa" >&2;}
    { (exit 1); exit 1; }; }
-  fi
-  if test "x$enable_upc_numa" = "xno" \
-	  -o "x$enable_upc_affinity" = "xno"; then
-    upc_numa=no;
-  fi
+      fi
+      upc_numa=yes ;;
+    no)
+      upc_numa=no ;;
+    *)
+      { { echo "$as_me:$LINENO: error: --enable-upc-numa accepts only yes or no" >&5
+echo "$as_me: error: --enable-upc-numa accepts only yes or no" >&2;}
+   { (exit 1); exit 1; }; }
+    esac
+
+else
+
+    if test "x$numa_available" = "xyes"; then
+      upc_numa=yes
+    else
+      upc_numa=no
+    fi
+
+fi
+
   { echo "$as_me:$LINENO: result: $upc_numa" >&5
 echo "${ECHO_T}$upc_numa" >&6; }
+  if test "$upc_numa" = yes; then
+    LIBUPC_ENABLE_NUMA=1
+  fi
+
+
   { echo "$as_me:$LINENO: checking for UPC GUM debugging support" >&5
 echo $ECHO_N "checking for UPC GUM debugging support... $ECHO_C" >&6; }
   # Check whether --enable-upc-gum-debug was given.
@@ -23879,158 +24274,7 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 
-# TODO
-# Get target configury.
-# . ${srcdir}/configure.tgt
 
-# configure.tgt sets these substitution variables.
-# It also sets 'upc_crtstuff=yes' if upc-crtstuff needs
-# to be compiled.
-# AC_SUBST(config_path)
-# AC_SUBST(bfdinc)
-# AC_SUBST(XCFLAGS)
-# AC_SUBST(XLDFLAGS)
-# AC_SUBST(link_upc_spec)
-# AC_SUBST(upc_crtstuff_cflags)
-# AC_SUBST(upc_crtbegin_spec)
-# AC_SUBST(upc_crtend_spec)
-# AC_SUBST(upc_crtstuff_mak)
-# AC_SUBST(upc_crtstuff_objs)
-
-
-
-
-
-
-if test "$upc_runtime_model" = "smp"; then
-  LIBGUPC_SMP_RUNTIME_TRUE=
-  LIBGUPC_SMP_RUNTIME_FALSE='#'
-else
-  LIBGUPC_SMP_RUNTIME_TRUE='#'
-  LIBGUPC_SMP_RUNTIME_FALSE=
-fi
-
-
-
-if test "$upc_runtime_model" = "portals4"; then
-  LIBGUPC_PORTALS4_RUNTIME_TRUE=
-  LIBGUPC_PORTALS4_RUNTIME_FALSE='#'
-else
-  LIBGUPC_PORTALS4_RUNTIME_TRUE='#'
-  LIBGUPC_PORTALS4_RUNTIME_FALSE=
-fi
-
-
-
-if test "$enable_upc_runtime_debug" = "yes"; then
-  LIBGUPC_RUNTIME_DEBUG_TRUE=
-  LIBGUPC_RUNTIME_DEBUG_FALSE='#'
-else
-  LIBGUPC_RUNTIME_DEBUG_TRUE='#'
-  LIBGUPC_RUNTIME_DEBUG_FALSE=
-fi
-
-
-
-
-if test "$upc_crtstuff" = "yes"; then
-  LIBGUPC_CRTSTUFF_TRUE=
-  LIBGUPC_CRTSTUFF_FALSE='#'
-else
-  LIBGUPC_CRTSTUFF_TRUE='#'
-  LIBGUPC_CRTSTUFF_FALSE=
-fi
-
-
-
-if test "$enable_upc_link_script" = "yes"; then
-  LIBGUPC_LINK_SCRIPT_TRUE=
-  LIBGUPC_LINK_SCRIPT_FALSE='#'
-else
-  LIBGUPC_LINK_SCRIPT_TRUE='#'
-  LIBGUPC_LINK_SCRIPT_FALSE=
-fi
-
-
-
-if test "$use_generic_collectives" = "yes"; then
-  LIBGUPC_GENERIC_COLLECTIVES_TRUE=
-  LIBGUPC_GENERIC_COLLECTIVES_FALSE='#'
-else
-  LIBGUPC_GENERIC_COLLECTIVES_TRUE='#'
-  LIBGUPC_GENERIC_COLLECTIVES_FALSE=
-fi
-
-
-
-if test "$enable_upc_backtrace" = "yes"; then
-  LIBGUPC_BACKTRACE_TRUE=
-  LIBGUPC_BACKTRACE_FALSE='#'
-else
-  LIBGUPC_BACKTRACE_TRUE='#'
-  LIBGUPC_BACKTRACE_FALSE=
-fi
-
-
-
-
-if test "$targ_runtime_pthreads" = "yes"; then
-  LIBGUPC_PTHREADS_TRUE=
-  LIBGUPC_PTHREADS_FALSE='#'
-else
-  LIBGUPC_PTHREADS_TRUE='#'
-  LIBGUPC_PTHREADS_FALSE=
-fi
-
-
-
-if test "$upc_affinity" = "yes"; then
-  LIBGUPC_AFFINITY_TRUE=
-  LIBGUPC_AFFINITY_FALSE='#'
-else
-  LIBGUPC_AFFINITY_TRUE='#'
-  LIBGUPC_AFFINITY_FALSE=
-fi
-
-
-
-if test "$upc_numa" = "yes"; then
-  LIBGUPC_NUMA_TRUE=
-  LIBGUPC_NUMA_FALSE='#'
-else
-  LIBGUPC_NUMA_TRUE='#'
-  LIBGUPC_NUMA_FALSE=
-fi
-
-
-
-if test "$upc_gum_debug" = "yes"; then
-  LIBGUPC_GUM_TRUE=
-  LIBGUPC_GUM_FALSE='#'
-else
-  LIBGUPC_GUM_TRUE='#'
-  LIBGUPC_GUM_FALSE=
-fi
-
-
-
-if test "$upc_node_local" = "posix"; then
-  LIBGUPC_NODE_LOCAL_MEM_POSIX_TRUE=
-  LIBGUPC_NODE_LOCAL_MEM_POSIX_FALSE='#'
-else
-  LIBGUPC_NODE_LOCAL_MEM_POSIX_TRUE='#'
-  LIBGUPC_NODE_LOCAL_MEM_POSIX_FALSE=
-fi
-
-
-
-if test "$upc_node_local" = "mmap"; then
-  LIBGUPC_NODE_LOCAL_MEM_MMAP_TRUE=
-  LIBGUPC_NODE_LOCAL_MEM_MMAP_FALSE='#'
-else
-  LIBGUPC_NODE_LOCAL_MEM_MMAP_TRUE='#'
-  LIBGUPC_NODE_LOCAL_MEM_MMAP_FALSE=
-fi
 
 
 ac_config_headers="$ac_config_headers config.h"
@@ -24152,97 +24396,6 @@ if test -z "${CONVENIENCE_LTDL_TRUE}" && test -z "${CONVENIENCE_LTDL_FALSE}"; th
   { { echo "$as_me:$LINENO: error: conditional \"CONVENIENCE_LTDL\" was never defined.
 Usually this means the macro was only invoked conditionally." >&5
 echo "$as_me: error: conditional \"CONVENIENCE_LTDL\" was never defined.
-Usually this means the macro was only invoked conditionally." >&2;}
-   { (exit 1); exit 1; }; }
-fi
-if test -z "${LIBGUPC_SMP_RUNTIME_TRUE}" && test -z "${LIBGUPC_SMP_RUNTIME_FALSE}"; then
-  { { echo "$as_me:$LINENO: error: conditional \"LIBGUPC_SMP_RUNTIME\" was never defined.
-Usually this means the macro was only invoked conditionally." >&5
-echo "$as_me: error: conditional \"LIBGUPC_SMP_RUNTIME\" was never defined.
-Usually this means the macro was only invoked conditionally." >&2;}
-   { (exit 1); exit 1; }; }
-fi
-if test -z "${LIBGUPC_PORTALS4_RUNTIME_TRUE}" && test -z "${LIBGUPC_PORTALS4_RUNTIME_FALSE}"; then
-  { { echo "$as_me:$LINENO: error: conditional \"LIBGUPC_PORTALS4_RUNTIME\" was never defined.
-Usually this means the macro was only invoked conditionally." >&5
-echo "$as_me: error: conditional \"LIBGUPC_PORTALS4_RUNTIME\" was never defined.
-Usually this means the macro was only invoked conditionally." >&2;}
-   { (exit 1); exit 1; }; }
-fi
-if test -z "${LIBGUPC_RUNTIME_DEBUG_TRUE}" && test -z "${LIBGUPC_RUNTIME_DEBUG_FALSE}"; then
-  { { echo "$as_me:$LINENO: error: conditional \"LIBGUPC_RUNTIME_DEBUG\" was never defined.
-Usually this means the macro was only invoked conditionally." >&5
-echo "$as_me: error: conditional \"LIBGUPC_RUNTIME_DEBUG\" was never defined.
-Usually this means the macro was only invoked conditionally." >&2;}
-   { (exit 1); exit 1; }; }
-fi
-if test -z "${LIBGUPC_CRTSTUFF_TRUE}" && test -z "${LIBGUPC_CRTSTUFF_FALSE}"; then
-  { { echo "$as_me:$LINENO: error: conditional \"LIBGUPC_CRTSTUFF\" was never defined.
-Usually this means the macro was only invoked conditionally." >&5
-echo "$as_me: error: conditional \"LIBGUPC_CRTSTUFF\" was never defined.
-Usually this means the macro was only invoked conditionally." >&2;}
-   { (exit 1); exit 1; }; }
-fi
-if test -z "${LIBGUPC_LINK_SCRIPT_TRUE}" && test -z "${LIBGUPC_LINK_SCRIPT_FALSE}"; then
-  { { echo "$as_me:$LINENO: error: conditional \"LIBGUPC_LINK_SCRIPT\" was never defined.
-Usually this means the macro was only invoked conditionally." >&5
-echo "$as_me: error: conditional \"LIBGUPC_LINK_SCRIPT\" was never defined.
-Usually this means the macro was only invoked conditionally." >&2;}
-   { (exit 1); exit 1; }; }
-fi
-if test -z "${LIBGUPC_GENERIC_COLLECTIVES_TRUE}" && test -z "${LIBGUPC_GENERIC_COLLECTIVES_FALSE}"; then
-  { { echo "$as_me:$LINENO: error: conditional \"LIBGUPC_GENERIC_COLLECTIVES\" was never defined.
-Usually this means the macro was only invoked conditionally." >&5
-echo "$as_me: error: conditional \"LIBGUPC_GENERIC_COLLECTIVES\" was never defined.
-Usually this means the macro was only invoked conditionally." >&2;}
-   { (exit 1); exit 1; }; }
-fi
-if test -z "${LIBGUPC_BACKTRACE_TRUE}" && test -z "${LIBGUPC_BACKTRACE_FALSE}"; then
-  { { echo "$as_me:$LINENO: error: conditional \"LIBGUPC_BACKTRACE\" was never defined.
-Usually this means the macro was only invoked conditionally." >&5
-echo "$as_me: error: conditional \"LIBGUPC_BACKTRACE\" was never defined.
-Usually this means the macro was only invoked conditionally." >&2;}
-   { (exit 1); exit 1; }; }
-fi
-if test -z "${LIBGUPC_PTHREADS_TRUE}" && test -z "${LIBGUPC_PTHREADS_FALSE}"; then
-  { { echo "$as_me:$LINENO: error: conditional \"LIBGUPC_PTHREADS\" was never defined.
-Usually this means the macro was only invoked conditionally." >&5
-echo "$as_me: error: conditional \"LIBGUPC_PTHREADS\" was never defined.
-Usually this means the macro was only invoked conditionally." >&2;}
-   { (exit 1); exit 1; }; }
-fi
-if test -z "${LIBGUPC_AFFINITY_TRUE}" && test -z "${LIBGUPC_AFFINITY_FALSE}"; then
-  { { echo "$as_me:$LINENO: error: conditional \"LIBGUPC_AFFINITY\" was never defined.
-Usually this means the macro was only invoked conditionally." >&5
-echo "$as_me: error: conditional \"LIBGUPC_AFFINITY\" was never defined.
-Usually this means the macro was only invoked conditionally." >&2;}
-   { (exit 1); exit 1; }; }
-fi
-if test -z "${LIBGUPC_NUMA_TRUE}" && test -z "${LIBGUPC_NUMA_FALSE}"; then
-  { { echo "$as_me:$LINENO: error: conditional \"LIBGUPC_NUMA\" was never defined.
-Usually this means the macro was only invoked conditionally." >&5
-echo "$as_me: error: conditional \"LIBGUPC_NUMA\" was never defined.
-Usually this means the macro was only invoked conditionally." >&2;}
-   { (exit 1); exit 1; }; }
-fi
-if test -z "${LIBGUPC_GUM_TRUE}" && test -z "${LIBGUPC_GUM_FALSE}"; then
-  { { echo "$as_me:$LINENO: error: conditional \"LIBGUPC_GUM\" was never defined.
-Usually this means the macro was only invoked conditionally." >&5
-echo "$as_me: error: conditional \"LIBGUPC_GUM\" was never defined.
-Usually this means the macro was only invoked conditionally." >&2;}
-   { (exit 1); exit 1; }; }
-fi
-if test -z "${LIBGUPC_NODE_LOCAL_MEM_POSIX_TRUE}" && test -z "${LIBGUPC_NODE_LOCAL_MEM_POSIX_FALSE}"; then
-  { { echo "$as_me:$LINENO: error: conditional \"LIBGUPC_NODE_LOCAL_MEM_POSIX\" was never defined.
-Usually this means the macro was only invoked conditionally." >&5
-echo "$as_me: error: conditional \"LIBGUPC_NODE_LOCAL_MEM_POSIX\" was never defined.
-Usually this means the macro was only invoked conditionally." >&2;}
-   { (exit 1); exit 1; }; }
-fi
-if test -z "${LIBGUPC_NODE_LOCAL_MEM_MMAP_TRUE}" && test -z "${LIBGUPC_NODE_LOCAL_MEM_MMAP_FALSE}"; then
-  { { echo "$as_me:$LINENO: error: conditional \"LIBGUPC_NODE_LOCAL_MEM_MMAP\" was never defined.
-Usually this means the macro was only invoked conditionally." >&5
-echo "$as_me: error: conditional \"LIBGUPC_NODE_LOCAL_MEM_MMAP\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
@@ -25052,39 +25205,15 @@ enable_upc_runtime_debug!$enable_upc_runtime_debug$ac_delim
 LIBUPC_LINK_SCRIPT!$LIBUPC_LINK_SCRIPT$ac_delim
 LIBUPC_ENABLE_BACKTRACE!$LIBUPC_ENABLE_BACKTRACE$ac_delim
 PATH_TO_GDB!$PATH_TO_GDB$ac_delim
+LIBUPC_ENABLE_AFFINITY!$LIBUPC_ENABLE_AFFINITY$ac_delim
+LIBUPC_ENABLE_NUMA!$LIBUPC_ENABLE_NUMA$ac_delim
 LIBUPC_PORTALS4!$LIBUPC_PORTALS4$ac_delim
 LIBUPC_FABRIC!$LIBUPC_FABRIC$ac_delim
-LIBGUPC_SMP_RUNTIME_TRUE!$LIBGUPC_SMP_RUNTIME_TRUE$ac_delim
-LIBGUPC_SMP_RUNTIME_FALSE!$LIBGUPC_SMP_RUNTIME_FALSE$ac_delim
-LIBGUPC_PORTALS4_RUNTIME_TRUE!$LIBGUPC_PORTALS4_RUNTIME_TRUE$ac_delim
-LIBGUPC_PORTALS4_RUNTIME_FALSE!$LIBGUPC_PORTALS4_RUNTIME_FALSE$ac_delim
-LIBGUPC_RUNTIME_DEBUG_TRUE!$LIBGUPC_RUNTIME_DEBUG_TRUE$ac_delim
-LIBGUPC_RUNTIME_DEBUG_FALSE!$LIBGUPC_RUNTIME_DEBUG_FALSE$ac_delim
-LIBGUPC_CRTSTUFF_TRUE!$LIBGUPC_CRTSTUFF_TRUE$ac_delim
-LIBGUPC_CRTSTUFF_FALSE!$LIBGUPC_CRTSTUFF_FALSE$ac_delim
-LIBGUPC_LINK_SCRIPT_TRUE!$LIBGUPC_LINK_SCRIPT_TRUE$ac_delim
-LIBGUPC_LINK_SCRIPT_FALSE!$LIBGUPC_LINK_SCRIPT_FALSE$ac_delim
-LIBGUPC_GENERIC_COLLECTIVES_TRUE!$LIBGUPC_GENERIC_COLLECTIVES_TRUE$ac_delim
-LIBGUPC_GENERIC_COLLECTIVES_FALSE!$LIBGUPC_GENERIC_COLLECTIVES_FALSE$ac_delim
-LIBGUPC_BACKTRACE_TRUE!$LIBGUPC_BACKTRACE_TRUE$ac_delim
-LIBGUPC_BACKTRACE_FALSE!$LIBGUPC_BACKTRACE_FALSE$ac_delim
-LIBGUPC_PTHREADS_TRUE!$LIBGUPC_PTHREADS_TRUE$ac_delim
-LIBGUPC_PTHREADS_FALSE!$LIBGUPC_PTHREADS_FALSE$ac_delim
-LIBGUPC_AFFINITY_TRUE!$LIBGUPC_AFFINITY_TRUE$ac_delim
-LIBGUPC_AFFINITY_FALSE!$LIBGUPC_AFFINITY_FALSE$ac_delim
-LIBGUPC_NUMA_TRUE!$LIBGUPC_NUMA_TRUE$ac_delim
-LIBGUPC_NUMA_FALSE!$LIBGUPC_NUMA_FALSE$ac_delim
-LIBGUPC_GUM_TRUE!$LIBGUPC_GUM_TRUE$ac_delim
-LIBGUPC_GUM_FALSE!$LIBGUPC_GUM_FALSE$ac_delim
-LIBGUPC_NODE_LOCAL_MEM_POSIX_TRUE!$LIBGUPC_NODE_LOCAL_MEM_POSIX_TRUE$ac_delim
-LIBGUPC_NODE_LOCAL_MEM_POSIX_FALSE!$LIBGUPC_NODE_LOCAL_MEM_POSIX_FALSE$ac_delim
-LIBGUPC_NODE_LOCAL_MEM_MMAP_TRUE!$LIBGUPC_NODE_LOCAL_MEM_MMAP_TRUE$ac_delim
-LIBGUPC_NODE_LOCAL_MEM_MMAP_FALSE!$LIBGUPC_NODE_LOCAL_MEM_MMAP_FALSE$ac_delim
 LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 40; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 16; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5

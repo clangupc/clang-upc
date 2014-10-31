@@ -186,26 +186,32 @@ __upc_print_help_and_exit (char *pgm)
   fprintf (stderr,
 	   "						(N must be in the range 1..%ld)\n",
 	   GUPCR_MAX_HEAP_SIZE);
-  fprintf (stderr,
-	   "	-sched-policy [cpu,strict,node,auto] 	UPC scheduling policy\n");
-  fprintf (stderr,
-	   "	 					  cpu - bind to CPU\n");
-  fprintf (stderr,
-	   "	 					  strict - bind to CPU (one thread per CPU)\n");
-  fprintf (stderr,
-	   "	                                      	  node - bind to node (if NUMA available)\n");
-  fprintf (stderr,
-	   "	                                      	  auto - let kernel schedule\n");
-  fprintf (stderr,
-	   "	-sched-cpu-avoid n1,n2,.. 		List of CPUs to avoid schedulig on\n");
-  fprintf (stderr,
-	   "	  					  0 to max CPUs\n");
-  fprintf (stderr,
-	   "	-mem-policy [node,strict,auto]		UPC memory allocation policy\n");
-  fprintf (stderr,
-	   "	 				 	  node - allocate on local node first\n");
-  fprintf (stderr,
-	   "	                                  	  strict - only allocate on local node\n");
+  if (__upc_affinity_supported())
+    {
+      fprintf (stderr,
+	       "	-sched-policy [cpu,strict,node,auto] 	UPC scheduling policy\n");
+      fprintf (stderr,
+	       "	 					  cpu - bind to CPU\n");
+      fprintf (stderr,
+	       "	 					  strict - bind to CPU (one thread per CPU)\n");
+      fprintf (stderr,
+	       "	                                      	  node - bind to node (if NUMA available)\n");
+      fprintf (stderr,
+	       "	                                      	  auto - let kernel schedule\n");
+      fprintf (stderr,
+	       "	-sched-cpu-avoid n1,n2,.. 		List of CPUs to avoid schedulig on\n");
+      fprintf (stderr,
+	       "	  					  0 to max CPUs\n");
+    }
+  if (__upc_numa_supported())
+    {
+      fprintf (stderr,
+	       "	-mem-policy [node,strict,auto]		UPC memory allocation policy\n");
+      fprintf (stderr,
+	       "	 				 	  node - allocate on local node first\n");
+      fprintf (stderr,
+	       "	                                  	  strict - only allocate on local node\n");
+    }
   fprintf (stderr,
 	   "	-g                                  	Turn on UPC source code debugging\n");
 
