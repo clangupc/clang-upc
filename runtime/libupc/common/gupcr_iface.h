@@ -35,11 +35,25 @@ extern char **gupcr_node_map;
 
 /* GMEM interfaces  */
 //begin lib_inline_gmem
+/** Max size of the user program.
+ *
+ * To simplify management of memory descriptors the entier user
+ * program address space is mapped into one memory descriptor per
+ * direction of the transfer.
+ * Per linux kernel document: Documentation/x86/x86_64/mm.txt
+ * the maximum size is 0x8000_0000_0000
+ */
+#define USER_PROG_MEM_SIZE  0x00008000000000000
+/** Beginning of the user program */
+#define USER_PROG_MEM_START NULL
+
 /** Number of pending put operations.  */
 extern int gupcr_pending_strict_put;
 
 /** GMEM shared memory base */
 extern void *gupcr_gmem_base;
+/** GMEM shared memory size */
+extern size_t gupcr_gmem_size;
 
 extern void gupcr_gmem_sync_gets (void);
 extern void gupcr_gmem_sync_puts (void);

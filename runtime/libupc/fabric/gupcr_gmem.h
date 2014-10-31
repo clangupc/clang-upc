@@ -25,21 +25,6 @@
 /** Maximum size of the message that uses put bounce buffer.  */
 #define GUPCR_GMEM_MAX_SAFE_PUT_SIZE 1*KILOBYTE
 
-/** Max size of the user program.
- *
- * To simplify management of memory descriptors the entier user
- * program address space is mapped into one memory descriptor per
- * direction of the transfer.
- * Per linux kernel document: Documentation/x86/x86_64/mm.txt
- * the maximum size is 0x8000_0000_0000
- */
-#define USER_PROG_MEM_SIZE  0x00008000000000000
-/** Beginning of the user program */
-#define USER_PROG_MEM_START NULL
-
-/** GMEM shared memory size */
-extern size_t gupcr_gmem_size;
-
 /** GMEM get/put information tracking.
  *
  *  Track the information required to access global
