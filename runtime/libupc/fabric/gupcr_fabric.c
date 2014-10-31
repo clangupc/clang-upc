@@ -428,9 +428,7 @@ gupcr_fabric_init (void)
 
   /* Set endpoint features.  */
   gupcr_max_msg_size = gupcr_fi->ep_attr->max_msg_size;
-  // TODO: bug in libfabric implementation.
-  // gupcr_max_order_size = gupcr_fi->ep_attr->max_order_raw_size;
-  gupcr_max_order_size = 16;
+  gupcr_max_order_size = gupcr_fi->ep_attr->max_order_raw_size;
   gupcr_max_optim_size = gupcr_fi->ep_attr->inject_size;
 }
 

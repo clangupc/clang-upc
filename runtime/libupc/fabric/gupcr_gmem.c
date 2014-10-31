@@ -27,6 +27,7 @@
 #include "gupcr_utils.h"
 #include "gupcr_sync.h"
 #include "gupcr_runtime.h"
+#include "gupcr_iface.h"
 
 /** Thread's default shared heap size */
 #define GUPCR_GMEM_DEFAULT_HEAP_SIZE 256*1024*1024
@@ -194,7 +195,8 @@ gupcr_gmem_sync (void)
 void
 gupcr_gmem_get (void *dest, int thread, size_t offset, size_t n)
 {
-  char *dest_addr = (char *)dest - (size_t) USER_PROG_MEM_START;
+  char *loc_addr = (char *)dest - (size_t) USER_PROG_MEM_START;
+  size_t dest_offset = offset;
   size_t n_rem = n;
   uint64_t dest_ep = (uint64_t) thread;
 
@@ -205,10 +207,11 @@ gupcr_gmem_get (void *dest, int thread, size_t offset, size_t n)
       size_t n_xfer;
       n_xfer = GUPCR_MIN (n_rem, GUPCR_MAX_MSG_SIZE);
       ++gupcr_gmem_gets.num_pending;
-      gupcr_fabric_call (fi_readfrom, (gupcr_gmem_ep, dest, n, NULL,
-			 (fi_addr_t) dest_ep, offset, 0, NULL));
+      gupcr_fabric_call (fi_readfrom, (gupcr_gmem_ep, loc_addr, n_xfer,
+			 NULL, (fi_addr_t) dest_ep, dest_offset, 0, NULL));
       n_rem -= n_xfer;
-      dest_addr += n_xfer;
+      loc_addr += n_xfer;
+      dest_offset += n_xfer;
     }
 }
 
