@@ -46,6 +46,10 @@ static fab_info_t fi_hints;
 static fab_t gupcr_fab;
 fab_info_t gupcr_fi;
 fab_domain_t gupcr_fd;
+/* TODO: Workaround for multiple endpoints to PTE mappings.  */
+static fab_t gupcr_fab_lock;
+fab_info_t gupcr_fi_lock;
+fab_domain_t gupcr_fd_lock;
 
 // TODO: Hack for getting network address.  We can get this from the
 //       fi_getinfo (?) but current implementation does not fill out src_addr
@@ -416,12 +420,24 @@ gupcr_fabric_init (void)
   hints.ep_type = FI_EP_RDM;	 /* Reliable datagram message.  */
   hints.addr_format = FI_ADDR_UNSPEC;
 
-  /*  '8' hardcoded for Portals PTE.  */
+  #define __GUPCR_STR__(S) #S
+  #define __GUPCR_XSTR__(S) __GUPCR_STR__(S)
+  /*  Hard-coded service name for Portals PTE.  */
   gupcr_fabric_call (fi_getinfo,
-		     (FI_VERSION(1, 0),
-		      NULL, "8", FI_SOURCE, &hints, &gupcr_fi));
+		     (FI_VERSION(1, 0), NULL, __GUPCR_XSTR__(GUPCR_SERVICE_GMEM),
+		      FI_SOURCE, &hints, &gupcr_fi));
   gupcr_fabric_call (fi_fabric, (gupcr_fi->fabric_attr, &gupcr_fab, NULL));
   gupcr_fabric_call (fi_domain, (gupcr_fab, gupcr_fi, &gupcr_fd, NULL));
+  /* TODO: Work around the issue of multiple endpoint under the same PT, seems
+     impossible in thu current implementation of portals provider.  For each
+     PTE (endpoint) we create separate domains.  */
+  gupcr_fabric_call (fi_getinfo,
+		     (FI_VERSION(1, 0), NULL, __GUPCR_XSTR__(GUPCR_SERVICE_LOCK),
+		      FI_SOURCE, &hints, &gupcr_fi_lock));
+  gupcr_fabric_call (fi_fabric,
+		     (gupcr_fi_lock->fabric_attr, &gupcr_fab_lock, NULL));
+  gupcr_fabric_call (fi_domain,
+		     (gupcr_fab_lock, gupcr_fi_lock, &gupcr_fd_lock, NULL));
 
   gupcr_rank = gupcr_runtime_get_rank ();
   gupcr_rank_cnt = gupcr_runtime_get_size ();
