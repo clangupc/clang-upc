@@ -32,19 +32,19 @@
 
 /* GUPCR Service Table Entries */
 /** Memory put/get functions network connection */
-#define	GUPCR_SERVICE_GMEM		0
+#define	GUPCR_SERVICE_GMEM		16
 /** Barrier messages to parent node network connection */
-#define	GUPCR_SERVICE_BARRIER_UP	1
+#define	GUPCR_SERVICE_BARRIER_UP	17
 /** Barrier messages from parent node network connection */
-#define	GUPCR_SERVICE_BARRIER_DOWN	2
+#define	GUPCR_SERVICE_BARRIER_DOWN	18
 /** Lock signaling network connection */
-#define	GUPCR_SERVICE_LOCK		3
+#define	GUPCR_SERVICE_LOCK		19
 /** Shutdown service signaling network connection */
-#define	GUPCR_SERVICE_SHUTDOWN		4
+#define	GUPCR_SERVICE_SHUTDOWN		20
 /** Collectives service signaling network connection */
-#define	GUPCR_SERVICE_COLL		5
+#define	GUPCR_SERVICE_COLL		21
 /** Non-blocking transfers network connection */
-#define	GUPCR_SERVICE_NB		6
+#define	GUPCR_SERVICE_NB		22
 #define	GUPCR_SERVICE_COUNT		7
 /** @} */
 
@@ -82,6 +82,9 @@ extern fab_ep_t gupcr_ep;
 extern fab_info_t gupcr_fi;
 /** Fabric domain */
 extern fab_domain_t gupcr_fd;
+/* TODO: Workaround for multiple endpoints under the same PTE.  */
+extern fab_info_t gupcr_fi_lock;
+extern fab_domain_t gupcr_fd_lock;
 /** Max ordered size - per network interface */
 extern size_t gupcr_max_order_size;
 #define GUPCR_MAX_PUT_ORDERED_SIZE gupcr_max_order_size
