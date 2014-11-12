@@ -61,21 +61,17 @@ size_t gupcr_gmem_heap_size;
 static const size_t gupcr_gmem_high_mark_puts = GUPCR_MAX_OUTSTANDING_PUTS;
 static const size_t gupcr_gmem_low_mark_puts = GUPCR_MAX_OUTSTANDING_PUTS / 2;
 
-/** Fabric communications endpoint resources */
-/** Endpoint comm resource  */
-fab_ep_t	gupcr_gmem_ep;
+/** Fabric communications contextual endpoint resources */
+/** RX Endpoint comm resource  */
+fab_ep_t	gupcr_gmem_rx_ep;
+/** TX Endpoint comm resource  */
+fab_ep_t	gupcr_gmem_tx_ep;
 /** Completion queue for errors  */
 fab_cq_t	gupcr_gmem_cq;
-/** Address vector for remote endpoints  */
-fab_av_t	gupcr_gmem_av;
 /** Remote access memory region  */
 fab_mr_t	gupcr_gmem_mr;
 /** Local memory access memory region  */
 fab_mr_t	gupcr_gmem_lmr;
-
-/** Endpoint names  */
-static char epname[128];
-static char *epnames;
 
 /**
  * Allocate memory for this thread's shared space contribution.
@@ -198,7 +194,6 @@ gupcr_gmem_get (void *dest, int thread, size_t offset, size_t n)
   char *loc_addr = (char *)dest - (size_t) USER_PROG_MEM_START;
   size_t dest_offset = offset;
   size_t n_rem = n;
-  uint64_t dest_ep = (uint64_t) thread;
 
   gupcr_debug (FC_MEM, "%d:0x%lx 0x%lx",
 	       thread, (long unsigned) offset, (long unsigned) dest);
@@ -207,8 +202,11 @@ gupcr_gmem_get (void *dest, int thread, size_t offset, size_t n)
       size_t n_xfer;
       n_xfer = GUPCR_MIN (n_rem, GUPCR_MAX_MSG_SIZE);
       ++gupcr_gmem_gets.num_pending;
-      gupcr_fabric_call (fi_readfrom, (gupcr_gmem_ep, loc_addr, n_xfer,
-			 NULL, (fi_addr_t) dest_ep, dest_offset, 0, NULL));
+      gupcr_fabric_call (fi_readfrom,
+		(gupcr_gmem_tx_ep, loc_addr, n_xfer, NULL,
+		 fi_rx_addr ((fi_addr_t) thread, GUPCR_SERVICE_GMEM,
+						 GUPCR_SERVICE_BITS),
+		 dest_offset, 0, NULL));
       n_rem -= n_xfer;
       loc_addr += n_xfer;
       dest_offset += n_xfer;
@@ -236,7 +234,6 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
   int must_sync = (n > GUPCR_GMEM_MAX_SAFE_PUT_SIZE);
   char *src_addr = (char *) src;
   size_t n_rem = n;
-  uint64_t dest_ep = (uint64_t) thread;
   gupcr_debug (FC_MEM, "0x%lx %d:0x%lx",
                        (long unsigned) src, thread, (long unsigned) offset);
   /* Large puts must be synchronous, to ensure that it is
@@ -249,8 +246,11 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
       if (n_xfer <= GUPCR_MAX_OPTIM_SIZE)
 	{
 	  /* Use optimized version of RMA write.  */
-	  gupcr_fabric_call (fi_inject_writeto, (gupcr_gmem_ep, src_addr,
-			     n_xfer, (fi_addr_t) dest_ep, offset, 0));
+	  gupcr_fabric_call (fi_inject_writeto,
+		(gupcr_gmem_tx_ep, src_addr, n_xfer,
+		 fi_rx_addr ((fi_addr_t) thread, GUPCR_SERVICE_GMEM,
+			     GUPCR_SERVICE_BITS),
+		 offset, 0));
 	}
       else
 	{
@@ -271,8 +271,10 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 	      gupcr_gmem_put_bb_used += n_xfer;
 	    }
 	  gupcr_fabric_call (fi_writeto,
-		(gupcr_gmem_ep, (const char *) local_offset, n_xfer, NULL,
-		 (fi_addr_t) dest_ep, offset, 0, NULL));
+		(gupcr_gmem_tx_ep, (const char *) local_offset, n_xfer, NULL,
+		 fi_rx_addr ((fi_addr_t) thread, GUPCR_SERVICE_GMEM,
+						 GUPCR_SERVICE_BITS),
+		 offset, 0, NULL));
 	}
       n_rem -= n_xfer;
       src_addr += n_xfer;
@@ -291,7 +293,8 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 	      gupcr_process_fail_events (gupcr_gmem_cq);
 	      gupcr_abort ();
 	    }
-	  gupcr_gmem_puts.num_pending -= wait_cnt - gupcr_gmem_puts.num_completed;
+	  gupcr_gmem_puts.num_pending -= wait_cnt -
+					 gupcr_gmem_puts.num_completed;
 	  gupcr_gmem_puts.num_completed = wait_cnt;
 	}
     }
@@ -321,7 +324,6 @@ gupcr_gmem_copy (int dthread, size_t doffset,
   size_t n_rem = n;
   size_t dest_addr = doffset;
   size_t src_addr = soffset;
-  uint64_t dest_ep = (uint64_t) dthread;
   gupcr_debug (FC_MEM, "%d:0x%lx %d:0x%lx %lu",
 	       sthread, (long unsigned) soffset,
 	       dthread, (long unsigned) doffset,
@@ -343,8 +345,11 @@ gupcr_gmem_copy (int dthread, size_t doffset,
       gupcr_gmem_sync_gets ();
       local_offset = bounce_buf - gupcr_gmem_put_bb;
       ++gupcr_gmem_puts.num_pending;
-      gupcr_fabric_call (fi_writeto, (gupcr_gmem_ep, (const char *) local_offset,
-			     n_xfer, NULL, (fi_addr_t) dest_ep, dest_addr, 0, NULL));
+      gupcr_fabric_call (fi_writeto,
+		(gupcr_gmem_tx_ep, (const char *) local_offset, n_xfer, NULL,
+		 fi_rx_addr ((fi_addr_t) dthread, GUPCR_SERVICE_GMEM,
+						  GUPCR_SERVICE_BITS),
+		 dest_addr, 0, NULL));
       n_rem -= n_xfer;
       src_addr += n_xfer;
       dest_addr += n_xfer;
@@ -371,7 +376,6 @@ gupcr_gmem_set (int thread, size_t offset, int c, size_t n)
   size_t n_rem = n;
   int already_filled = 0;
   size_t dest_addr = offset;
-  uint64_t dest_ep = (uint64_t) thread;
   gupcr_debug (FC_MEM, "0x%x %d:0x%lx %lu", c, thread,
                        (long unsigned) offset, (long unsigned) n);
   while (n_rem > 0)
@@ -395,8 +399,11 @@ gupcr_gmem_set (int thread, size_t offset, int c, size_t n)
 	}
       local_offset = bounce_buf - gupcr_gmem_put_bb;
       ++gupcr_gmem_puts.num_pending;
-      gupcr_fabric_call (fi_writeto, (gupcr_gmem_ep, (const char *) local_offset,
-			     n_xfer, NULL, (fi_addr_t) dest_ep, dest_addr, 0, NULL));
+      gupcr_fabric_call (fi_writeto,
+		(gupcr_gmem_tx_ep, (const char *) local_offset, n_xfer, NULL,
+		 fi_rx_addr ((fi_addr_t) thread, GUPCR_SERVICE_GMEM,
+						 GUPCR_SERVICE_BITS),
+		 dest_addr, 0, NULL));
       n_rem -= n_xfer;
       dest_addr += n_xfer;
     }
@@ -411,15 +418,16 @@ gupcr_gmem_init (void)
 {
   cntr_attr_t cntr_attr = {0};
   cq_attr_t cq_attr = {0};
-  av_attr_t av_attr = {0};
-  size_t epnamelen = sizeof(epname);
 
   gupcr_log (FC_MEM, "gmem init called");
   /* Allocate memory for this thread's contribution to shared memory.  */
   gupcr_gmem_alloc_shared ();
 
-  /* Create an endpoint as GMEM communication resource.  */
-  gupcr_fabric_call (fi_endpoint, (gupcr_fd, gupcr_fi, &gupcr_gmem_ep, NULL));
+  /* Create context endpoints for GMEM transfers.  */
+  gupcr_fabric_call (fi_tx_context,
+	(gupcr_ep, GUPCR_SERVICE_GMEM, NULL, &gupcr_gmem_tx_ep, NULL));
+  gupcr_fabric_call (fi_rx_context,
+	(gupcr_ep, GUPCR_SERVICE_GMEM, NULL, &gupcr_gmem_rx_ep, NULL));
 
   /* NOTE: for read/write we create counters and event queues. EQs are supposed
      to be used for errors only, but at this time it is not clear how.  It is
@@ -434,7 +442,7 @@ gupcr_gmem_init (void)
   cntr_attr.flags = 0;
   gupcr_fabric_call (fi_cntr_open, (gupcr_fd, &cntr_attr,
 				    &gupcr_gmem_gets.ct_handle, NULL));
-  gupcr_fabric_call (fi_ep_bind, (&gupcr_gmem_ep->fid,
+  gupcr_fabric_call (fi_ep_bind, (&gupcr_gmem_tx_ep->fid,
 				  &gupcr_gmem_gets.ct_handle->fid,
 				  FI_READ));
 
@@ -445,7 +453,7 @@ gupcr_gmem_init (void)
   cntr_attr.flags = 0;
   gupcr_fabric_call (fi_cntr_open, (gupcr_fd, &cntr_attr,
 				    &gupcr_gmem_puts.ct_handle, NULL));
-  gupcr_fabric_call (fi_ep_bind, (&gupcr_gmem_ep->fid,
+  gupcr_fabric_call (fi_ep_bind, (&gupcr_gmem_tx_ep->fid,
 				  &gupcr_gmem_puts.ct_handle->fid,
 				  FI_WRITE));
 
@@ -457,26 +465,19 @@ gupcr_gmem_init (void)
   cq_attr.wait_obj = FI_WAIT_NONE;
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_gmem_cq, NULL));
   /* Use FI_EVENT flag to report errors only.  */
-  gupcr_fabric_call (fi_ep_bind, (&gupcr_gmem_ep->fid,
+  gupcr_fabric_call (fi_ep_bind, (&gupcr_gmem_tx_ep->fid,
 				  &gupcr_gmem_cq->fid,
 				  FI_READ | FI_WRITE | FI_EVENT));
 
-  /* Other threads' endpoints are mapped via address vector table with
-     each threads' endpoint indexed by the thread number.  */
-  av_attr.type  = FI_AV_TABLE;
-  av_attr.count = THREADS;
-  av_attr.name = "GMEM_EPS";
-  gupcr_fabric_call (fi_av_open, (gupcr_fd, &av_attr, &gupcr_gmem_av, NULL));
-  gupcr_fabric_call (fi_ep_bind, (&gupcr_gmem_ep->fid,
-				  &gupcr_gmem_av->fid, 0));
-
-  gupcr_fabric_call (fi_enable, (gupcr_gmem_ep));
+  /* Enable GMEM endpoints now.  */
+  gupcr_fabric_call (fi_enable, (gupcr_gmem_tx_ep));
+  gupcr_fabric_call (fi_enable, (gupcr_gmem_rx_ep));
 
   /* Create a memory region for local memory accesses.  */
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, USER_PROG_MEM_START,
 				 USER_PROG_MEM_SIZE, FI_READ | FI_WRITE,
 				 0, 0, 0, &gupcr_gmem_lmr, NULL));
-  gupcr_fabric_call (fi_ep_bind, (&gupcr_gmem_ep->fid,
+  gupcr_fabric_call (fi_ep_bind, (&gupcr_gmem_tx_ep->fid,
 				  &gupcr_gmem_lmr->fid,
 				  FI_READ | FI_WRITE));
 
@@ -484,35 +485,10 @@ gupcr_gmem_init (void)
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, gupcr_gmem_base, gupcr_gmem_size,
 				 FI_REMOTE_READ | FI_REMOTE_WRITE, 0,
 				 0, 0, &gupcr_gmem_mr, NULL));
-  gupcr_fabric_call (fi_ep_bind, (&gupcr_gmem_ep->fid,
+  gupcr_fabric_call (fi_ep_bind, (&gupcr_gmem_rx_ep->fid,
 				  &gupcr_gmem_mr->fid,
 				  FI_REMOTE_READ | FI_REMOTE_WRITE));
   gupcr_log (FC_MEM, "gmem created");
-
-  /* Use connectionless accesses to other threads.  Map endpoints for
-     all the other threads.  */
-
-  /* Endpoint name is being exchanged with other threads.  */
-  gupcr_fabric_call (fi_getname, ((fid_t) gupcr_gmem_ep, epname, &epnamelen));
-  if (epnamelen > sizeof(epname))
-    gupcr_fatal_error ("sizeof GMEM endpoint name greater then %lu",
-			sizeof (epname));
-
-  epnames = calloc (THREADS * epnamelen, 1);
-  if (!epnames)
-    gupcr_fatal_error ("cannot allocate %ld for epnames",
-			THREADS * epnamelen);
-  {
-    int ret = gupcr_runtime_exchange ("gmem", epname, epnamelen, epnames);
-    if (ret)
-      {
-        gupcr_fatal_error ("error (%d) reported while exchanging GMEM endpoints", 
-			    ret);
-      }
-    gupcr_log (FC_MEM, "exchanged GMEM eps with %d threads", THREADS);
-  }
-  /* Map endpoints.  */
-  gupcr_fabric_call (fi_av_insert, (gupcr_gmem_av, epnames, THREADS, NULL, 0));
 }
 
 /**
@@ -529,11 +505,10 @@ gupcr_gmem_fini (void)
   gupcr_fabric_call (fi_close, (&gupcr_gmem_cq->fid));
   gupcr_fabric_call (fi_close, (&gupcr_gmem_mr->fid));
   gupcr_fabric_call (fi_close, (&gupcr_gmem_lmr->fid));
-  gupcr_fabric_call (fi_close, (&gupcr_gmem_av->fid));
-  free (epnames);
 #if 0
   // NOTE - reports an error, 
-  gupcr_fabric_call (fi_close, (&gupcr_gmem_ep->fid));
+  gupcr_fabric_call (fi_close, (&gupcr_gmem_tx_ep->fid));
+  gupcr_fabric_call (fi_close, (&gupcr_gmem_rx_ep->fid));
 #endif
 }
 

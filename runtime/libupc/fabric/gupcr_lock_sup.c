@@ -27,9 +27,6 @@
  * @{
  */
 
-/* TODO: Workaround for multiple endpoints under the same PTE.  */
-#define gupcr_fd gupcr_fd_lock
-
 /** Lock memory region counter */
 static size_t gupcr_lock_lmr_count;
 /** Lock memory remote access counter */
@@ -39,8 +36,10 @@ static size_t gupcr_lock_mr_count;
 static char gupcr_lock_buf[16];
 
 /** Fabric communications endpoint resources */
-/** Endpoint comm resource  */
-fab_ep_t	gupcr_lock_ep;
+/** RX Endpoint comm resource  */
+fab_ep_t	gupcr_lock_rx_ep;
+/** TX Endpoint comm resource  */
+fab_ep_t	gupcr_lock_tx_ep;
 /** Completion remote counter (target side) */
 fab_cntr_t	gupcr_lock_ct;
 /** Completion counter */
@@ -49,16 +48,10 @@ fab_cntr_t	gupcr_lock_lct;
 fab_cq_t	gupcr_lock_cq;
 /** Completion queue for errors  */
 fab_cq_t	gupcr_lock_lcq;
-/** Address vector for remote endpoints  */
-fab_av_t	gupcr_lock_av;
 /** Remote access memory region  */
 fab_mr_t	gupcr_lock_mr;
 /** Local memory access memory region  */
 fab_mr_t	gupcr_lock_lmr;
-
-/** Endpoint names  */
-static char epname[128];
-static char *epnames;
 
 /**
  * Execute lock-related atomic fetch and store remote operation.
@@ -83,11 +76,11 @@ gupcr_lock_swap (size_t dest_thread,
                         (long unsigned) dest_offset);
   gupcr_lock_mr_count += 1;
   gupcr_fabric_call (fi_fetch_atomicto,
-		     (gupcr_lock_ep, val, size,
-		      &gupcr_lock_lmr, old, &gupcr_lock_lmr,
-		      (fi_addr_t) dest_thread, dest_offset,
-		      0, gupcr_get_atomic_datatype (size),
-		      FI_ATOMIC_WRITE, NULL));
+	(gupcr_lock_tx_ep, val, size, &gupcr_lock_lmr, old, &gupcr_lock_lmr,
+	 fi_rx_addr ((fi_addr_t) dest_thread, GUPCR_SERVICE_LOCK,
+					      GUPCR_SERVICE_BITS),
+	 dest_offset, 0, gupcr_get_atomic_datatype (size),
+	 FI_ATOMIC_WRITE, NULL));
 
   gupcr_lock_mr_count += 1;
   gupcr_fabric_call_nc (fi_cntr_wait, status,
@@ -126,11 +119,11 @@ gupcr_lock_cswap (size_t dest_thread,
 			(long unsigned) dest_offset);
 
   gupcr_fabric_call (fi_compare_atomicto,
-		     (gupcr_lock_ep, val, size,
-		      &gupcr_lock_lmr, cmp, &gupcr_lock_lmr,
-		      gupcr_lock_buf, &gupcr_lock_lmr,
-		      (fi_addr_t) dest_thread, dest_offset,
-		      0, gupcr_get_atomic_datatype (size), FI_CSWAP, NULL));
+	(gupcr_lock_tx_ep, val, size, &gupcr_lock_lmr, cmp, &gupcr_lock_lmr,
+	 gupcr_lock_buf, &gupcr_lock_lmr,
+	 fi_rx_addr ((fi_addr_t) dest_thread, GUPCR_SERVICE_LOCK,
+		     GUPCR_SERVICE_BITS), dest_offset,
+	 0, gupcr_get_atomic_datatype (size), FI_CSWAP, NULL));
 
   gupcr_lock_mr_count += 1;
   gupcr_fabric_call_nc (fi_cntr_wait, status,
@@ -168,14 +161,18 @@ gupcr_lock_put (size_t dest_thread, size_t dest_addr, void *val, size_t size)
   if (size <= GUPCR_MAX_OPTIM_SIZE)
     {
       gupcr_fabric_call (fi_inject_writeto,
-			 (gupcr_lock_ep, val, size,
-			  (fi_addr_t) dest_thread, dest_addr, 0));
+		(gupcr_lock_tx_ep, val, size,
+		 fi_rx_addr ((fi_addr_t) dest_thread, GUPCR_SERVICE_LOCK,
+			     GUPCR_SERVICE_BITS),
+		 dest_addr, 0));
     }
   else
     {
       gupcr_fabric_call (fi_writeto,
-			 (gupcr_lock_ep, (const char *) val, size, NULL,
-			  (fi_addr_t) dest_thread, dest_addr, 0, NULL));
+		(gupcr_lock_tx_ep, (const char *) val, size, NULL,
+		 fi_rx_addr ((fi_addr_t) dest_thread, GUPCR_SERVICE_LOCK,
+			     GUPCR_SERVICE_BITS),
+		 dest_addr, 0, NULL));
     }
   gupcr_lock_lmr_count += 1;
   gupcr_fabric_call_nc (fi_cntr_wait, status,
@@ -199,13 +196,15 @@ gupcr_lock_get (size_t dest_thread, size_t dest_addr, void *val, size_t size)
 {
   int status;
   char *loc_addr = (char *)val - (size_t) USER_PROG_MEM_START;
-  uint64_t dest_ep = (uint64_t) dest_thread;
 
   gupcr_debug (FC_LOCK, "%lu:0x%lx",
                         (long unsigned) dest_thread,
 			(long unsigned) dest_addr);
-  gupcr_fabric_call (fi_readfrom, (gupcr_lock_ep, loc_addr, size,
-		     NULL, (fi_addr_t) dest_ep, dest_addr, 0, NULL));
+  gupcr_fabric_call (fi_readfrom,
+	(gupcr_lock_tx_ep, loc_addr, size, NULL,
+	 fi_rx_addr ((fi_addr_t) dest_thread, GUPCR_SERVICE_LOCK,
+		     GUPCR_SERVICE_BITS),
+	 dest_addr, 0, NULL));
   gupcr_lock_lmr_count += 1;
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(gupcr_lock_lct, gupcr_lock_lmr_count,
@@ -264,21 +263,21 @@ gupcr_lock_init (void)
 {
   cntr_attr_t cntr_attr = {0};
   cq_attr_t cq_attr = {0};
-  av_attr_t av_attr = {0};
-  size_t epnamelen = sizeof(epname);
 
   gupcr_log (FC_LOCK, "lock init called");
 
-  /* Create an endpoint as LOCK communication resource.  */
-  gupcr_fabric_call (fi_endpoint,
-		     (gupcr_fd, gupcr_fi_lock, &gupcr_lock_ep, NULL));
+  /* Create context endpoints for LOC transfers.  */
+  gupcr_fabric_call (fi_tx_context,
+	(gupcr_ep, GUPCR_SERVICE_LOCK, NULL, &gupcr_lock_tx_ep, NULL));
+  gupcr_fabric_call (fi_rx_context,
+	(gupcr_ep, GUPCR_SERVICE_LOCK, NULL, &gupcr_lock_rx_ep, NULL));
 
   /* ... and completion counter/eq for remote read/write.  */
   cntr_attr.events = FI_CNTR_EVENTS_COMP;
   cntr_attr.flags = 0;
   gupcr_fabric_call (fi_cntr_open, (gupcr_fd, &cntr_attr,
 				    &gupcr_lock_lct, NULL));
-  gupcr_fabric_call (fi_bind, (&gupcr_lock_ep->fid,
+  gupcr_fabric_call (fi_bind, (&gupcr_lock_tx_ep->fid,
 				  &gupcr_lock_lct->fid,
 				  FI_READ|FI_WRITE));
   gupcr_lock_lmr_count = 0;
@@ -290,25 +289,19 @@ gupcr_lock_init (void)
   cq_attr.wait_obj = FI_WAIT_NONE;
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_lock_lcq, NULL));
   /* Use FI_EVENT flag to report errors only.  */
-  gupcr_fabric_call (fi_bind, (&gupcr_lock_ep->fid,
+  gupcr_fabric_call (fi_bind, (&gupcr_lock_tx_ep->fid,
 				  &gupcr_lock_lcq->fid,
 				  FI_READ | FI_WRITE | FI_EVENT));
 
-  /* ... and AV for remote lock endpoints.  */
-  av_attr.type  = FI_AV_TABLE;
-  av_attr.count = THREADS;
-  av_attr.name = "LOCK_EPS";
-  gupcr_fabric_call (fi_av_open, (gupcr_fd, &av_attr, &gupcr_lock_av, NULL));
-  gupcr_fabric_call (fi_bind, (&gupcr_lock_ep->fid,
-				  &gupcr_lock_av->fid, 0));
-
-  gupcr_fabric_call (fi_enable, (gupcr_lock_ep));
+  /* Enable endpoints.  */
+  gupcr_fabric_call (fi_enable, (gupcr_lock_tx_ep));
+  gupcr_fabric_call (fi_enable, (gupcr_lock_rx_ep));
 
   /* ... and memory region for local memory accesses.  */
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, USER_PROG_MEM_START,
 				 USER_PROG_MEM_SIZE, FI_READ | FI_WRITE,
 				 0, 0, 0, &gupcr_lock_lmr, NULL));
-  gupcr_fabric_call (fi_bind, (&gupcr_lock_ep->fid,
+  gupcr_fabric_call (fi_bind, (&gupcr_lock_tx_ep->fid,
 				  &gupcr_lock_lmr->fid,
 				  FI_READ | FI_WRITE));
 
@@ -324,8 +317,6 @@ gupcr_lock_init (void)
   gupcr_fabric_call (fi_bind, (&gupcr_lock_mr->fid,
 			       &gupcr_lock_ct->fid,
 			       FI_REMOTE_WRITE));
-#if 0
-  /* TODO: error in the support library - cannot have CQ bound to mr.  */
   /* ... and completion queue for remote inbound errors.  */
   cq_attr.size = 1;
   cq_attr.format  = FI_CQ_FORMAT_MSG;
@@ -334,35 +325,11 @@ gupcr_lock_init (void)
   gupcr_fabric_call (fi_bind, (&gupcr_lock_mr->fid,
 			       &gupcr_lock_cq->fid,
 			       FI_REMOTE_WRITE | FI_EVENT));
-#endif
   /* ... bind MR to endpoint.  */
-  gupcr_fabric_call (fi_ep_bind, (&gupcr_lock_ep->fid,
+  gupcr_fabric_call (fi_ep_bind, (&gupcr_lock_rx_ep->fid,
 				  &gupcr_lock_mr->fid,
 				  FI_REMOTE_READ | FI_REMOTE_WRITE));
-  gupcr_log (FC_MEM, "lock created");
-
-  /* Exchange endpoint name with other threads.  */
-  gupcr_fabric_call (fi_getname, ((fid_t) gupcr_lock_ep, epname, &epnamelen));
-  if (epnamelen > sizeof(epname))
-    gupcr_fatal_error ("sizeof LOCK endpoint name greater then %lu",
-			sizeof (epname));
-
-  epnames = calloc (THREADS * epnamelen, 1);
-  if (!epnames)
-    gupcr_fatal_error ("cannot allocate %ld for epnames",
-			THREADS * epnamelen);
-  {
-    int ret = gupcr_runtime_exchange ("lock", epname, epnamelen, epnames);
-    if (ret)
-      {
-        gupcr_fatal_error (
-	  "error (%d) reported while exchanging LOCK endpoints", ret);
-      }
-    gupcr_log (FC_MEM, "exchanged LOCK eps with %d threads", THREADS);
-  }
-  /* Map endpoints.  */
-  gupcr_fabric_call (fi_av_insert,
-		     (gupcr_lock_av, epnames, THREADS, NULL, 0));
+  gupcr_log (FC_LOCK, "lock init completed");
 
   /* Initialize link blocks.  */
   gupcr_lock_link_init ();
@@ -385,8 +352,8 @@ gupcr_lock_fini (void)
   gupcr_fabric_call (fi_close, (&gupcr_lock_cq->fid));
   gupcr_fabric_call (fi_close, (&gupcr_lock_mr->fid));
   gupcr_fabric_call (fi_close, (&gupcr_lock_lmr->fid));
-  gupcr_fabric_call (fi_close, (&gupcr_lock_av->fid));
-  gupcr_fabric_call (fi_close, (&gupcr_lock_ep->fid));
+  gupcr_fabric_call (fi_close, (&gupcr_lock_rx_ep->fid));
+  gupcr_fabric_call (fi_close, (&gupcr_lock_tx_ep->fid));
 }
 
 /** @} */
