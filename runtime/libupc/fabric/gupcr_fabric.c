@@ -41,15 +41,20 @@ size_t gupcr_max_order_size;
 size_t gupcr_max_msg_size;
 size_t gupcr_max_optim_size;
 
-static char *fi_src_addr;
-static fab_info_t fi_hints;
+/** Fabric */
 static fab_t gupcr_fab;
+/** Fabric info */
 fab_info_t gupcr_fi;
+/** Fabric domain */
 fab_domain_t gupcr_fd;
-/* TODO: Workaround for multiple endpoints to PTE mappings.  */
-static fab_t gupcr_fab_lock;
-fab_info_t gupcr_fi_lock;
-fab_domain_t gupcr_fd_lock;
+/** Endpoint comm resource  */
+fab_ep_t gupcr_ep;
+/** Address vector for remote endpoints  */
+fab_av_t gupcr_av;
+/** All endpoint names in the system */
+static char epname[128];
+static char *epnames;
+
 
 // TODO: Hack for getting network address.  We can get this from the
 //       fi_getinfo (?) but current implementation does not fill out src_addr
@@ -412,6 +417,8 @@ void
 gupcr_fabric_init (void)
 {
   struct fi_info hints = {0};
+  av_attr_t av_attr = {0};
+  size_t epnamelen = sizeof(epname);
 
   /* Find fabric provider based on the hints.  */
   hints.caps = FI_RMA |	   	 /* Request RMA capability,  */
@@ -424,20 +431,10 @@ gupcr_fabric_init (void)
   #define __GUPCR_XSTR__(S) __GUPCR_STR__(S)
   /*  Hard-coded service name for Portals PTE.  */
   gupcr_fabric_call (fi_getinfo,
-		     (FI_VERSION(1, 0), NULL, __GUPCR_XSTR__(GUPCR_SERVICE_GMEM),
+		     (FI_VERSION(1, 0), NULL, "16",
 		      FI_SOURCE, &hints, &gupcr_fi));
   gupcr_fabric_call (fi_fabric, (gupcr_fi->fabric_attr, &gupcr_fab, NULL));
   gupcr_fabric_call (fi_domain, (gupcr_fab, gupcr_fi, &gupcr_fd, NULL));
-  /* TODO: Work around the issue of multiple endpoint under the same PT, seems
-     impossible in thu current implementation of portals provider.  For each
-     PTE (endpoint) we create separate domains.  */
-  gupcr_fabric_call (fi_getinfo,
-		     (FI_VERSION(1, 0), NULL, __GUPCR_XSTR__(GUPCR_SERVICE_LOCK),
-		      FI_SOURCE, &hints, &gupcr_fi_lock));
-  gupcr_fabric_call (fi_fabric,
-		     (gupcr_fi_lock->fabric_attr, &gupcr_fab_lock, NULL));
-  gupcr_fabric_call (fi_domain,
-		     (gupcr_fab_lock, gupcr_fi_lock, &gupcr_fd_lock, NULL));
 
   gupcr_rank = gupcr_runtime_get_rank ();
   gupcr_rank_cnt = gupcr_runtime_get_size ();
@@ -446,6 +443,44 @@ gupcr_fabric_init (void)
   gupcr_max_msg_size = gupcr_fi->ep_attr->max_msg_size;
   gupcr_max_order_size = gupcr_fi->ep_attr->max_order_raw_size;
   gupcr_max_optim_size = gupcr_fi->ep_attr->inject_size;
+
+  /* Create an endpoint for all UPC contexts.  */
+  gupcr_fabric_call (fi_endpoint, (gupcr_fd, gupcr_fi, &gupcr_ep, NULL));
+
+  /* Other threads' endpoints are mapped via address vector table with
+     each threads' endpoint indexed by the thread number.  */
+  av_attr.type  = FI_AV_TABLE;
+  av_attr.count = gupcr_rank_cnt;
+  av_attr.name = "ENDPOINTS";
+  gupcr_fabric_call (fi_av_open, (gupcr_fd, &av_attr, &gupcr_av, NULL));
+  gupcr_fabric_call (fi_ep_bind, (&gupcr_ep->fid,
+				  &gupcr_av->fid, 0));
+
+  /* Enable endpoint.  */
+  gupcr_fabric_call (fi_enable, (gupcr_ep));
+
+  /* Exchange endpoint name with other threads.  */
+  gupcr_fabric_call (fi_getname, ((fid_t) gupcr_ep, epname, &epnamelen));
+  if (epnamelen > sizeof(epname))
+    gupcr_fatal_error ("sizeof endpoint name greater then %lu",
+			sizeof (epname));
+
+  epnames = calloc (THREADS * epnamelen, 1);
+  if (!epnames)
+    gupcr_fatal_error ("cannot allocate %ld for epnames",
+			THREADS * epnamelen);
+  {
+    int ret = gupcr_runtime_exchange ("gmem", epname, epnamelen, epnames);
+    if (ret)
+      {
+        gupcr_fatal_error ("error (%d) reported while exchanging GMEM endpoints", 
+			    ret);
+      }
+    gupcr_log (FC_FABRIC, "exchanged ep names with %d threads", THREADS);
+  }
+  /* Map endpoints.  */
+  gupcr_fabric_call (fi_av_insert, (gupcr_av, epnames, THREADS, NULL, 0));
+  
 }
 
 /**
@@ -454,6 +489,9 @@ gupcr_fabric_init (void)
 void
 gupcr_fabric_fini (void)
 {
+  gupcr_fabric_call (fi_close, (&gupcr_av->fid));
+  gupcr_fabric_call (fi_close, (&gupcr_ep->fid));
+  free (epnames);
   gupcr_fabric_call (fi_close, (&gupcr_fab->fid));
 }
 

@@ -32,20 +32,21 @@
 
 /* GUPCR Service Table Entries */
 /** Memory put/get functions network connection */
-#define	GUPCR_SERVICE_GMEM		16
+#define	GUPCR_SERVICE_GMEM		0
 /** Barrier messages to parent node network connection */
-#define	GUPCR_SERVICE_BARRIER_UP	17
+#define	GUPCR_SERVICE_BARRIER_UP	1
 /** Barrier messages from parent node network connection */
-#define	GUPCR_SERVICE_BARRIER_DOWN	18
+#define	GUPCR_SERVICE_BARRIER_DOWN	2
 /** Lock signaling network connection */
-#define	GUPCR_SERVICE_LOCK		19
+#define	GUPCR_SERVICE_LOCK		3
 /** Shutdown service signaling network connection */
-#define	GUPCR_SERVICE_SHUTDOWN		20
+#define	GUPCR_SERVICE_SHUTDOWN		4
 /** Collectives service signaling network connection */
-#define	GUPCR_SERVICE_COLL		21
+#define	GUPCR_SERVICE_COLL		5
 /** Non-blocking transfers network connection */
-#define	GUPCR_SERVICE_NB		22
+#define	GUPCR_SERVICE_NB		6
 #define	GUPCR_SERVICE_COUNT		7
+#define	GUPCR_SERVICE_BITS		3
 /** @} */
 
 //begin lib_fabric
