@@ -31,22 +31,26 @@
  */
 
 /* GUPCR Service Table Entries */
+/** Reserved endpoint context */
+#define	GUPCR_SERVICE_RESERVED		0
 /** Memory put/get functions network connection */
-#define	GUPCR_SERVICE_GMEM		0
+#define	GUPCR_SERVICE_GMEM		1
 /** Barrier messages to parent node network connection */
-#define	GUPCR_SERVICE_BARRIER_UP	1
+#define	GUPCR_SERVICE_BARRIER_UP	2
 /** Barrier messages from parent node network connection */
-#define	GUPCR_SERVICE_BARRIER_DOWN	2
+#define	GUPCR_SERVICE_BARRIER_DOWN	3
 /** Lock signaling network connection */
-#define	GUPCR_SERVICE_LOCK		3
+#define	GUPCR_SERVICE_LOCK		4
 /** Shutdown service signaling network connection */
-#define	GUPCR_SERVICE_SHUTDOWN		4
+#define	GUPCR_SERVICE_SHUTDOWN		5
 /** Collectives service signaling network connection */
-#define	GUPCR_SERVICE_COLL		5
+#define	GUPCR_SERVICE_COLL		6
 /** Non-blocking transfers network connection */
-#define	GUPCR_SERVICE_NB		6
-#define	GUPCR_SERVICE_COUNT		7
-#define	GUPCR_SERVICE_BITS		3
+#define	GUPCR_SERVICE_NB		7
+/** Number of services */
+#define	GUPCR_SERVICE_COUNT		8
+/** Number of service bits (? TODO - no match with docs) */
+#define	GUPCR_SERVICE_BITS		8
 /** @} */
 
 //begin lib_fabric
@@ -61,6 +65,7 @@ typedef struct fid_cq*      fab_cq_t;
 typedef struct fid_eq*      fab_eq_t;
 typedef struct fid_cntr*    fab_cntr_t;
 typedef struct fid_mr*      fab_mr_t;
+typedef struct fi_ep_attr   ep_attr_t;
 typedef struct fi_cntr_attr cntr_attr_t;
 typedef struct fi_cq_attr   cq_attr_t;
 typedef struct fi_eq_attr   eq_attr_t;

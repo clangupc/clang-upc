@@ -326,7 +326,7 @@ gupcr_lock_init (void)
 			       &gupcr_lock_cq->fid,
 			       FI_REMOTE_WRITE | FI_EVENT));
   /* ... bind MR to endpoint.  */
-  gupcr_fabric_call (fi_ep_bind, (&gupcr_lock_rx_ep->fid,
+  gupcr_fabric_call (fi_bind, (&gupcr_lock_rx_ep->fid,
 				  &gupcr_lock_mr->fid,
 				  FI_REMOTE_READ | FI_REMOTE_WRITE));
   gupcr_log (FC_LOCK, "lock init completed");
