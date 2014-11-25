@@ -63,15 +63,15 @@ static const size_t gupcr_gmem_low_mark_puts = GUPCR_MAX_OUTSTANDING_PUTS / 2;
 
 /** Fabric communications contextual endpoint resources */
 /** RX Endpoint comm resource  */
-fab_ep_t	gupcr_gmem_rx_ep;
+fab_ep_t gupcr_gmem_rx_ep;
 /** TX Endpoint comm resource  */
-fab_ep_t	gupcr_gmem_tx_ep;
+fab_ep_t gupcr_gmem_tx_ep;
 /** Completion queue for errors  */
-fab_cq_t	gupcr_gmem_cq;
+fab_cq_t gupcr_gmem_cq;
 /** Remote access memory region  */
-fab_mr_t	gupcr_gmem_mr;
+fab_mr_t gupcr_gmem_mr;
 /** Local memory access memory region  */
-fab_mr_t	gupcr_gmem_lmr;
+fab_mr_t gupcr_gmem_lmr;
 
 /**
  * Allocate memory for this thread's shared space contribution.
@@ -191,7 +191,7 @@ gupcr_gmem_sync (void)
 void
 gupcr_gmem_get (void *dest, int thread, size_t offset, size_t n)
 {
-  char *loc_addr = (char *)dest - (size_t) USER_PROG_MEM_START;
+  char *loc_addr = (char *) dest - (size_t) USER_PROG_MEM_START;
   size_t dest_offset = offset;
   size_t n_rem = n;
 
@@ -203,10 +203,10 @@ gupcr_gmem_get (void *dest, int thread, size_t offset, size_t n)
       n_xfer = GUPCR_MIN (n_rem, GUPCR_MAX_MSG_SIZE);
       ++gupcr_gmem_gets.num_pending;
       gupcr_fabric_call (fi_readfrom,
-		(gupcr_gmem_tx_ep, loc_addr, n_xfer, NULL,
-		 fi_rx_addr ((fi_addr_t) thread, GUPCR_SERVICE_GMEM,
-						 GUPCR_SERVICE_BITS),
-		 dest_offset, 0, NULL));
+			 (gupcr_gmem_tx_ep, loc_addr, n_xfer, NULL,
+			  fi_rx_addr ((fi_addr_t) thread, GUPCR_SERVICE_GMEM,
+				      GUPCR_SERVICE_BITS),
+			  dest_offset, 0, NULL));
       n_rem -= n_xfer;
       loc_addr += n_xfer;
       dest_offset += n_xfer;
@@ -235,7 +235,7 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
   char *src_addr = (char *) src;
   size_t n_rem = n;
   gupcr_debug (FC_MEM, "0x%lx %d:0x%lx",
-                       (long unsigned) src, thread, (long unsigned) offset);
+	       (long unsigned) src, thread, (long unsigned) offset);
   /* Large puts must be synchronous, to ensure that it is
      safe to re-use the source buffer upon return.  */
   while (n_rem > 0)
@@ -247,10 +247,10 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 	{
 	  /* Use optimized version of RMA write.  */
 	  gupcr_fabric_call (fi_inject_writeto,
-		(gupcr_gmem_tx_ep, src_addr, n_xfer,
-		 fi_rx_addr ((fi_addr_t) thread, GUPCR_SERVICE_GMEM,
-			     GUPCR_SERVICE_BITS),
-		 offset, 0));
+			     (gupcr_gmem_tx_ep, src_addr, n_xfer,
+			      fi_rx_addr ((fi_addr_t) thread,
+					  GUPCR_SERVICE_GMEM,
+					  GUPCR_SERVICE_BITS), offset, 0));
 	}
       else
 	{
@@ -263,28 +263,29 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 	      char *bounce_buf;
 	      /* If this transfer will overflow the bounce buffer,
 	         then first wait for all outstanding puts to complete.  */
-	      if ((gupcr_gmem_put_bb_used + n_xfer) > GUPCR_BOUNCE_BUFFER_SIZE)
-	        gupcr_gmem_sync_puts ();
+	      if ((gupcr_gmem_put_bb_used + n_xfer) >
+		  GUPCR_BOUNCE_BUFFER_SIZE)
+		gupcr_gmem_sync_puts ();
 	      bounce_buf = &gupcr_gmem_put_bb[gupcr_gmem_put_bb_used];
 	      memcpy (bounce_buf, src_addr, n_xfer);
 	      local_offset = (size_t) bounce_buf;
 	      gupcr_gmem_put_bb_used += n_xfer;
 	    }
 	  gupcr_fabric_call (fi_writeto,
-		(gupcr_gmem_tx_ep, (const char *) local_offset, n_xfer, NULL,
-		 fi_rx_addr ((fi_addr_t) thread, GUPCR_SERVICE_GMEM,
-						 GUPCR_SERVICE_BITS),
-		 offset, 0, NULL));
+			     (gupcr_gmem_tx_ep, (const char *) local_offset,
+			      n_xfer, NULL, fi_rx_addr ((fi_addr_t) thread,
+							GUPCR_SERVICE_GMEM,
+							GUPCR_SERVICE_BITS),
+			      offset, 0, NULL));
 	}
       n_rem -= n_xfer;
       src_addr += n_xfer;
       ++gupcr_gmem_puts.num_pending;
       if (gupcr_gmem_puts.num_pending == gupcr_gmem_high_mark_puts)
-   	{
+	{
 	  int status;
 	  size_t wait_cnt = gupcr_gmem_puts.num_completed
-			    + gupcr_gmem_puts.num_pending
-			    - gupcr_gmem_low_mark_puts;
+	    + gupcr_gmem_puts.num_pending - gupcr_gmem_low_mark_puts;
 	  gupcr_fabric_call_nc (fi_cntr_wait, status,
 				(gupcr_gmem_puts.ct_handle, wait_cnt,
 				 GUPCR_TRANSFER_TIMEOUT));
@@ -294,7 +295,7 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 	      gupcr_abort ();
 	    }
 	  gupcr_gmem_puts.num_pending -= wait_cnt -
-					 gupcr_gmem_puts.num_completed;
+	    gupcr_gmem_puts.num_completed;
 	  gupcr_gmem_puts.num_completed = wait_cnt;
 	}
     }
@@ -326,8 +327,7 @@ gupcr_gmem_copy (int dthread, size_t doffset,
   size_t src_addr = soffset;
   gupcr_debug (FC_MEM, "%d:0x%lx %d:0x%lx %lu",
 	       sthread, (long unsigned) soffset,
-	       dthread, (long unsigned) doffset,
-	       (long unsigned) n);
+	       dthread, (long unsigned) doffset, (long unsigned) n);
   while (n_rem > 0)
     {
       size_t n_xfer;
@@ -346,10 +346,11 @@ gupcr_gmem_copy (int dthread, size_t doffset,
       local_offset = bounce_buf - gupcr_gmem_put_bb;
       ++gupcr_gmem_puts.num_pending;
       gupcr_fabric_call (fi_writeto,
-		(gupcr_gmem_tx_ep, (const char *) local_offset, n_xfer, NULL,
-		 fi_rx_addr ((fi_addr_t) dthread, GUPCR_SERVICE_GMEM,
-						  GUPCR_SERVICE_BITS),
-		 dest_addr, 0, NULL));
+			 (gupcr_gmem_tx_ep, (const char *) local_offset,
+			  n_xfer, NULL, fi_rx_addr ((fi_addr_t) dthread,
+						    GUPCR_SERVICE_GMEM,
+						    GUPCR_SERVICE_BITS),
+			  dest_addr, 0, NULL));
       n_rem -= n_xfer;
       src_addr += n_xfer;
       dest_addr += n_xfer;
@@ -377,7 +378,7 @@ gupcr_gmem_set (int thread, size_t offset, int c, size_t n)
   int already_filled = 0;
   size_t dest_addr = offset;
   gupcr_debug (FC_MEM, "0x%x %d:0x%lx %lu", c, thread,
-                       (long unsigned) offset, (long unsigned) n);
+	       (long unsigned) offset, (long unsigned) n);
   while (n_rem > 0)
     {
       size_t n_xfer;
@@ -400,10 +401,11 @@ gupcr_gmem_set (int thread, size_t offset, int c, size_t n)
       local_offset = bounce_buf - gupcr_gmem_put_bb;
       ++gupcr_gmem_puts.num_pending;
       gupcr_fabric_call (fi_writeto,
-		(gupcr_gmem_tx_ep, (const char *) local_offset, n_xfer, NULL,
-		 fi_rx_addr ((fi_addr_t) thread, GUPCR_SERVICE_GMEM,
-						 GUPCR_SERVICE_BITS),
-		 dest_addr, 0, NULL));
+			 (gupcr_gmem_tx_ep, (const char *) local_offset,
+			  n_xfer, NULL, fi_rx_addr ((fi_addr_t) thread,
+						    GUPCR_SERVICE_GMEM,
+						    GUPCR_SERVICE_BITS),
+			  dest_addr, 0, NULL));
       n_rem -= n_xfer;
       dest_addr += n_xfer;
     }
@@ -416,8 +418,8 @@ gupcr_gmem_set (int thread, size_t offset, int c, size_t n)
 void
 gupcr_gmem_init (void)
 {
-  cntr_attr_t cntr_attr = {0};
-  cq_attr_t cq_attr = {0};
+  cntr_attr_t cntr_attr = { 0 };
+  cq_attr_t cq_attr = { 0 };
 
   gupcr_log (FC_MEM, "gmem init called");
   /* Allocate memory for this thread's contribution to shared memory.  */
@@ -425,9 +427,11 @@ gupcr_gmem_init (void)
 
   /* Create context endpoints for GMEM transfers.  */
   gupcr_fabric_call (fi_tx_context,
-	(gupcr_ep, GUPCR_SERVICE_GMEM, NULL, &gupcr_gmem_tx_ep, NULL));
+		     (gupcr_ep, GUPCR_SERVICE_GMEM, NULL, &gupcr_gmem_tx_ep,
+		      NULL));
   gupcr_fabric_call (fi_rx_context,
-	(gupcr_ep, GUPCR_SERVICE_GMEM, NULL, &gupcr_gmem_rx_ep, NULL));
+		     (gupcr_ep, GUPCR_SERVICE_GMEM, NULL, &gupcr_gmem_rx_ep,
+		      NULL));
 
   /* NOTE: for read/write we create counters and event queues. EQs are supposed
      to be used for errors only, but at this time it is not clear how.  It is
@@ -459,7 +463,7 @@ gupcr_gmem_init (void)
      is only one completion queue for read and writes and minimum
      size of one message is enough for error reporting.  */
   cq_attr.size = 1;
-  cq_attr.format  = FI_CQ_FORMAT_MSG;
+  cq_attr.format = FI_CQ_FORMAT_MSG;
   cq_attr.wait_obj = FI_WAIT_NONE;
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_gmem_cq, NULL));
   /* Use FI_EVENT flag to report errors only.  */
