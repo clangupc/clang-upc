@@ -55,21 +55,21 @@
 
 //begin lib_fabric
 
-typedef struct fi_info*     fab_info_t;
-typedef struct fi_resource  fab_res_t;
-typedef struct fid_fabric*  fab_t;
-typedef struct fid_domain*  fab_domain_t;
-typedef struct fid_ep*      fab_ep_t;
-typedef struct fid_av*      fab_av_t;
-typedef struct fid_cq*      fab_cq_t;
-typedef struct fid_eq*      fab_eq_t;
-typedef struct fid_cntr*    fab_cntr_t;
-typedef struct fid_mr*      fab_mr_t;
-typedef struct fi_ep_attr   ep_attr_t;
+typedef struct fi_info *fab_info_t;
+typedef struct fi_resource fab_res_t;
+typedef struct fid_fabric *fab_t;
+typedef struct fid_domain *fab_domain_t;
+typedef struct fid_ep *fab_ep_t;
+typedef struct fid_av *fab_av_t;
+typedef struct fid_cq *fab_cq_t;
+typedef struct fid_eq *fab_eq_t;
+typedef struct fid_cntr *fab_cntr_t;
+typedef struct fid_mr *fab_mr_t;
+typedef struct fi_ep_attr ep_attr_t;
 typedef struct fi_cntr_attr cntr_attr_t;
-typedef struct fi_cq_attr   cq_attr_t;
-typedef struct fi_eq_attr   eq_attr_t;
-typedef struct fi_av_attr   av_attr_t;
+typedef struct fi_cq_attr cq_attr_t;
+typedef struct fi_eq_attr eq_attr_t;
+typedef struct fi_av_attr av_attr_t;
 
 /** Endpoint to/form Rank/Service mapping */
 extern fab_ep_t gupcr_ep;

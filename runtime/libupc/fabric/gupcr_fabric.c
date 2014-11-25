@@ -73,27 +73,27 @@ check_ip_address (const char *ifname)
 {
   int fd;
   struct ifreq devinfo;
-  struct sockaddr_in *sin = (struct sockaddr_in *)&devinfo.ifr_addr;
+  struct sockaddr_in *sin = (struct sockaddr_in *) &devinfo.ifr_addr;
   in_addr_t addr;
 
-  fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+  fd = socket (AF_INET, SOCK_DGRAM, IPPROTO_IP);
   if (fd < 0)
     {
       gupcr_fatal_error ("error initializing socket");
       gupcr_abort ();
     }
 
-  strncpy(devinfo.ifr_name, ifname, IFNAMSIZ);
+  strncpy (devinfo.ifr_name, ifname, IFNAMSIZ);
 
-  if (ioctl(fd, SIOCGIFADDR, &devinfo) == 0)
+  if (ioctl (fd, SIOCGIFADDR, &devinfo) == 0)
     {
       addr = sin->sin_addr.s_addr;
       gupcr_log (FC_FABRIC, "IB IPv4 address for %s is %d",
-	         devinfo.ifr_name, addr);
+		 devinfo.ifr_name, addr);
     }
   else
     addr = INADDR_ANY;
-  close(fd);
+  close (fd);
   return addr;
 }
 
@@ -129,8 +129,8 @@ gupcr_streqtype (uint64_t eqtype)
 {
   switch (eqtype)
     {
-      default:
-	break;
+    default:
+      break;
     }
   return "UNKNOWN EVENT TYPE";
 }
@@ -244,8 +244,8 @@ gupcr_nifailtype (int nitype)
 {
   switch (nitype)
     {
-      default:
-        ;
+    default:
+      ;
     }
   return "NI_FAILURE_UNKNOWN";
 }
@@ -334,7 +334,7 @@ gupcr_process_fail_events (fab_cq_t cq)
 {
   int ret;
   struct fi_cq_msg_entry cq_entry;
-  gupcr_fabric_call_nc (fi_cq_read, ret, (cq, (void *)&cq_entry,
+  gupcr_fabric_call_nc (fi_cq_read, ret, (cq, (void *) &cq_entry,
 					  sizeof (cq_entry)));
   if (ret < 0)
     {
@@ -342,7 +342,7 @@ gupcr_process_fail_events (fab_cq_t cq)
       const char *errstr;
       struct fi_cq_err_entry cq_error;
       gupcr_fabric_call_nc (fi_cq_readerr, ret,
-			    (cq, (void *)&cq_error, sizeof (cq_error), 0));
+			    (cq, (void *) &cq_error, sizeof (cq_error), 0));
       gupcr_fabric_call_nc (fi_cq_strerror, errstr,
 			    (cq, cq_error.err, cq_error.err_data,
 			     buf, sizeof (buf)));
@@ -391,7 +391,7 @@ gupcr_get_rank_pid (int rank)
 int
 gupcr_get_rank_nid (int rank)
 {
-  return (int)net_addr_map[rank];
+  return (int) net_addr_map[rank];
 }
 
 /**
@@ -419,23 +419,23 @@ gupcr_fabric_init (void)
   struct fi_info hints = { 0 };
   av_attr_t av_attr = { 0 };
   ep_attr_t ep_attr = { 0 };
-  size_t epnamelen = sizeof(epname);
+  size_t epnamelen = sizeof (epname);
 
   /* Find fabric provider based on the hints.  */
-  hints.caps = FI_RMA |	   	 /* Request RMA capability,  */
-	       FI_ATOMICS |   	 /* atomics capability,  */
-	       FI_DYNAMIC_MR;	 /* MR without physical backing,  */
-  hints.ep_type = FI_EP_RDM;	 /* Reliable datagram message.  */
+  hints.caps = FI_RMA |		/* Request RMA capability,  */
+    FI_ATOMICS |		/* atomics capability,  */
+    FI_DYNAMIC_MR;		/* MR without physical backing,  */
+  hints.ep_type = FI_EP_RDM;	/* Reliable datagram message.  */
   hints.addr_format = FI_ADDR_UNSPEC;
   ep_attr.rx_ctx_cnt = GUPCR_SERVICE_COUNT;
   ep_attr.tx_ctx_cnt = GUPCR_SERVICE_COUNT;
   hints.ep_attr = &ep_attr;
 
-  #define __GUPCR_STR__(S) #S
-  #define __GUPCR_XSTR__(S) __GUPCR_STR__(S)
+#define __GUPCR_STR__(S) #S
+#define __GUPCR_XSTR__(S) __GUPCR_STR__(S)
   /*  Hard-coded service name for Portals PTE.  */
   gupcr_fabric_call (fi_getinfo,
-		     (FI_VERSION(1, 0), NULL, "16",
+		     (FI_VERSION (1, 0), NULL, "16",
 		      FI_SOURCE, &hints, &gupcr_fi));
   gupcr_fabric_call (fi_fabric, (gupcr_fi->fabric_attr, &gupcr_fab, NULL));
   gupcr_fabric_call (fi_domain, (gupcr_fab, gupcr_fi, &gupcr_fd, NULL));
@@ -453,32 +453,31 @@ gupcr_fabric_init (void)
 
   /* Other threads' endpoints are mapped via address vector table with
      each threads' endpoint indexed by the thread number.  */
-  av_attr.type  = FI_AV_TABLE;
+  av_attr.type = FI_AV_TABLE;
   av_attr.count = gupcr_rank_cnt;
   av_attr.name = "ENDPOINTS";
   av_attr.rx_ctx_bits = GUPCR_SERVICE_BITS;
   gupcr_fabric_call (fi_av_open, (gupcr_fd, &av_attr, &gupcr_av, NULL));
-  gupcr_fabric_call (fi_bind, (&gupcr_ep->fid,
-			       &gupcr_av->fid, 0));
+  gupcr_fabric_call (fi_bind, (&gupcr_ep->fid, &gupcr_av->fid, 0));
 
   /* Enable endpoint.  */
   gupcr_fabric_call (fi_enable, (gupcr_ep));
 
   /* Exchange endpoint name with other threads.  */
   gupcr_fabric_call (fi_getname, ((fid_t) gupcr_ep, epname, &epnamelen));
-  if (epnamelen > sizeof(epname))
+  if (epnamelen > sizeof (epname))
     gupcr_fatal_error ("sizeof endpoint name greater then %lu",
-			sizeof (epname));
+		       sizeof (epname));
 
   epnames = calloc (gupcr_rank_cnt * epnamelen, 1);
   if (!epnames)
     gupcr_fatal_error ("cannot allocate %ld for epnames",
-			gupcr_rank_cnt * epnamelen);
+		       gupcr_rank_cnt * epnamelen);
   {
     int ret = gupcr_runtime_exchange ("gmem", epname, epnamelen, epnames);
     if (ret)
       {
-        gupcr_fatal_error
+	gupcr_fatal_error
 	  ("error (%d) reported while exchanging GMEM endpoints", ret);
       }
     gupcr_log
