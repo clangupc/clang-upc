@@ -416,8 +416,9 @@ gupcr_startup_barrier (void)
 void
 gupcr_fabric_init (void)
 {
-  struct fi_info hints = {0};
-  av_attr_t av_attr = {0};
+  struct fi_info hints = { 0 };
+  av_attr_t av_attr = { 0 };
+  ep_attr_t ep_attr = { 0 };
   size_t epnamelen = sizeof(epname);
 
   /* Find fabric provider based on the hints.  */
@@ -426,6 +427,9 @@ gupcr_fabric_init (void)
 	       FI_DYNAMIC_MR;	 /* MR without physical backing,  */
   hints.ep_type = FI_EP_RDM;	 /* Reliable datagram message.  */
   hints.addr_format = FI_ADDR_UNSPEC;
+  ep_attr.rx_ctx_cnt = GUPCR_SERVICE_COUNT;
+  ep_attr.tx_ctx_cnt = GUPCR_SERVICE_COUNT;
+  hints.ep_attr = &ep_attr;
 
   #define __GUPCR_STR__(S) #S
   #define __GUPCR_XSTR__(S) __GUPCR_STR__(S)
@@ -452,9 +456,10 @@ gupcr_fabric_init (void)
   av_attr.type  = FI_AV_TABLE;
   av_attr.count = gupcr_rank_cnt;
   av_attr.name = "ENDPOINTS";
+  av_attr.rx_ctx_bits = GUPCR_SERVICE_BITS;
   gupcr_fabric_call (fi_av_open, (gupcr_fd, &av_attr, &gupcr_av, NULL));
-  gupcr_fabric_call (fi_ep_bind, (&gupcr_ep->fid,
-				  &gupcr_av->fid, 0));
+  gupcr_fabric_call (fi_bind, (&gupcr_ep->fid,
+			       &gupcr_av->fid, 0));
 
   /* Enable endpoint.  */
   gupcr_fabric_call (fi_enable, (gupcr_ep));
@@ -465,22 +470,23 @@ gupcr_fabric_init (void)
     gupcr_fatal_error ("sizeof endpoint name greater then %lu",
 			sizeof (epname));
 
-  epnames = calloc (THREADS * epnamelen, 1);
+  epnames = calloc (gupcr_rank_cnt * epnamelen, 1);
   if (!epnames)
     gupcr_fatal_error ("cannot allocate %ld for epnames",
-			THREADS * epnamelen);
+			gupcr_rank_cnt * epnamelen);
   {
     int ret = gupcr_runtime_exchange ("gmem", epname, epnamelen, epnames);
     if (ret)
       {
-        gupcr_fatal_error ("error (%d) reported while exchanging GMEM endpoints", 
-			    ret);
+        gupcr_fatal_error
+	  ("error (%d) reported while exchanging GMEM endpoints", ret);
       }
-    gupcr_log (FC_FABRIC, "exchanged ep names with %d threads", THREADS);
+    gupcr_log
+      (FC_FABRIC, "exchanged ep names with %d threads", gupcr_rank_cnt);
   }
   /* Map endpoints.  */
-  gupcr_fabric_call (fi_av_insert, (gupcr_av, epnames, THREADS, NULL, 0));
-  
+  gupcr_fabric_call
+    (fi_av_insert, (gupcr_av, epnames, gupcr_rank_cnt, NULL, 0, NULL));
 }
 
 /**

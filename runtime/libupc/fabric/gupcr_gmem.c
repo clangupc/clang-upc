@@ -442,9 +442,8 @@ gupcr_gmem_init (void)
   cntr_attr.flags = 0;
   gupcr_fabric_call (fi_cntr_open, (gupcr_fd, &cntr_attr,
 				    &gupcr_gmem_gets.ct_handle, NULL));
-  gupcr_fabric_call (fi_ep_bind, (&gupcr_gmem_tx_ep->fid,
-				  &gupcr_gmem_gets.ct_handle->fid,
-				  FI_READ));
+  gupcr_fabric_call (fi_bind, (&gupcr_gmem_tx_ep->fid,
+			       &gupcr_gmem_gets.ct_handle->fid, FI_READ));
 
   /* ... and completion counter/eq for remote writes.  */
   gupcr_gmem_puts.num_pending = 0;
@@ -453,9 +452,8 @@ gupcr_gmem_init (void)
   cntr_attr.flags = 0;
   gupcr_fabric_call (fi_cntr_open, (gupcr_fd, &cntr_attr,
 				    &gupcr_gmem_puts.ct_handle, NULL));
-  gupcr_fabric_call (fi_ep_bind, (&gupcr_gmem_tx_ep->fid,
-				  &gupcr_gmem_puts.ct_handle->fid,
-				  FI_WRITE));
+  gupcr_fabric_call (fi_bind, (&gupcr_gmem_tx_ep->fid,
+			       &gupcr_gmem_puts.ct_handle->fid, FI_WRITE));
 
   /* Create completion queue for remote target transfer errors.  There
      is only one completion queue for read and writes and minimum
@@ -465,9 +463,9 @@ gupcr_gmem_init (void)
   cq_attr.wait_obj = FI_WAIT_NONE;
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_gmem_cq, NULL));
   /* Use FI_EVENT flag to report errors only.  */
-  gupcr_fabric_call (fi_ep_bind, (&gupcr_gmem_tx_ep->fid,
-				  &gupcr_gmem_cq->fid,
-				  FI_READ | FI_WRITE | FI_EVENT));
+  gupcr_fabric_call (fi_bind, (&gupcr_gmem_tx_ep->fid,
+			       &gupcr_gmem_cq->fid,
+			       FI_READ | FI_WRITE | FI_EVENT));
 
   /* Enable GMEM endpoints now.  */
   gupcr_fabric_call (fi_enable, (gupcr_gmem_tx_ep));
@@ -477,17 +475,16 @@ gupcr_gmem_init (void)
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, USER_PROG_MEM_START,
 				 USER_PROG_MEM_SIZE, FI_READ | FI_WRITE,
 				 0, 0, 0, &gupcr_gmem_lmr, NULL));
-  gupcr_fabric_call (fi_ep_bind, (&gupcr_gmem_tx_ep->fid,
-				  &gupcr_gmem_lmr->fid,
-				  FI_READ | FI_WRITE));
+  gupcr_fabric_call (fi_bind, (&gupcr_gmem_tx_ep->fid,
+			       &gupcr_gmem_lmr->fid, FI_READ | FI_WRITE));
 
   /* Create a memory region for remote inbound accesses.  */
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, gupcr_gmem_base, gupcr_gmem_size,
 				 FI_REMOTE_READ | FI_REMOTE_WRITE, 0,
 				 0, 0, &gupcr_gmem_mr, NULL));
-  gupcr_fabric_call (fi_ep_bind, (&gupcr_gmem_rx_ep->fid,
-				  &gupcr_gmem_mr->fid,
-				  FI_REMOTE_READ | FI_REMOTE_WRITE));
+  gupcr_fabric_call (fi_bind, (&gupcr_gmem_rx_ep->fid,
+			       &gupcr_gmem_mr->fid,
+			       FI_REMOTE_READ | FI_REMOTE_WRITE));
   gupcr_log (FC_MEM, "gmem created");
 }
 
@@ -505,11 +502,8 @@ gupcr_gmem_fini (void)
   gupcr_fabric_call (fi_close, (&gupcr_gmem_cq->fid));
   gupcr_fabric_call (fi_close, (&gupcr_gmem_mr->fid));
   gupcr_fabric_call (fi_close, (&gupcr_gmem_lmr->fid));
-#if 0
-  // NOTE - reports an error, 
   gupcr_fabric_call (fi_close, (&gupcr_gmem_tx_ep->fid));
   gupcr_fabric_call (fi_close, (&gupcr_gmem_rx_ep->fid));
-#endif
 }
 
 /** @} */
