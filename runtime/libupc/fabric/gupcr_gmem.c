@@ -31,6 +31,9 @@
 
 /** Thread's default shared heap size */
 #define GUPCR_GMEM_DEFAULT_HEAP_SIZE 256*1024*1024
+/** Index of the local memory location */
+#define GUPCR_LOCAL_INDEX(addr) \
+	(void *) ((char *) addr - (char *) USER_PROG_MEM_START)
 
 /** Shared memory base and size */
 void *gupcr_gmem_base;
@@ -247,10 +250,11 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 	{
 	  /* Use optimized version of RMA write.  */
 	  gupcr_fabric_call (fi_inject_writeto,
-			     (gupcr_gmem_tx_ep, src_addr, n_xfer,
-			      fi_rx_addr ((fi_addr_t) thread,
-					  GUPCR_SERVICE_GMEM,
-					  GUPCR_SERVICE_BITS), offset, 0));
+			     (gupcr_gmem_tx_ep, GUPCR_LOCAL_INDEX (src_addr),
+			      n_xfer, fi_rx_addr ((fi_addr_t) thread,
+						  GUPCR_SERVICE_GMEM,
+						  GUPCR_SERVICE_BITS), offset,
+			      0));
 	}
       else
 	{
@@ -272,11 +276,12 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 	      gupcr_gmem_put_bb_used += n_xfer;
 	    }
 	  gupcr_fabric_call (fi_writeto,
-			     (gupcr_gmem_tx_ep, (const char *) local_offset,
-			      n_xfer, NULL, fi_rx_addr ((fi_addr_t) thread,
-							GUPCR_SERVICE_GMEM,
-							GUPCR_SERVICE_BITS),
-			      offset, 0, NULL));
+			     (gupcr_gmem_tx_ep,
+			      GUPCR_LOCAL_INDEX (local_offset), n_xfer, NULL,
+			      fi_rx_addr ((fi_addr_t) thread,
+					  GUPCR_SERVICE_GMEM,
+					  GUPCR_SERVICE_BITS), offset, 0,
+			      NULL));
 	}
       n_rem -= n_xfer;
       src_addr += n_xfer;
@@ -346,11 +351,12 @@ gupcr_gmem_copy (int dthread, size_t doffset,
       local_offset = bounce_buf - gupcr_gmem_put_bb;
       ++gupcr_gmem_puts.num_pending;
       gupcr_fabric_call (fi_writeto,
-			 (gupcr_gmem_tx_ep, (const char *) local_offset,
-			  n_xfer, NULL, fi_rx_addr ((fi_addr_t) dthread,
-						    GUPCR_SERVICE_GMEM,
-						    GUPCR_SERVICE_BITS),
-			  dest_addr, 0, NULL));
+			 (gupcr_gmem_tx_ep,
+			  GUPCR_LOCAL_INDEX (local_offset), n_xfer, NULL,
+			  fi_rx_addr ((fi_addr_t) dthread,
+				      GUPCR_SERVICE_GMEM,
+				      GUPCR_SERVICE_BITS), dest_addr, 0,
+			  NULL));
       n_rem -= n_xfer;
       src_addr += n_xfer;
       dest_addr += n_xfer;
@@ -401,7 +407,7 @@ gupcr_gmem_set (int thread, size_t offset, int c, size_t n)
       local_offset = bounce_buf - gupcr_gmem_put_bb;
       ++gupcr_gmem_puts.num_pending;
       gupcr_fabric_call (fi_writeto,
-			 (gupcr_gmem_tx_ep, (const char *) local_offset,
+			 (gupcr_gmem_tx_ep, GUPCR_LOCAL_INDEX (local_offset),
 			  n_xfer, NULL, fi_rx_addr ((fi_addr_t) thread,
 						    GUPCR_SERVICE_GMEM,
 						    GUPCR_SERVICE_BITS),
@@ -418,8 +424,12 @@ gupcr_gmem_set (int thread, size_t offset, int c, size_t n)
 void
 gupcr_gmem_init (void)
 {
-  cntr_attr_t cntr_attr = { 0 };
-  cq_attr_t cq_attr = { 0 };
+  cntr_attr_t cntr_attr = {
+    0
+  };
+  cq_attr_t cq_attr = {
+    0
+  };
 
   gupcr_log (FC_MEM, "gmem init called");
   /* Allocate memory for this thread's contribution to shared memory.  */

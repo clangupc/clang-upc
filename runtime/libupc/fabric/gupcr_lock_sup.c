@@ -27,6 +27,10 @@
  * @{
  */
 
+/** Index of the local memory location */
+#define GUPCR_LOCAL_INDEX(addr) \
+	(void *) ((char *) addr - (char *) USER_PROG_MEM_START)
+
 /** Lock memory region counter */
 static size_t gupcr_lock_lmr_count;
 /** Lock memory remote access counter */
@@ -73,16 +77,16 @@ gupcr_lock_swap (size_t dest_thread,
   int status;
   gupcr_debug (FC_LOCK, "%lu:0x%lx",
 	       (long unsigned) dest_thread, (long unsigned) dest_offset);
-  gupcr_lock_mr_count += 1;
   gupcr_fabric_call (fi_fetch_atomicto,
-		     (gupcr_lock_tx_ep, val, size, &gupcr_lock_lmr, old,
+		     (gupcr_lock_tx_ep, GUPCR_LOCAL_INDEX (val), size,
+		      &gupcr_lock_lmr, GUPCR_LOCAL_INDEX (old),
 		      &gupcr_lock_lmr, fi_rx_addr ((fi_addr_t) dest_thread,
 						   GUPCR_SERVICE_LOCK,
 						   GUPCR_SERVICE_BITS),
 		      dest_offset, 0, gupcr_get_atomic_datatype (size),
 		      FI_ATOMIC_WRITE, NULL));
 
-  gupcr_lock_mr_count += 1;
+  gupcr_lock_lmr_count += 1;
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(gupcr_lock_lct, gupcr_lock_lmr_count,
 			 GUPCR_TRANSFER_TIMEOUT));
@@ -118,13 +122,16 @@ gupcr_lock_cswap (size_t dest_thread,
 	       (long unsigned) dest_thread, (long unsigned) dest_offset);
 
   gupcr_fabric_call (fi_compare_atomicto,
-		     (gupcr_lock_tx_ep, val, size, &gupcr_lock_lmr, cmp,
-		      &gupcr_lock_lmr, gupcr_lock_buf, &gupcr_lock_lmr,
-		      fi_rx_addr ((fi_addr_t) dest_thread, GUPCR_SERVICE_LOCK,
-				  GUPCR_SERVICE_BITS), dest_offset, 0,
-		      gupcr_get_atomic_datatype (size), FI_CSWAP, NULL));
+		     (gupcr_lock_tx_ep, GUPCR_LOCAL_INDEX (val), size,
+		      &gupcr_lock_lmr, GUPCR_LOCAL_INDEX (cmp),
+		      &gupcr_lock_lmr, GUPCR_LOCAL_INDEX (gupcr_lock_buf),
+		      &gupcr_lock_lmr, fi_rx_addr ((fi_addr_t) dest_thread,
+						   GUPCR_SERVICE_LOCK,
+						   GUPCR_SERVICE_BITS),
+		      dest_offset, 0, gupcr_get_atomic_datatype (size),
+		      FI_CSWAP, NULL));
 
-  gupcr_lock_mr_count += 1;
+  gupcr_lock_lmr_count += 1;
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(gupcr_lock_lct, gupcr_lock_lmr_count,
 			 GUPCR_TRANSFER_TIMEOUT));
@@ -159,7 +166,7 @@ gupcr_lock_put (size_t dest_thread, size_t dest_addr, void *val, size_t size)
   if (size <= GUPCR_MAX_OPTIM_SIZE)
     {
       gupcr_fabric_call (fi_inject_writeto,
-			 (gupcr_lock_tx_ep, val, size,
+			 (gupcr_lock_tx_ep, GUPCR_LOCAL_INDEX (val), size,
 			  fi_rx_addr ((fi_addr_t) dest_thread,
 				      GUPCR_SERVICE_LOCK, GUPCR_SERVICE_BITS),
 			  dest_addr, 0));
@@ -167,10 +174,11 @@ gupcr_lock_put (size_t dest_thread, size_t dest_addr, void *val, size_t size)
   else
     {
       gupcr_fabric_call (fi_writeto,
-			 (gupcr_lock_tx_ep, (const char *) val, size, NULL,
-			  fi_rx_addr ((fi_addr_t) dest_thread,
-				      GUPCR_SERVICE_LOCK, GUPCR_SERVICE_BITS),
-			  dest_addr, 0, NULL));
+			 (gupcr_lock_tx_ep, GUPCR_LOCAL_INDEX (val), size,
+			  NULL, fi_rx_addr ((fi_addr_t) dest_thread,
+					    GUPCR_SERVICE_LOCK,
+					    GUPCR_SERVICE_BITS), dest_addr, 0,
+			  NULL));
     }
   gupcr_lock_lmr_count += 1;
   gupcr_fabric_call_nc (fi_cntr_wait, status,
@@ -198,9 +206,11 @@ gupcr_lock_get (size_t dest_thread, size_t dest_addr, void *val, size_t size)
   gupcr_debug (FC_LOCK, "%lu:0x%lx",
 	       (long unsigned) dest_thread, (long unsigned) dest_addr);
   gupcr_fabric_call (fi_readfrom,
-		     (gupcr_lock_tx_ep, loc_addr, size, NULL,
-		      fi_rx_addr ((fi_addr_t) dest_thread, GUPCR_SERVICE_LOCK,
-				  GUPCR_SERVICE_BITS), dest_addr, 0, NULL));
+		     (gupcr_lock_tx_ep, GUPCR_LOCAL_INDEX (loc_addr), size,
+		      NULL, fi_rx_addr ((fi_addr_t) dest_thread,
+					GUPCR_SERVICE_LOCK,
+					GUPCR_SERVICE_BITS), dest_addr, 0,
+		      NULL));
   gupcr_lock_lmr_count += 1;
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(gupcr_lock_lct, gupcr_lock_lmr_count,
