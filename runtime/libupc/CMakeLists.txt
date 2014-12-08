@@ -487,6 +487,7 @@ elseif(LIBUPC_RUNTIME_MODEL STREQUAL fabric)
     fabric/gupcr_atomic_sup.c
     fabric/gupcr_atomic.upc
     fabric/gupcr_barrier.c
+    fabric/gupcr_barrier_sup.c
     fabric/gupcr_backtrace.c
     fabric/gupcr_broadcast.c
     fabric/gupcr_coll_sup.c

@@ -1,4 +1,4 @@
-/*===-- gupcr_barrier.h - UPC Runtime Support Library --------------------===
+/*===-- gupcr_barrier_sup.h - UPC Runtime Support Library ----------------===
 |*
 |*                     The LLVM Compiler Infrastructure
 |*
@@ -12,33 +12,24 @@
 #define _GUPCR_BARRIER_H_
 
 /**
- * @file gupcr_barrier.h
- * GUPC Portals4 barrier implementation.
+ * @file gupcr_barrier_sup.h
+ * UPC barrier implementation support.
  *
  * @addtogroup BARRIER GUPCR Barrier Functions
  * @{
  */
 
+/* Barrier direction (up or down).  */
 enum barrier_dir
 { BARRIER_UP, BARRIER_DOWN };
-
-extern void gupcr_barrier_init (void);
-extern void gupcr_barrier_fini (void);
-
-/* Broadcast support functions.  */
-extern void gupcr_bcast_send (void *, size_t);
-extern void gupcr_bcast_recv (void *, size_t);
-
-/* Current barrier ID.  */
-extern int gupcr_barrier_id;
 
 /* Barrier support functions.  */
 
 extern void gupcr_barrier_sup_init (void);
 extern void gupcr_barrier_sup_fini (void);
 
-extern void gupcr_barrier_send (int *, int, int *);
-extern void gupcr_barrier_tr_send (enum barrier_dir, int *, int, int *,
+extern void gupcr_barrier_put (enum barrier_dir, int *, int, int *);
+extern void gupcr_barrier_tr_put (enum barrier_dir, int *, int, int *,
 				   size_t);
 extern void gupcr_barrier_atomic (int *, int, int *);
 extern void gupcr_barrier_tr_atomic (enum barrier_dir, int *, int, int *,
@@ -47,4 +38,4 @@ extern void gupcr_barrier_wait_up (size_t);
 extern void gupcr_barrier_wait_down (size_t);
 extern void gupcr_barrier_wait_delivery (size_t);
 /** @} */
-#endif /* gupcr_barrier.h */
+#endif /* gupcr_barrier_sup.h */
