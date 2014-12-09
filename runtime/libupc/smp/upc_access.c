@@ -156,6 +156,206 @@ upcr_llvm_getns (long sthread, long saddr, void *dest, size_t n)
 
 __attribute__((__always_inline__))
 inline
+u_intQI_t
+upcr_llvm_get_i8 (long sthread, long saddr)
+{
+  u_intQI_t result;
+  if (!saddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+
+  result = *(u_intQI_t *)__upc_rptr_to_addr (sthread, saddr);
+  return result;
+}
+
+__attribute__((__always_inline__))
+inline
+u_intQI_t
+upcr_llvm_get_i8s (long sthread, long saddr)
+{
+  u_intQI_t result;
+  if (!saddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+
+  GUPCR_FENCE ();
+  result = *(u_intQI_t *)__upc_rptr_to_addr (sthread, saddr);
+  GUPCR_READ_FENCE ();
+  return result;
+}
+
+__attribute__((__always_inline__))
+inline
+u_intHI_t
+upcr_llvm_get_i16 (long sthread, long saddr)
+{
+  u_intHI_t result;
+  if (!saddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+
+  result = *(u_intHI_t *)__upc_rptr_to_addr (sthread, saddr);
+  return result;
+}
+
+__attribute__((__always_inline__))
+inline
+u_intHI_t
+upcr_llvm_get_i16s (long sthread, long saddr)
+{
+  u_intHI_t result;
+  if (!saddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+
+  GUPCR_FENCE ();
+  result = *(u_intHI_t *)__upc_rptr_to_addr (sthread, saddr);
+  GUPCR_READ_FENCE ();
+  return result;
+}
+
+__attribute__((__always_inline__))
+inline
+u_intSI_t
+upcr_llvm_get_i32 (long sthread, long saddr)
+{
+  u_intSI_t result;
+  if (!saddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+
+  result = *(u_intSI_t *)__upc_rptr_to_addr (sthread, saddr);
+  return result;
+}
+
+__attribute__((__always_inline__))
+inline
+u_intSI_t
+upcr_llvm_get_i32s (long sthread, long saddr)
+{
+  u_intSI_t result;
+  if (!saddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+
+  GUPCR_FENCE ();
+  result = *(u_intSI_t *)__upc_rptr_to_addr (sthread, saddr);
+  GUPCR_READ_FENCE ();
+  return result;
+}
+
+__attribute__((__always_inline__))
+inline
+u_intDI_t
+upcr_llvm_get_i64 (long sthread, long saddr)
+{
+  u_intDI_t result;
+  if (!saddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+
+  result = *(u_intDI_t *)__upc_rptr_to_addr (sthread, saddr);
+  return result;
+}
+
+__attribute__((__always_inline__))
+inline
+u_intDI_t
+upcr_llvm_get_i64s (long sthread, long saddr)
+{
+  u_intDI_t result;
+  if (!saddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+
+  GUPCR_FENCE ();
+  result = *(u_intDI_t *)__upc_rptr_to_addr (sthread, saddr);
+  GUPCR_READ_FENCE ();
+  return result;
+}
+
+#if GUPCR_TARGET64
+
+__attribute__((__always_inline__))
+inline
+u_intTI_t
+upcr_llvm_get_i128 (long sthread, long saddr)
+{
+  u_intTI_t result;
+  if (!saddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+
+  result = *(u_intTI_t *)__upc_rptr_to_addr (sthread, saddr);
+  return result;
+}
+
+__attribute__((__always_inline__))
+inline
+u_intTI_t
+upcr_llvm_get_i128s (long sthread, long saddr)
+{
+  u_intTI_t result;
+  if (!saddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+
+  GUPCR_FENCE ();
+  result = *(u_intTI_t *)__upc_rptr_to_addr (sthread, saddr);
+  GUPCR_READ_FENCE ();
+  return result;
+}
+
+#endif
+
+__attribute__((__always_inline__))
+inline
+float
+upcr_llvm_get_float (long sthread, long saddr)
+{
+  float result;
+  if (!saddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+
+  result = *(float *)__upc_rptr_to_addr (sthread, saddr);
+  return result;
+}
+
+__attribute__((__always_inline__))
+inline
+float
+upcr_llvm_get_floats (long sthread, long saddr)
+{
+  float result;
+  if (!saddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+
+  GUPCR_FENCE ();
+  result = *(float *)__upc_rptr_to_addr (sthread, saddr);
+  GUPCR_READ_FENCE ();
+  return result;
+}
+
+__attribute__((__always_inline__))
+inline
+double
+upcr_llvm_get_double (long sthread, long saddr)
+{
+  double result;
+  if (!saddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+
+  result = *(double *)__upc_rptr_to_addr (sthread, saddr);
+  return result;
+}
+
+__attribute__((__always_inline__))
+inline
+double
+upcr_llvm_get_doubles (long sthread, long saddr)
+{
+  double result;
+  if (!saddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+
+  GUPCR_FENCE ();
+  result = *(double *)__upc_rptr_to_addr (sthread, saddr);
+  GUPCR_READ_FENCE ();
+  return result;
+}
+
+__attribute__((__always_inline__))
+inline
 void
 upcr_llvm_putn (const void *src, long dthread, long daddr, size_t n)
 {
@@ -178,6 +378,164 @@ upcr_llvm_putns (const void *src, long dthread, long daddr, size_t n)
   GUPCR_WRITE_FENCE ();
   upcr_llvm_remote_put (src, dthread, daddr, n);
   GUPCR_FENCE ();
+}
+
+__attribute__((__always_inline__))
+inline
+void
+upcr_llvm_put_i8 (long dthread, long daddr, u_intQI_t val)
+{
+  if (!daddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+  *(u_intQI_t *)__upc_rptr_to_addr (dthread, daddr) = val;
+}
+
+__attribute__((__always_inline__))
+inline
+void
+upcr_llvm_put_i8s (long dthread, long daddr, u_intQI_t val)
+{
+  if (!daddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+  GUPCR_WRITE_FENCE();
+  *(u_intQI_t *)__upc_rptr_to_addr (dthread, daddr) = val;
+  GUPCR_FENCE();
+}
+
+__attribute__((__always_inline__))
+inline
+void
+upcr_llvm_put_i16 (long dthread, long daddr, u_intHI_t val)
+{
+  if (!daddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+  *(u_intHI_t *)__upc_rptr_to_addr (dthread, daddr) = val;
+}
+
+__attribute__((__always_inline__))
+inline
+void
+upcr_llvm_put_i16s (long dthread, long daddr, u_intHI_t val)
+{
+  if (!daddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+  GUPCR_WRITE_FENCE();
+  *(u_intHI_t *)__upc_rptr_to_addr (dthread, daddr) = val;
+  GUPCR_FENCE();
+}
+
+__attribute__((__always_inline__))
+inline
+void
+upcr_llvm_put_i32 (long dthread, long daddr, u_intSI_t val)
+{
+  if (!daddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+  *(u_intSI_t *)__upc_rptr_to_addr (dthread, daddr) = val;
+}
+
+__attribute__((__always_inline__))
+inline
+void
+upcr_llvm_put_i32s (long dthread, long daddr, u_intSI_t val)
+{
+  if (!daddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+  GUPCR_WRITE_FENCE();
+  *(u_intSI_t *)__upc_rptr_to_addr (dthread, daddr) = val;
+  GUPCR_FENCE();
+}
+
+__attribute__((__always_inline__))
+inline
+void
+upcr_llvm_put_i64 (long dthread, long daddr, u_intDI_t val)
+{
+  if (!daddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+  *(u_intDI_t *)__upc_rptr_to_addr (dthread, daddr) = val;
+}
+
+__attribute__((__always_inline__))
+inline
+void
+upcr_llvm_put_i64s (long dthread, long daddr, u_intDI_t val)
+{
+  if (!daddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+  GUPCR_WRITE_FENCE();
+  *(u_intDI_t *)__upc_rptr_to_addr (dthread, daddr) = val;
+  GUPCR_FENCE();
+}
+
+#if GUPCR_TARGET64
+
+__attribute__((__always_inline__))
+inline
+void
+upcr_llvm_put_i128 (long dthread, long daddr, u_intTI_t val)
+{
+  if (!daddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+  *(u_intTI_t *)__upc_rptr_to_addr (dthread, daddr) = val;
+}
+
+__attribute__((__always_inline__))
+inline
+void
+upcr_llvm_put_i128s (long dthread, long daddr, u_intTI_t val)
+{
+  if (!daddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+  GUPCR_WRITE_FENCE();
+  *(u_intTI_t *)__upc_rptr_to_addr (dthread, daddr) = val;
+  GUPCR_FENCE();
+}
+
+#endif
+
+__attribute__((__always_inline__))
+inline
+void
+upcr_llvm_put_float (long dthread, long daddr, float val)
+{
+  if (!daddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+  *(float *)__upc_rptr_to_addr (dthread, daddr) = val;
+}
+
+__attribute__((__always_inline__))
+inline
+void
+upcr_llvm_put_floats (long dthread, long daddr, float val)
+{
+  if (!daddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+  GUPCR_WRITE_FENCE();
+  *(float *)__upc_rptr_to_addr (dthread, daddr) = val;
+  GUPCR_FENCE();
+}
+
+__attribute__((__always_inline__))
+inline
+void
+upcr_llvm_put_double (long dthread, long daddr, double val)
+{
+  if (!daddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+  *(double *)__upc_rptr_to_addr (dthread, daddr) = val;
+}
+
+__attribute__((__always_inline__))
+inline
+void
+upcr_llvm_put_doubles (long dthread, long daddr, double val)
+{
+  if (!daddr)
+    __upc_fatal ("Invalid access via null remote pointer");
+  GUPCR_WRITE_FENCE();
+  *(double *)__upc_rptr_to_addr (dthread, daddr) = val;
+  GUPCR_FENCE();
 }
 
 /* Clang UPC access routines.  */
