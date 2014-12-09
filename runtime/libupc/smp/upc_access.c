@@ -18,7 +18,7 @@
 
 //begin lib_inline_access
 
-/* IR Remote Pointer access routines.  */
+/* LLVM access routines.  */
 
 /* To speed things up, the last two unique (page, thread)
    lookups are cached.  Caller must validate the pointer
@@ -52,38 +52,16 @@ void
 upcr_llvm_remote_get (long sthread, long saddr, void *dest, size_t n)
 {
   char *srcp = (char *)__upc_rptr_to_addr (sthread, saddr);
-  switch (n)
+  for (;;)
     {
-      case 1:
-        *(u_intQI_t *) dest = *(u_intQI_t *) srcp;
-	break;
-      case 2:
-        *(u_intHI_t *) dest = *(u_intHI_t *) srcp;
-	break;
-      case 4:
-        *(u_intSI_t *) dest = *(u_intSI_t *) srcp;
-	break;
-      case 8:
-        *(u_intDI_t *) dest = *(u_intDI_t *) srcp;
-	break;
-      case 16:
-#if GUPCR_TARGET64
-        *(u_intTI_t *) dest = *(u_intTI_t *) srcp;
-	break;
-#endif
-      default:
-	for (;;)
-	  {
-	    size_t p_offset = (saddr & GUPCR_VM_OFFSET_MASK);
-	    size_t n_copy = GUPCR_MIN (GUPCR_VM_PAGE_SIZE - p_offset, n);
-	    memcpy (dest, srcp, n_copy);
-	    n -= n_copy;
-	    if (!n)
-	      break;
-	    saddr += n_copy;
-	    dest = (char *) dest + n_copy;
-	  }
-	break;
+      size_t p_offset = (saddr & GUPCR_VM_OFFSET_MASK);
+      size_t n_copy = GUPCR_MIN (GUPCR_VM_PAGE_SIZE - p_offset, n);
+      memcpy (dest, srcp, n_copy);
+      n -= n_copy;
+      if (!n)
+        break;
+      saddr += n_copy;
+      dest = (char *) dest + n_copy;
     }
 }
 
@@ -93,38 +71,16 @@ void
 upcr_llvm_remote_put (const void *src, long dthread, long daddr, size_t n)
 {
   char *destp = (char *)__upc_rptr_to_addr (dthread, daddr);
-  switch (n)
+  for (;;)
     {
-      case 1:
-        *(u_intQI_t *) destp = *(u_intQI_t *) src;
-	break;
-      case 2:
-        *(u_intHI_t *) destp = *(u_intHI_t *) src;
-	break;
-      case 4:
-        *(u_intSI_t *) destp = *(u_intSI_t *) src;
-	break;
-      case 8:
-        *(u_intDI_t *) destp = *(u_intDI_t *) src;
-	break;
-      case 16:
-#if GUPCR_TARGET64
-        *(u_intTI_t *) destp = *(u_intTI_t *) src;
-	break;
-#endif
-      default:
-	for (;;)
-	  {
-	    size_t p_offset = (daddr & GUPCR_VM_OFFSET_MASK);
-	    size_t n_copy = GUPCR_MIN (GUPCR_VM_PAGE_SIZE - p_offset, n);
-	    memcpy (destp, src, n_copy);
-	    n -= n_copy;
-	    if (!n)
-	      break;
-	    daddr += n_copy;
-	    src = (char *) src + n_copy;
-	  }
-	break;
+      size_t p_offset = (daddr & GUPCR_VM_OFFSET_MASK);
+      size_t n_copy = GUPCR_MIN (GUPCR_VM_PAGE_SIZE - p_offset, n);
+      memcpy (destp, src, n_copy);
+      n -= n_copy;
+      if (!n)
+        break;
+      daddr += n_copy;
+      src = (char *) src + n_copy;
     }
 }
 
