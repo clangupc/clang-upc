@@ -299,14 +299,6 @@ void EmitAssemblyHelper::CreatePasses(TargetMachine *TM) {
                            addDataFlowSanitizerPass);
   }
 
-  // This pass should be added iff optimizations are enabled
-  // OR we are not generating llvm output.  The case where
-  // we are generating assembly/object code is handled elsewhere.
-  if (LangOpts.UPCGenIr && OptLevel != 0) {
-    PMBuilder.addExtension(PassManagerBuilder::EP_EarlyAsPossible,
-                           addLowerUPCPointersPass);
-  }
-
   // Figure out TargetLibraryInfo.
   Triple TargetTriple(TheModule->getTargetTriple());
   PMBuilder.LibraryInfo = new TargetLibraryInfo(TargetTriple);
