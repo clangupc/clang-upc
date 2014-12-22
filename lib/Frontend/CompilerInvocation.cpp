@@ -1497,8 +1497,8 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
        Args.hasFlag(OPT_fupc_inline_lib, OPT_fno_upc_inline_lib, false)))
     Opts.UPCInlineLib = true;
 
-  if (Opts.UPC && Args.hasArg(OPT_fno_upc_ir))
-    Opts.UPCGenIr = false;
+  if (Opts.UPC && Args.hasArg(OPT_fupc_ir))
+    Opts.UPCGenIr = true;
 
   // This is the __NO_INLINE__ define, which just depends on things like the
   // optimization level and -fno-inline, not actually whether the backend has
