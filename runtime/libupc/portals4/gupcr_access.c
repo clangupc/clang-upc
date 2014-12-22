@@ -1,12 +1,29 @@
-/*===-- gupcr_access.c - UPC Runtime Support Library ---------------------===
-|*
-|*                     The LLVM Compiler Infrastructure
-|*
-|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
-|* This file is distributed under a BSD-style Open Source License.
-|* See LICENSE-INTREPID.TXT for details.
-|*
-|*===---------------------------------------------------------------------===*/
+/* Copyright (C) 2012-2013
+   Free Software Foundation, Inc.
+   This file is part of the UPC runtime Library.
+   Written by Gary Funck <gary@intrepid.com>
+   and Nenad Vukicevic <nenad@intrepid.com>
+
+This file is part of GCC.
+
+GCC is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 3, or (at your option)
+any later version.
+
+GCC is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+Under Section 7 of GPL version 3, you are granted additional
+permissions described in the GCC Runtime Library Exception, version
+3.1, as published by the Free Software Foundation.
+
+You should have received a copy of the GNU General Public License and
+a copy of the GCC Runtime Library Exception along with this program;
+see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+<http://www.gnu.org/licenses/>.  */
 
 #include "gupcr_config.h"
 #include "gupcr_defs.h"
@@ -432,7 +449,7 @@ __putqi2 (upc_shared_ptr_t p, u_intQI_t v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER R QI REMOTE "
 		   "0x%x %d:0x%lx", v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
@@ -478,7 +495,7 @@ __puthi2 (upc_shared_ptr_t p, u_intHI_t v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER R HI REMOTE "
 		   "0x%x %d:0x%lx", v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
@@ -524,7 +541,7 @@ __putsi2 (upc_shared_ptr_t p, u_intSI_t v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER R SI REMOTE "
 		   "0x%x %d:0x%lx", v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
@@ -572,7 +589,7 @@ __putdi2 (upc_shared_ptr_t p, u_intDI_t v)
       gupcr_trace (FC_MEM, "PUT ENTER R DI REMOTE "
 		   "0x%llx %d:0x%lx",
 		   (long long unsigned) v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
@@ -621,7 +638,7 @@ __putti2 (upc_shared_ptr_t p, u_intTI_t v)
       gupcr_trace (FC_MEM, "PUT ENTER R TI REMOTE "
 		   "0x%llx %d:0x%lx",
 		   (long long unsigned) v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
@@ -667,7 +684,7 @@ __putsf2 (upc_shared_ptr_t p, float v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER R SF REMOTE "
 		   "%6g %d:0x%lx", v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
@@ -713,7 +730,7 @@ __putdf2 (upc_shared_ptr_t p, double v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER R DF REMOTE "
 		   "%6g %d:0x%lx", v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
@@ -759,7 +776,7 @@ __puttf2 (upc_shared_ptr_t p, long double v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER R TF REMOTE "
 		   "%6Lg %d:0x%lx", v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
@@ -805,7 +822,7 @@ __putxf2 (upc_shared_ptr_t p, long double v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER R XF REMOTE "
 		   "%6Lg %d:0x%lx", v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
@@ -1330,7 +1347,7 @@ __putsqi2 (upc_shared_ptr_t p, u_intQI_t v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER S QI REMOTE "
 		   "0x%x %d:0x%lx", v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
@@ -1377,7 +1394,7 @@ __putshi2 (upc_shared_ptr_t p, u_intHI_t v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER S HI REMOTE "
 		   "0x%x %d:0x%lx", v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
@@ -1424,7 +1441,7 @@ __putssi2 (upc_shared_ptr_t p, u_intSI_t v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER S SI REMOTE "
 		   "0x%x %d:0x%lx", v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
@@ -1473,7 +1490,7 @@ __putsdi2 (upc_shared_ptr_t p, u_intDI_t v)
       gupcr_trace (FC_MEM, "PUT ENTER S DI REMOTE "
 		   "0x%llx %d:0x%lx",
 		   (long long unsigned) v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
@@ -1523,7 +1540,7 @@ __putsti2 (upc_shared_ptr_t p, u_intTI_t v)
       gupcr_trace (FC_MEM, "PUT ENTER S TI REMOTE "
 		   "0x%llx %d:0x%lx",
 		   (long long unsigned) v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
@@ -1570,7 +1587,7 @@ __putssf2 (upc_shared_ptr_t p, float v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER S SF REMOTE "
 		   "%6g %d:0x%lx", v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
@@ -1617,7 +1634,7 @@ __putsdf2 (upc_shared_ptr_t p, double v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER S DF REMOTE "
 		   "%6g %d:0x%lx", v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
@@ -1664,7 +1681,7 @@ __putstf2 (upc_shared_ptr_t p, long double v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER S TF REMOTE "
 		   "%6Lg %d:0x%lx", v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
@@ -1711,7 +1728,7 @@ __putsxf2 (upc_shared_ptr_t p, long double v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER S XF REMOTE "
 		   "%6Lg %d:0x%lx", v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
 	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
