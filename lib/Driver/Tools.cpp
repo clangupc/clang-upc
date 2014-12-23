@@ -3525,6 +3525,8 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
                   options::OPT_fno_upc_inline_lib);
   Args.AddAllArgs(CmdArgs, options::OPT_fupc_pre_include,
                   options::OPT_fno_upc_pre_include);
+  Args.AddAllArgs(CmdArgs, options::OPT_fupc_ir,
+                  options::OPT_fno_upc_ir);
 
   if (Args.hasFlag(options::OPT_fupc_debug,
                    options::OPT_fno_upc_debug, false))

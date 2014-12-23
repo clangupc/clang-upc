@@ -148,6 +148,43 @@ extern void __copysgblk5 (upc_shared_ptr_t, upc_shared_ptr_t, size_t,
 /* Miscellaneous access related prototypes.  */
 extern void __upc_fence (void);
 
+extern void upcr_llvm_getn (long, long, void *, size_t);
+extern void upcr_llvm_getns (long, long, void *, size_t);
+extern u_intQI_t upcr_llvm_get_i8 (long, long);
+extern u_intQI_t upcr_llvm_get_i8s (long, long);
+extern u_intHI_t upcr_llvm_get_i16 (long, long);
+extern u_intHI_t upcr_llvm_get_i16s (long, long);
+extern u_intSI_t upcr_llvm_get_i32 (long, long);
+extern u_intSI_t upcr_llvm_get_i32s (long, long);
+extern u_intDI_t upcr_llvm_get_i64 (long, long);
+extern u_intDI_t upcr_llvm_get_i64s (long, long);
+#if GUPCR_TARGET64
+extern u_intTI_t upcr_llvm_get_i128 (long, long);
+extern u_intTI_t upcr_llvm_get_i128s (long, long);
+#endif
+extern float upcr_llvm_get_float (long, long);
+extern float upcr_llvm_get_floats (long, long);
+extern double upcr_llvm_get_double (long, long);
+extern double upcr_llvm_get_doubles (long, long);
+extern void upcr_llvm_putn (const void *, long, long, size_t);
+extern void upcr_llvm_putns (const void *, long, long, size_t);
+extern void upcr_llvm_put_i8 (long, long, u_intQI_t);
+extern void upcr_llvm_put_i8s (long, long, u_intQI_t);
+extern void upcr_llvm_put_i16 (long, long, u_intHI_t);
+extern void upcr_llvm_put_i16s (long, long, u_intHI_t);
+extern void upcr_llvm_put_i32 (long, long, u_intSI_t);
+extern void upcr_llvm_put_i32s (long, long, u_intSI_t);
+extern void upcr_llvm_put_i64 (long, long, u_intDI_t);
+extern void upcr_llvm_put_i64s (long, long, u_intDI_t);
+#if GUPCR_TARGET64
+extern void upcr_llvm_put_i128 (long, long, u_intTI_t);
+extern void upcr_llvm_put_i128s (long, long, u_intTI_t);
+#endif
+extern void upcr_llvm_put_float (long, long, float);
+extern void upcr_llvm_put_floats (long, long, float);
+extern void upcr_llvm_put_double (long, long, double);
+extern void upcr_llvm_put_doubles (long, long, double);
+
 //end lib_access_prototypes
 
 /* memory-to-memory operations (profiled) */

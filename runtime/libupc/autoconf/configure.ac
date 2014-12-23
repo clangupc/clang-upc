@@ -2112,8 +2112,7 @@ if test "$upc_runtime_model" = "smp"; then
       upc_numa=yes ;;
     no)
       upc_numa=no ;;
-    *)
-      AC_MSG_ERROR([--enable-upc-numa accepts only yes or no])
+    *)      AC_MSG_ERROR([--enable-upc-numa accepts only yes or no])
     esac
   ],
   [

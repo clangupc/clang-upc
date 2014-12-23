@@ -191,7 +191,7 @@ gupcr_gmem_get (void *dest, int thread, size_t offset, size_t n)
   while (n_rem > 0)
     {
       size_t n_xfer;
-      n_xfer = GUPCR_MIN (n_rem, (size_t) GUPCR_PORTALS_MAX_MSG_SIZE);
+      n_xfer = GUPCR_MIN (n_rem, (size_t) GUPCR_MAX_MSG_SIZE);
       ++gupcr_gmem_gets.num_pending;
       gupcr_portals_call (PtlGet, (gupcr_gmem_gets.md,
 				   (ptl_size_t) dest_addr, n_xfer, rpid,
@@ -235,13 +235,13 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
       size_t n_xfer;
       ptl_handle_md_t md_handle;
       ptl_size_t local_offset;
-      n_xfer = GUPCR_MIN (n_rem, (size_t) GUPCR_PORTALS_MAX_MSG_SIZE);
+      n_xfer = GUPCR_MIN (n_rem, (size_t) GUPCR_MAX_MSG_SIZE);
       if (must_sync)
 	{
 	  local_offset = src_addr - (char *) USER_PROG_MEM_START;
 	  md_handle = gupcr_gmem_puts.md;
 	}
-      else if (n_rem <= GUPCR_PORTALS_MAX_VOLATILE_SIZE)
+      else if (n_rem <= GUPCR_MAX_VOLATILE_SIZE)
 	{
 	  local_offset = src_addr - (char *) USER_PROG_MEM_START;
 	  md_handle = gupcr_gmem_puts.md_volatile;

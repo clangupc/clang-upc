@@ -63,8 +63,8 @@ upc_all_broadcast (shared void *dst, shared const void *src,
   blk_cnt = 0;
   while (send_cnt)
     {
-      size_t blk_size = (send_cnt > GUPCR_PORTALS_MAX_MSG_SIZE) ?
-	GUPCR_PORTALS_MAX_MSG_SIZE : send_cnt;
+      size_t blk_size = (send_cnt > GUPCR_MAX_MSG_SIZE) ?
+	GUPCR_MAX_MSG_SIZE : send_cnt;
       send_cnt -= blk_size;
 
       if (MYTHREAD != (int) src_thread)
@@ -77,8 +77,8 @@ upc_all_broadcast (shared void *dst, shared const void *src,
 	  /* Copy data into the thread's own memory.  */
 	  size_t doffset = upc_addrfield ((shared char *) dst + MYTHREAD);
 	  size_t soffset = upc_addrfield ((shared void *) src);
-	  doffset += blk_cnt * GUPCR_PORTALS_MAX_MSG_SIZE;
-	  soffset += blk_cnt * GUPCR_PORTALS_MAX_MSG_SIZE;
+	  doffset += blk_cnt * GUPCR_MAX_MSG_SIZE;
+	  soffset += blk_cnt * GUPCR_MAX_MSG_SIZE;
 	  gupcr_debug (FC_COLL,
 		       "Local copy - doffset: %lld soffset: %lld nbytes: %lld",
 		       (long long int) doffset, (long long int) soffset,
@@ -95,8 +95,8 @@ upc_all_broadcast (shared void *dst, shared const void *src,
 	      int dthread = gupcr_coll_child[i];
 	      size_t doffset = upc_addrfield ((shared char *) dst + dthread);
 	      size_t soffset = upc_addrfield ((shared char *) dst + MYTHREAD);
-	      doffset += blk_cnt * GUPCR_PORTALS_MAX_MSG_SIZE;
-	      soffset += blk_cnt * GUPCR_PORTALS_MAX_MSG_SIZE;
+	      doffset += blk_cnt * GUPCR_MAX_MSG_SIZE;
+	      soffset += blk_cnt * GUPCR_MAX_MSG_SIZE;
 	      gupcr_coll_put (dthread, doffset, soffset, blk_size);
 	    }
 	  gupcr_coll_ack_wait (gupcr_coll_child_cnt);

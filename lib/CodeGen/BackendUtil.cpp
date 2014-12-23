@@ -36,6 +36,7 @@
 #include "llvm/Transforms/Instrumentation.h"
 #include "llvm/Transforms/ObjCARC.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/UPC.h"
 using namespace clang;
 using namespace llvm;
 
@@ -220,6 +221,11 @@ static void addDataFlowSanitizerPass(const PassManagerBuilder &Builder,
       static_cast<const PassManagerBuilderWrapper&>(Builder);
   const CodeGenOptions &CGOpts = BuilderWrapper.getCGOpts();
   PM.add(createDataFlowSanitizerPass(CGOpts.SanitizerBlacklistFile));
+}
+
+static void addLowerUPCPointersPass(const PassManagerBuilder &Builder,
+                                    PassManagerBase &PM) {
+  PM.add(llvm::createLowerUPCPointersPass());
 }
 
 void EmitAssemblyHelper::CreatePasses(TargetMachine *TM) {
@@ -535,6 +541,17 @@ bool EmitAssemblyHelper::AddEmitPasses(BackendAction Action,
   if (LangOpts.ObjCAutoRefCount &&
       CodeGenOpts.OptimizationLevel > 0)
     PM->add(createObjCARCContractPass());
+
+  // Add LLVM UPC lowering pass unless we're generating LLVM output
+  if (LangOpts.UPCGenIr) {
+    switch(Action) {
+    case Backend_EmitLL:
+    case Backend_EmitBC:
+      break;
+    default:
+      PM->add(llvm::createLowerUPCPointersPass());
+    }
+  }
 
   if (TM->addPassesToEmitFile(*PM, OS, CGFT,
                               /*DisableVerify=*/!CodeGenOpts.VerifyModule)) {

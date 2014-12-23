@@ -17,6 +17,7 @@
 #include "clang/Basic/TargetInfo.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/ADT/SmallVector.h"
+#include "clang/Config/config.h" // for UPC_IR_RP_THREAD/ADDR
 using namespace clang;
 using namespace CodeGen;
 
@@ -180,11 +181,41 @@ llvm::Value *CodeGenFunction::EmitUPCLoad(llvm::Value *Addr,
   return EmitFromMemory(EmitUPCLoad(Addr, isStrict, DestLTy, Align, Loc), Ty);
 }
 
+static const int UPCAddrSpace = UPC_IR_RP_ADDRSPACE;
+
+static llvm::Value *ConvertPTStoLLVMPtr(CodeGenFunction& CGF,
+                                        llvm::Value *Ptr, llvm::Type *LTy) {
+  llvm::Value *Addr = CGF.EmitUPCPointerGetAddr(Ptr);
+  llvm::Value *Thread = CGF.EmitUPCPointerGetThread(Ptr);
+
+  const LangOptions& LangOpts = CGF.getContext().getLangOpts();
+  if(!LangOpts.UPCPtsRep) {
+    llvm::Value *SectionStart = CGF.CGM.getModule().getOrInsertGlobal("__upc_shared_start", CGF.Int8Ty);
+    llvm::Value *StartInt = CGF.Builder.CreatePtrToInt(SectionStart, CGF.PtrDiffTy, "sect.cast");
+    Addr = CGF.Builder.CreateSub(Addr, StartInt, "addr.sub");
+  }
+
+  llvm::Value *IntVal = CGF.Builder.CreateOr(Thread, CGF.Builder.CreateShl(Addr, UPC_IR_RP_THREAD));
+  
+  llvm::Type *LLPtsTy = LTy->getPointerTo(UPCAddrSpace);
+  return CGF.Builder.CreateIntToPtr(IntVal, LLPtsTy);
+}
+
 llvm::Value *CodeGenFunction::EmitUPCLoad(llvm::Value *Addr,
                                           bool isStrict,
                                           llvm::Type *LTy,
                                           CharUnits Align,
                                           SourceLocation Loc) {
+  const LangOptions& Opts = getContext().getLangOpts();
+  if (Opts.UPCGenIr) {
+    llvm::Value *InternalAddr = ConvertPTStoLLVMPtr(*this, Addr, LTy);
+    llvm::LoadInst * Result = Builder.CreateLoad(InternalAddr);
+    if(isStrict) {
+      Result->setOrdering(llvm::SequentiallyConsistent);
+    }
+    Result->setAlignment(Align.getQuantity());
+    return Result;
+  }
   const ASTContext& Context = getContext();
   const llvm::DataLayout &Target = CGM.getDataLayout();
   uint64_t Size = Target.getTypeSizeInBits(LTy);
@@ -251,7 +282,16 @@ void CodeGenFunction::EmitUPCStore(llvm::Value *Value,
                                    bool isStrict,
                                    CharUnits Align,
                                    SourceLocation Loc) {
-
+  const LangOptions& Opts = getContext().getLangOpts();
+  if (Opts.UPCGenIr) {
+    llvm::Value *InternalAddr = ConvertPTStoLLVMPtr(*this, Addr, Value->getType());
+    llvm::StoreInst * Result = Builder.CreateStore(Value, InternalAddr);
+    if(isStrict) {
+      Result->setOrdering(llvm::SequentiallyConsistent);
+    }
+    Result->setAlignment(Align.getQuantity());
+    return;
+  }
   const ASTContext& Context = getContext();
   const llvm::DataLayout &Target = CGM.getDataLayout();
   uint64_t Size = Target.getTypeSizeInBits(Value->getType());

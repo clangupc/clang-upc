@@ -68,7 +68,7 @@ upc_memcpy (upc_shared_ptr_t dest, upc_shared_ptr_t src, size_t n)
     }
   else if (sthread_local)
     {
-      if (n > (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (n > (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (dthread, doffset,
@@ -81,7 +81,7 @@ upc_memcpy (upc_shared_ptr_t dest, upc_shared_ptr_t src, size_t n)
     }
   else
     {
-      if (n > (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (n > (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
           gupcr_gmem_sync_puts ();
           gupcr_gmem_copy (dthread, doffset, sthread, soffset, n);
@@ -145,7 +145,7 @@ upc_memput (upc_shared_ptr_t dest, const void *src, size_t n)
     memcpy (GUPCR_GMEM_OFF_TO_LOCAL (dthread, doffset), src, n);
   else
     {
-      if (n > (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (n > (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_put (dthread, doffset, src, n);
@@ -180,7 +180,7 @@ upc_memset (upc_shared_ptr_t dest, int c, size_t n)
     memset (GUPCR_GMEM_OFF_TO_LOCAL (dthread, doffset), c, n);
   else
     {
-      if (n > (size_t) GUPCR_PORTALS_MAX_ORDERED_SIZE)
+      if (n > (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  gupcr_gmem_sync_puts ();
 	  gupcr_gmem_set (dthread, doffset, c, n);

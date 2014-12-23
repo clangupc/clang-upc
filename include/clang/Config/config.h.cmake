@@ -22,6 +22,15 @@
 /* the field order */
 #cmakedefine UPC_PTS_VADDR_ORDER "${UPC_PTS_VADDR_ORDER}"
 
+/* UPC Remote Pointer thread field size */
+#cmakedefine UPC_IR_RP_THREAD ${UPC_IR_RP_THREAD}
+
+/* UPC Remote Pointer address field size */
+#cmakedefine UPC_IR_RP_ADDR ${UPC_IR_RP_ADDR}
+
+/* UPC Remote Pointer address space */
+#cmakedefine UPC_IR_RP_ADDRSPACE ${UPC_IR_RP_ADDRSPACE}
+
 /* UPC runtime NUMA enable. */
 #cmakedefine LIBUPC_ENABLE_NUMA 1
 

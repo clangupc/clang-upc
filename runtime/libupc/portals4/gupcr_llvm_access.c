@@ -1,29 +1,12 @@
-/* Copyright (C) 2012-2013
-   Free Software Foundation, Inc.
-   This file is part of the UPC runtime Library.
-   Written by Gary Funck <gary@intrepid.com>
-   and Nenad Vukicevic <nenad@intrepid.com>
-
-This file is part of GCC.
-
-GCC is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3, or (at your option)
-any later version.
-
-GCC is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-Under Section 7 of GPL version 3, you are granted additional
-permissions described in the GCC Runtime Library Exception, version
-3.1, as published by the Free Software Foundation.
-
-You should have received a copy of the GNU General Public License and
-a copy of the GCC Runtime Library Exception along with this program;
-see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
-<http://www.gnu.org/licenses/>.  */
+/*===-- upc_llvm_access.c - UPC Runtime Support Library ------------------===
+|*
+|*                  The LLVM Compiler Infrastructure
+|*
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
+|* This file is distributed under a BSD-style Open Source License.
+|* See LICENSE-INTREPID.TXT for details.
+|*
+|*===---------------------------------------------------------------------===*/
 
 #include "gupcr_config.h"
 #include "gupcr_defs.h"
@@ -36,33 +19,31 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
 #include "gupcr_utils.h"
 
 /**
- * @file gupcr_access.c
- * GUPC compiler access functions.
+ * @file gupcr_llvm_access.c
+ * Clang UPC compiler llvm access functions.
  */
 
 /**
- * @addtogroup IFACE GUPC Interface Routines
+ * @addtogroup IFACE UPC Interface Routines
  * @{
  */
 
 //begin lib_inline_access
 
 /**
- * Relaxed shared "char (8 bits)" get operation.
- * Return the value at the shared address 'p'.
+ * Relaxed remote "char (8 bits)" get operation.
+ * Return the value at the remote address 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the source operand.
- * @return Char (8 bits) value at the shared address given by 'p'.
+ * @param [in] p Remote address of the source operand.
+ * @return Char (8 bits) value at the remote address given by 'p'.
  */
 //inline
 u_intQI_t
-__getqi2 (upc_shared_ptr_t p)
+upcr_llvm_get_i8 (long thread, size_t offset)
 {
   u_intQI_t result;
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -85,21 +66,19 @@ __getqi2 (upc_shared_ptr_t p)
 }
 
 /**
- * Relaxed shared "short (16 bits)" get operation.
- * Return the value at the shared address 'p'.
+ * Relaxed remote "short (16 bits)" get operation.
+ * Return the value at the remote address 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the source operand.
- * @return Short (16 bits) value at the shared address given by 'p'.
+ * @param [in] p Remote address of the source operand.
+ * @return Short (16 bits) value at the remote address given by 'p'.
  */
 //inline
 u_intHI_t
-__gethi2 (upc_shared_ptr_t p)
+upcr_llvm_get_i16 (long thread, size_t offset)
 {
   u_intHI_t result;
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -122,21 +101,19 @@ __gethi2 (upc_shared_ptr_t p)
 }
 
 /**
- * Relaxed shared "int (32 bits)" get operation.
- * Return the value at the shared address 'p'.
+ * Relaxed remote "int (32 bits)" get operation.
+ * Return the value at the remote address 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the source operand.
- * @return Int (32 bits) value at the shared address given by 'p'.
+ * @param [in] p Remote address of the source operand.
+ * @return Int (32 bits) value at the remote address given by 'p'.
  */
 //inline
 u_intSI_t
-__getsi2 (upc_shared_ptr_t p)
+upcr_llvm_get_i32 (long thread, size_t offset)
 {
   u_intSI_t result;
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -159,21 +136,19 @@ __getsi2 (upc_shared_ptr_t p)
 }
 
 /**
- * Relaxed shared "long (64 bits)" get operation.
- * Return the value at the shared address 'p'.
+ * Relaxed remote "long (64 bits)" get operation.
+ * Return the value at the remote address 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the source operand.
- * @return Long (64 bits) value at the shared address given by 'p'.
+ * @param [in] p Remote address of the source operand.
+ * @return Long (64 bits) value at the remote address given by 'p'.
  */
 //inline
 u_intDI_t
-__getdi2 (upc_shared_ptr_t p)
+upcr_llvm_get_i64 (long thread, size_t offset)
 {
   u_intDI_t result;
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -197,21 +172,19 @@ __getdi2 (upc_shared_ptr_t p)
 
 #if GUPCR_TARGET64
 /**
- * Relaxed shared "long long (128 bits)" get operation.
- * Return the value at the shared address 'p'.
+ * Relaxed remote "long long (128 bits)" get operation.
+ * Return the value at the remote address 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the source operand.
- * @return Long long (128 bits) value at the shared address given by 'p'.
+ * @param [in] p Remote address of the source operand.
+ * @return Long long (128 bits) value at the remote address given by 'p'.
  */
 //inline
 u_intTI_t
-__getti2 (upc_shared_ptr_t p)
+upcr_llvm_get_i128 (long thread, size_t offset)
 {
   u_intTI_t result;
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -234,21 +207,19 @@ __getti2 (upc_shared_ptr_t p)
 }
 #endif /* GUPCR_TARGET64 */
 /**
- * Relaxed shared "float" get operation.
- * Return the value at the shared address 'p'.
+ * Relaxed remote "float" get operation.
+ * Return the value at the remote address 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the source operand.
- * @return Float value at the shared address given by 'p'.
+ * @param [in] p Remote address of the source operand.
+ * @return Float value at the remote address given by 'p'.
  */
 //inline
 float
-__getsf2 (upc_shared_ptr_t p)
+upcr_llvm_get_float (long thread, size_t offset)
 {
   float result;
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -271,21 +242,19 @@ __getsf2 (upc_shared_ptr_t p)
 }
 
 /**
- * Relaxed shared "double" get operation.
- * Return the value at the shared address 'p'.
+ * Relaxed remote "double" get operation.
+ * Return the value at the remote address 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the source operand.
- * @return Double value at the shared address given by 'p'.
+ * @param [in] p Remote address of the source operand.
+ * @return Double value at the remote address given by 'p'.
  */
 //inline
 double
-__getdf2 (upc_shared_ptr_t p)
+upcr_llvm_get_double (long thread, size_t offset)
 {
   double result;
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -308,96 +277,20 @@ __getdf2 (upc_shared_ptr_t p)
 }
 
 /**
- * Relaxed shared "long double" get operation.
- * Return the value at the shared address 'p'.
- *
- * The interface to this procedure is defined by the UPC compiler API.
- *
- * @param [in] p Shared address of the source operand.
- * @return Long double value at the shared address given by 'p'.
- */
-//inline
-long double
-__gettf2 (upc_shared_ptr_t p)
-{
-  long double result;
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
-  gupcr_assert (thread < THREADS);
-  gupcr_assert (offset != 0);
-  if (gupcr_pending_strict_put)
-    gupcr_gmem_sync_puts ();
-  if (GUPCR_GMEM_IS_LOCAL (thread))
-    {
-      gupcr_trace (FC_MEM, "GET ENTER R TF LOCAL");
-      result = *(long double *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset);
-    }
-  else
-    {
-      gupcr_trace (FC_MEM, "GET ENTER R TF REMOTE");
-      gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous.  */
-      gupcr_gmem_sync_gets ();
-    }
-  gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx %6Lg",
-	       thread, (long unsigned) offset, result);
-  return result;
-}
-
-/**
- * Relaxed shared "long double" get operation.
- * Return the value at the shared address 'p'.
- *
- * The interface to this procedure is defined by the UPC compiler API.
- *
- * @param [in] p Shared address of the source operand.
- * @return Long double value at the shared address given by 'p'.
- */
-//inline
-long double
-__getxf2 (upc_shared_ptr_t p)
-{
-  long double result;
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
-  gupcr_assert (thread < THREADS);
-  gupcr_assert (offset != 0);
-  if (gupcr_pending_strict_put)
-    gupcr_gmem_sync_puts ();
-  if (GUPCR_GMEM_IS_LOCAL (thread))
-    {
-      gupcr_trace (FC_MEM, "GET ENTER R XF LOCAL");
-      result = *(long double *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset);
-    }
-  else
-    {
-      gupcr_trace (FC_MEM, "GET ENTER R XF REMOTE");
-      gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous.  */
-      gupcr_gmem_sync_gets ();
-    }
-  gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx %6Lg",
-	       thread, (long unsigned) offset, result);
-  return result;
-}
-
-/**
- * Relaxed shared memory block get operation.
- * Copy the data at the shared address 'src' into the local memory
+ * Relaxed remote memory block get operation.
+ * Copy the data at the remote address 'src' into the local memory
  * destination at the address 'dest'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
  * @param [in] dest Local address of the destination memory block.
- * @param [in] src Shared address of the source memory block.
+ * @param [in] src Remote address of the source memory block.
  * @param [in] n Number of bytes to transfer.
  */
 //inline
 void
-__getblk3 (void *dest, upc_shared_ptr_t src, size_t n)
+upcr_llvm_getn (long thread, size_t offset, void *dest, size_t n)
 {
-  int thread = GUPCR_PTS_THREAD (src);
-  size_t offset = GUPCR_PTS_OFFSET (src);
   gupcr_trace (FC_MEM, "GETBLK ENTER R");
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -421,20 +314,18 @@ __getblk3 (void *dest, upc_shared_ptr_t src, size_t n)
 }
 
 /**
- * Relaxed shared "char (8 bits)" put operation.
- * Store the value given by 'v' into the shared memory destination at 'p'.
+ * Relaxed remote "char (8 bits)" put operation.
+ * Store the value given by 'v' into the remote memory destination at 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the destination address.
+ * @param [in] p Remote address of the destination address.
  * @param [in] v Source value.
  */
 //inline
 void
-__putqi2 (upc_shared_ptr_t p, u_intQI_t v)
+upcr_llvm_put_i8 (long thread, size_t offset, u_intQI_t v)
 {
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -467,20 +358,18 @@ __putqi2 (upc_shared_ptr_t p, u_intQI_t v)
 }
 
 /**
- * Relaxed shared "short (16 bits)" put operation.
- * Store the value given by 'v' into the shared memory destination at 'p'.
+ * Relaxed remote "short (16 bits)" put operation.
+ * Store the value given by 'v' into the remote memory destination at 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the destination address.
+ * @param [in] p Remote address of the destination address.
  * @param [in] v Source value.
  */
 //inline
 void
-__puthi2 (upc_shared_ptr_t p, u_intHI_t v)
+upcr_llvm_put_i16 (long thread, size_t offset, u_intHI_t v)
 {
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -513,20 +402,18 @@ __puthi2 (upc_shared_ptr_t p, u_intHI_t v)
 }
 
 /**
- * Relaxed shared "int (32 bits)" put operation.
- * Store the value given by 'v' into the shared memory destination at 'p'.
+ * Relaxed remote "int (32 bits)" put operation.
+ * Store the value given by 'v' into the remote memory destination at 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the destination address.
+ * @param [in] p Remote address of the destination address.
  * @param [in] v Source value.
  */
 //inline
 void
-__putsi2 (upc_shared_ptr_t p, u_intSI_t v)
+upcr_llvm_put_i32 (long thread, size_t offset, u_intSI_t v)
 {
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -559,20 +446,18 @@ __putsi2 (upc_shared_ptr_t p, u_intSI_t v)
 }
 
 /**
- * Relaxed shared "long (64 bits)" put operation.
- * Store the value given by 'v' into the shared memory destination at 'p'.
+ * Relaxed remote "long (64 bits)" put operation.
+ * Store the value given by 'v' into the remote memory destination at 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the destination address.
+ * @param [in] p Remote address of the destination address.
  * @param [in] v Source value.
  */
 //inline
 void
-__putdi2 (upc_shared_ptr_t p, u_intDI_t v)
+upcr_llvm_put_i64 (long thread, size_t offset, u_intDI_t v)
 {
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -608,20 +493,18 @@ __putdi2 (upc_shared_ptr_t p, u_intDI_t v)
 
 #if GUPCR_TARGET64
 /**
- * Relaxed shared "long long (128 bits)" put operation.
- * Store the value given by 'v' into the shared memory destination at 'p'.
+ * Relaxed remote "long long (128 bits)" put operation.
+ * Store the value given by 'v' into the remote memory destination at 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the destination address.
+ * @param [in] p Remote address of the destination address.
  * @param [in] v Source value.
  */
 //inline
 void
-__putti2 (upc_shared_ptr_t p, u_intTI_t v)
+upcr_llvm_put_i128 (long thread, size_t offset, u_intTI_t v)
 {
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -656,20 +539,18 @@ __putti2 (upc_shared_ptr_t p, u_intTI_t v)
 }
 #endif /* GUPCR_TARGET64 */
 /**
- * Relaxed shared "float" put operation.
- * Store the value given by 'v' into the shared memory destination at 'p'.
+ * Relaxed remote "float" put operation.
+ * Store the value given by 'v' into the remote memory destination at 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the destination address.
+ * @param [in] p Remote address of the destination address.
  * @param [in] v Source value.
  */
 //inline
 void
-__putsf2 (upc_shared_ptr_t p, float v)
+upcr_llvm_put_float (long thread, size_t offset, float v)
 {
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -702,20 +583,18 @@ __putsf2 (upc_shared_ptr_t p, float v)
 }
 
 /**
- * Relaxed shared "double" put operation.
- * Store the value given by 'v' into the shared memory destination at 'p'.
+ * Relaxed remote "double" put operation.
+ * Store the value given by 'v' into the remote memory destination at 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the destination address.
+ * @param [in] p Remote address of the destination address.
  * @param [in] v Source value.
  */
 //inline
 void
-__putdf2 (upc_shared_ptr_t p, double v)
+upcr_llvm_put_double (long thread, size_t offset, double v)
 {
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -748,114 +627,20 @@ __putdf2 (upc_shared_ptr_t p, double v)
 }
 
 /**
- * Relaxed shared "long double" put operation.
- * Store the value given by 'v' into the shared memory destination at 'p'.
- *
- * The interface to this procedure is defined by the UPC compiler API.
- *
- * @param [in] p Shared address of the destination address.
- * @param [in] v Source value.
- */
-//inline
-void
-__puttf2 (upc_shared_ptr_t p, long double v)
-{
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
-  gupcr_assert (thread < THREADS);
-  gupcr_assert (offset != 0);
-  if (gupcr_pending_strict_put)
-    gupcr_gmem_sync_puts ();
-  if (GUPCR_GMEM_IS_LOCAL (thread))
-    {
-      gupcr_trace (FC_MEM, "PUT ENTER R TF LOCAL "
-		   "%6Lg %d:0x%lx", v, thread, (long unsigned) offset);
-      *(long double *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset) = v;
-    }
-  else
-    {
-      gupcr_trace (FC_MEM, "PUT ENTER R TF REMOTE "
-		   "%6Lg %d:0x%lx", v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
-	{
-	  /* Ordered puts can proceed in parallel.  */
-	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
-	}
-      else
-	{
-	  /* Wait for any outstanding 'put' operation.  */
-	  gupcr_gmem_sync_puts ();
-	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
-	  /* There can be only one outstanding unordered put.  */
-	  gupcr_pending_strict_put = 1;
-	}
-    }
-  gupcr_trace (FC_MEM, "PUT EXIT R TF");
-}
-
-/**
- * Relaxed shared "long double" put operation.
- * Store the value given by 'v' into the shared memory destination at 'p'.
- *
- * The interface to this procedure is defined by the UPC compiler API.
- *
- * @param [in] p Shared address of the destination address.
- * @param [in] v Source value.
- */
-//inline
-void
-__putxf2 (upc_shared_ptr_t p, long double v)
-{
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
-  gupcr_assert (thread < THREADS);
-  gupcr_assert (offset != 0);
-  if (gupcr_pending_strict_put)
-    gupcr_gmem_sync_puts ();
-  if (GUPCR_GMEM_IS_LOCAL (thread))
-    {
-      gupcr_trace (FC_MEM, "PUT ENTER R XF LOCAL "
-		   "%6Lg %d:0x%lx", v, thread, (long unsigned) offset);
-      *(long double *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset) = v;
-    }
-  else
-    {
-      gupcr_trace (FC_MEM, "PUT ENTER R XF REMOTE "
-		   "%6Lg %d:0x%lx", v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
-	{
-	  /* Ordered puts can proceed in parallel.  */
-	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
-	}
-      else
-	{
-	  /* Wait for any outstanding 'put' operation.  */
-	  gupcr_gmem_sync_puts ();
-	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
-	  /* There can be only one outstanding unordered put.  */
-	  gupcr_pending_strict_put = 1;
-	}
-    }
-  gupcr_trace (FC_MEM, "PUT EXIT R XF");
-}
-
-/**
- * Relaxed shared memory block put operation.
- * Copy the data at the local address 'src' into the shared memory
+ * Relaxed remote memory block put operation.
+ * Copy the data at the local address 'src' into the remote memory
  * destination at the address 'dest'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] dest Shared address of the destination memory block.
+ * @param [in] dest Remote address of the destination memory block.
  * @param [in] src Local address of the source memory block.
  * @param [in] n Number of bytes to transfer.
  */
 //inline
 void
-__putblk3 (upc_shared_ptr_t dest, void *src, size_t n)
+upcr_llvm_putn (void *src, long thread, size_t offset, size_t n)
 {
-  int thread = GUPCR_PTS_THREAD (dest);
-  size_t offset = GUPCR_PTS_OFFSET (dest);
   gupcr_trace (FC_MEM, "PUTBLK ENTER R 0x%lx %d:0x%lx %lu",
 	       (long unsigned) src, thread,
 	       (long unsigned) offset, (long unsigned) n);
@@ -875,24 +660,21 @@ __putblk3 (upc_shared_ptr_t dest, void *src, size_t n)
 }
 
 /**
- * Relaxed shared memory block copy operation.
- * Copy the data at the shared address 'src' into the shared memory
+ * Relaxed remote memory block copy operation.
+ * Copy the data at the remote address 'src' into the remote memory
  * destination at the address 'dest'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] dest Shared address of destination memory block.
- * @param [in] src Shared address of source memory block.
+ * @param [in] dest Remote address of destination memory block.
+ * @param [in] src Remote address of source memory block.
  * @param [in] n Number of bytes to transfer.
  */
 //inline
 void
-__copyblk3 (upc_shared_ptr_t dest, upc_shared_ptr_t src, size_t n)
+upcr_llvm_copyn (long dthread, size_t doffset,
+		 long sthread, size_t soffset, size_t n)
 {
-  int dthread = GUPCR_PTS_THREAD (dest);
-  size_t doffset = GUPCR_PTS_OFFSET (dest);
-  int sthread = GUPCR_PTS_THREAD (src);
-  size_t soffset = GUPCR_PTS_OFFSET (src);
   gupcr_trace (FC_MEM, "COPYBLK ENTER R %d:0x%lx %d:0x%lx %lu",
 	       sthread, (long unsigned) soffset,
 	       dthread, (long unsigned) doffset, (long unsigned) n);
@@ -926,21 +708,19 @@ __copyblk3 (upc_shared_ptr_t dest, upc_shared_ptr_t src, size_t n)
 }
 
 /**
- * Strict shared "char (8 bits)" get operation.
- * Return the value at the shared address 'p'.
+ * Strict remote "char (8 bits)" get operation.
+ * Return the value at the remote address 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the source operand.
- * @return Char (8 bits) value at the shared address given by 'p'.
+ * @param [in] p Remote address of the source operand.
+ * @return Char (8 bits) value at the remote address given by 'p'.
  */
 //inline
 u_intQI_t
-__getsqi2 (upc_shared_ptr_t p)
+upcr_llvm_get_i8s (long thread, size_t offset)
 {
   u_intQI_t result;
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -965,21 +745,19 @@ __getsqi2 (upc_shared_ptr_t p)
 }
 
 /**
- * Strict shared "short (16 bits)" get operation.
- * Return the value at the shared address 'p'.
+ * Strict remote "short (16 bits)" get operation.
+ * Return the value at the remote address 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the source operand.
- * @return Short (16 bits) value at the shared address given by 'p'.
+ * @param [in] p Remote address of the source operand.
+ * @return Short (16 bits) value at the remote address given by 'p'.
  */
 //inline
 u_intHI_t
-__getshi2 (upc_shared_ptr_t p)
+upcr_llvm_get_i16s (long thread, size_t offset)
 {
   u_intHI_t result;
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1004,21 +782,19 @@ __getshi2 (upc_shared_ptr_t p)
 }
 
 /**
- * Strict shared "int (32 bits)" get operation.
- * Return the value at the shared address 'p'.
+ * Strict remote "int (32 bits)" get operation.
+ * Return the value at the remote address 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the source operand.
- * @return Int (32 bits) value at the shared address given by 'p'.
+ * @param [in] p Remote address of the source operand.
+ * @return Int (32 bits) value at the remote address given by 'p'.
  */
 //inline
 u_intSI_t
-__getssi2 (upc_shared_ptr_t p)
+upcr_llvm_get_i32s (long thread, size_t offset)
 {
   u_intSI_t result;
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1043,21 +819,19 @@ __getssi2 (upc_shared_ptr_t p)
 }
 
 /**
- * Strict shared "long (64 bits)" get operation.
- * Return the value at the shared address 'p'.
+ * Strict remote "long (64 bits)" get operation.
+ * Return the value at the remote address 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the source operand.
- * @return Long (64 bits) value at the shared address given by 'p'.
+ * @param [in] p Remote address of the source operand.
+ * @return Long (64 bits) value at the remote address given by 'p'.
  */
 //inline
 u_intDI_t
-__getsdi2 (upc_shared_ptr_t p)
+upcr_llvm_get_i64s (long thread, size_t offset)
 {
   u_intDI_t result;
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1083,21 +857,19 @@ __getsdi2 (upc_shared_ptr_t p)
 
 #if GUPCR_TARGET64
 /**
- * Strict shared "long long (128 bits)" get operation.
- * Return the value at the shared address 'p'.
+ * Strict remote "long long (128 bits)" get operation.
+ * Return the value at the remote address 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the source operand.
- * @return Long long (128 bits) value at the shared address given by 'p'.
+ * @param [in] p Remote address of the source operand.
+ * @return Long long (128 bits) value at the remote address given by 'p'.
  */
 //inline
 u_intTI_t
-__getsti2 (upc_shared_ptr_t p)
+upcr_llvm_get_i128s (long thread, size_t offset)
 {
   u_intTI_t result;
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1122,21 +894,19 @@ __getsti2 (upc_shared_ptr_t p)
 }
 #endif /* GUPCR_TARGET64 */
 /**
- * Strict shared "float" get operation.
- * Return the value at the shared address 'p'.
+ * Strict remote "float" get operation.
+ * Return the value at the remote address 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the source operand.
- * @return Float value at the shared address given by 'p'.
+ * @param [in] p Remote address of the source operand.
+ * @return Float value at the remote address given by 'p'.
  */
 //inline
 float
-__getssf2 (upc_shared_ptr_t p)
+upcr_llvm_get_floats (long thread, size_t offset)
 {
   float result;
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1161,21 +931,19 @@ __getssf2 (upc_shared_ptr_t p)
 }
 
 /**
- * Strict shared "double" get operation.
- * Return the value at the shared address 'p'.
+ * Strict remote "double" get operation.
+ * Return the value at the remote address 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the source operand.
- * @return Double value at the shared address given by 'p'.
+ * @param [in] p Remote address of the source operand.
+ * @return Double value at the remote address given by 'p'.
  */
 //inline
 double
-__getsdf2 (upc_shared_ptr_t p)
+upcr_llvm_get_doubles (long thread, size_t offset)
 {
   double result;
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1200,100 +968,20 @@ __getsdf2 (upc_shared_ptr_t p)
 }
 
 /**
- * Strict shared "long double" get operation.
- * Return the value at the shared address 'p'.
- *
- * The interface to this procedure is defined by the UPC compiler API.
- *
- * @param [in] p Shared address of the source operand.
- * @return Long double value at the shared address given by 'p'.
- */
-//inline
-long double
-__getstf2 (upc_shared_ptr_t p)
-{
-  long double result;
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
-  gupcr_assert (thread < THREADS);
-  gupcr_assert (offset != 0);
-  if (gupcr_pending_strict_put)
-    gupcr_gmem_sync_puts ();
-  if (GUPCR_GMEM_IS_LOCAL (thread))
-    {
-      gupcr_trace (FC_MEM, "GET ENTER S TF LOCAL");
-      GUPCR_MEM_BARRIER ();
-      result = *(long double *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset);
-      GUPCR_READ_MEM_BARRIER ();
-    }
-  else
-    {
-      gupcr_trace (FC_MEM, "GET ENTER S TF REMOTE");
-      gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous.  */
-      gupcr_gmem_sync_gets ();
-    }
-  gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx %6Lg",
-	       thread, (long unsigned) offset, result);
-  return result;
-}
-
-/**
- * Strict shared "long double" get operation.
- * Return the value at the shared address 'p'.
- *
- * The interface to this procedure is defined by the UPC compiler API.
- *
- * @param [in] p Shared address of the source operand.
- * @return Long double value at the shared address given by 'p'.
- */
-//inline
-long double
-__getsxf2 (upc_shared_ptr_t p)
-{
-  long double result;
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
-  gupcr_assert (thread < THREADS);
-  gupcr_assert (offset != 0);
-  if (gupcr_pending_strict_put)
-    gupcr_gmem_sync_puts ();
-  if (GUPCR_GMEM_IS_LOCAL (thread))
-    {
-      gupcr_trace (FC_MEM, "GET ENTER S XF LOCAL");
-      GUPCR_MEM_BARRIER ();
-      result = *(long double *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset);
-      GUPCR_READ_MEM_BARRIER ();
-    }
-  else
-    {
-      gupcr_trace (FC_MEM, "GET ENTER S XF REMOTE");
-      gupcr_gmem_get (&result, thread, offset, sizeof (result));
-      /* All 'get' operations are synchronous.  */
-      gupcr_gmem_sync_gets ();
-    }
-  gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx %6Lg",
-	       thread, (long unsigned) offset, result);
-  return result;
-}
-
-/**
- * Strict shared memory block get operation.
- * Copy the data at the shared address 'src' into the local memory
+ * Strict remote memory block get operation.
+ * Copy the data at the remote address 'src' into the local memory
  * destination at the address 'dest'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
  * @param [in] dest Local address of the destination memory block.
- * @param [in] src Shared address of the source memory block.
+ * @param [in] src Remote address of the source memory block.
  * @param [in] n Number of bytes to transfer.
  */
 //inline
 void
-__getsblk3 (void *dest, upc_shared_ptr_t src, size_t n)
+upcr_llvm_getns (long thread, size_t offset, void *dest, size_t n)
 {
-  int thread = GUPCR_PTS_THREAD (src);
-  size_t offset = GUPCR_PTS_OFFSET (src);
   gupcr_trace (FC_MEM, "GETBLK ENTER S");
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -1317,20 +1005,18 @@ __getsblk3 (void *dest, upc_shared_ptr_t src, size_t n)
 }
 
 /**
- * Strict shared "char (8 bits)" put operation.
- * Store the value given by 'v' into the shared memory destination at 'p'.
+ * Strict remote "char (8 bits)" put operation.
+ * Store the value given by 'v' into the remote memory destination at 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the destination address.
+ * @param [in] p Remote address of the destination address.
  * @param [in] v Source value.
  */
 //inline
 void
-__putsqi2 (upc_shared_ptr_t p, u_intQI_t v)
+upcr_llvm_put_i8s (long thread, size_t offset, u_intQI_t v)
 {
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1364,20 +1050,18 @@ __putsqi2 (upc_shared_ptr_t p, u_intQI_t v)
 }
 
 /**
- * Strict shared "short (16 bits)" put operation.
- * Store the value given by 'v' into the shared memory destination at 'p'.
+ * Strict remote "short (16 bits)" put operation.
+ * Store the value given by 'v' into the remote memory destination at 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the destination address.
+ * @param [in] p Remote address of the destination address.
  * @param [in] v Source value.
  */
 //inline
 void
-__putshi2 (upc_shared_ptr_t p, u_intHI_t v)
+upcr_llvm_put_i16s (long thread, size_t offset, u_intHI_t v)
 {
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1411,20 +1095,18 @@ __putshi2 (upc_shared_ptr_t p, u_intHI_t v)
 }
 
 /**
- * Strict shared "int (32 bits)" put operation.
- * Store the value given by 'v' into the shared memory destination at 'p'.
+ * Strict remote "int (32 bits)" put operation.
+ * Store the value given by 'v' into the remote memory destination at 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the destination address.
+ * @param [in] p Remote address of the destination address.
  * @param [in] v Source value.
  */
 //inline
 void
-__putssi2 (upc_shared_ptr_t p, u_intSI_t v)
+upcr_llvm_put_i32s (long thread, size_t offset, u_intSI_t v)
 {
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1458,20 +1140,18 @@ __putssi2 (upc_shared_ptr_t p, u_intSI_t v)
 }
 
 /**
- * Strict shared "long (64 bits)" put operation.
- * Store the value given by 'v' into the shared memory destination at 'p'.
+ * Strict remote "long (64 bits)" put operation.
+ * Store the value given by 'v' into the remote memory destination at 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the destination address.
+ * @param [in] p Remote address of the destination address.
  * @param [in] v Source value.
  */
 //inline
 void
-__putsdi2 (upc_shared_ptr_t p, u_intDI_t v)
+upcr_llvm_put_i64s (long thread, size_t offset, u_intDI_t v)
 {
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1508,20 +1188,18 @@ __putsdi2 (upc_shared_ptr_t p, u_intDI_t v)
 
 #if GUPCR_TARGET64
 /**
- * Strict shared "long long (128 bits)" put operation.
- * Store the value given by 'v' into the shared memory destination at 'p'.
+ * Strict remote "long long (128 bits)" put operation.
+ * Store the value given by 'v' into the remote memory destination at 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the destination address.
+ * @param [in] p Remote address of the destination address.
  * @param [in] v Source value.
  */
 //inline
 void
-__putsti2 (upc_shared_ptr_t p, u_intTI_t v)
+upcr_llvm_put_i128s (long thread, size_t offset, u_intTI_t v)
 {
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1557,20 +1235,18 @@ __putsti2 (upc_shared_ptr_t p, u_intTI_t v)
 }
 #endif /* GUPCR_TARGET64 */
 /**
- * Strict shared "float" put operation.
- * Store the value given by 'v' into the shared memory destination at 'p'.
+ * Strict remote "float" put operation.
+ * Store the value given by 'v' into the remote memory destination at 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the destination address.
+ * @param [in] p Remote address of the destination address.
  * @param [in] v Source value.
  */
 //inline
 void
-__putssf2 (upc_shared_ptr_t p, float v)
+upcr_llvm_put_floats (long thread, size_t offset, float v)
 {
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1604,20 +1280,18 @@ __putssf2 (upc_shared_ptr_t p, float v)
 }
 
 /**
- * Strict shared "double" put operation.
- * Store the value given by 'v' into the shared memory destination at 'p'.
+ * Strict remote "double" put operation.
+ * Store the value given by 'v' into the remote memory destination at 'p'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] p Shared address of the destination address.
+ * @param [in] p Remote address of the destination address.
  * @param [in] v Source value.
  */
 //inline
 void
-__putsdf2 (upc_shared_ptr_t p, double v)
+upcr_llvm_put_doubles (long thread, size_t offset, double v)
 {
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1651,116 +1325,20 @@ __putsdf2 (upc_shared_ptr_t p, double v)
 }
 
 /**
- * Strict shared "long double" put operation.
- * Store the value given by 'v' into the shared memory destination at 'p'.
- *
- * The interface to this procedure is defined by the UPC compiler API.
- *
- * @param [in] p Shared address of the destination address.
- * @param [in] v Source value.
- */
-//inline
-void
-__putstf2 (upc_shared_ptr_t p, long double v)
-{
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
-  gupcr_assert (thread < THREADS);
-  gupcr_assert (offset != 0);
-  if (gupcr_pending_strict_put)
-    gupcr_gmem_sync_puts ();
-  if (GUPCR_GMEM_IS_LOCAL (thread))
-    {
-      gupcr_trace (FC_MEM, "PUT ENTER S TF LOCAL "
-		   "%6Lg %d:0x%lx", v, thread, (long unsigned) offset);
-      GUPCR_WRITE_MEM_BARRIER ();
-      *(long double *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset) = v;
-      GUPCR_MEM_BARRIER ();
-    }
-  else
-    {
-      gupcr_trace (FC_MEM, "PUT ENTER S TF REMOTE "
-		   "%6Lg %d:0x%lx", v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
-	{
-	  /* Ordered puts can proceed in parallel.  */
-	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
-	}
-      else
-	{
-	  /* Wait for any outstanding 'put' operation.  */
-	  gupcr_gmem_sync_puts ();
-	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
-	}
-      gupcr_pending_strict_put = 1;
-    }
-  gupcr_trace (FC_MEM, "PUT EXIT S TF");
-}
-
-/**
- * Strict shared "long double" put operation.
- * Store the value given by 'v' into the shared memory destination at 'p'.
- *
- * The interface to this procedure is defined by the UPC compiler API.
- *
- * @param [in] p Shared address of the destination address.
- * @param [in] v Source value.
- */
-//inline
-void
-__putsxf2 (upc_shared_ptr_t p, long double v)
-{
-  int thread = GUPCR_PTS_THREAD (p);
-  size_t offset = GUPCR_PTS_OFFSET (p);
-  gupcr_assert (thread < THREADS);
-  gupcr_assert (offset != 0);
-  if (gupcr_pending_strict_put)
-    gupcr_gmem_sync_puts ();
-  if (GUPCR_GMEM_IS_LOCAL (thread))
-    {
-      gupcr_trace (FC_MEM, "PUT ENTER S XF LOCAL "
-		   "%6Lg %d:0x%lx", v, thread, (long unsigned) offset);
-      GUPCR_WRITE_MEM_BARRIER ();
-      *(long double *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset) = v;
-      GUPCR_MEM_BARRIER ();
-    }
-  else
-    {
-      gupcr_trace (FC_MEM, "PUT ENTER S XF REMOTE "
-		   "%6Lg %d:0x%lx", v, thread, (long unsigned) offset);
-      if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
-	{
-	  /* Ordered puts can proceed in parallel.  */
-	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
-	}
-      else
-	{
-	  /* Wait for any outstanding 'put' operation.  */
-	  gupcr_gmem_sync_puts ();
-	  gupcr_gmem_put (thread, offset, &v, sizeof (v));
-	}
-      gupcr_pending_strict_put = 1;
-    }
-  gupcr_trace (FC_MEM, "PUT EXIT S XF");
-}
-
-/**
- * Strict shared memory block put operation.
- * Copy the data at the local address 'src' into the shared memory
+ * Strict remote memory block put operation.
+ * Copy the data at the local address 'src' into the remote memory
  * destination at the address 'dest'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] dest Shared address of the destination memory block.
+ * @param [in] dest Remote address of the destination memory block.
  * @param [in] src Local address of the source memory block.
  * @param [in] n Number of bytes to transfer.
  */
 //inline
 void
-__putsblk3 (upc_shared_ptr_t dest, void *src, size_t n)
+upcr_llvm_putns (void *src, long thread, size_t offset, size_t n)
 {
-  int thread = GUPCR_PTS_THREAD (dest);
-  size_t offset = GUPCR_PTS_OFFSET (dest);
   gupcr_trace (FC_MEM, "PUTBLK ENTER S 0x%lx %d:0x%lx %lu",
 	       (long unsigned) src, thread,
 	       (long unsigned) offset, (long unsigned) n);
@@ -1783,24 +1361,21 @@ __putsblk3 (upc_shared_ptr_t dest, void *src, size_t n)
 }
 
 /**
- * Strict shared memory block copy operation.
- * Copy the data at the shared address 'src' into the shared memory
+ * Strict remote memory block copy operation.
+ * Copy the data at the remote address 'src' into the remote memory
  * destination at the address 'dest'.
  *
  * The interface to this procedure is defined by the UPC compiler API.
  *
- * @param [in] dest Shared address of destination memory block.
- * @param [in] src Shared address of source memory block.
+ * @param [in] dest Remote address of destination memory block.
+ * @param [in] src Remote address of source memory block.
  * @param [in] n Number of bytes to transfer.
  */
 //inline
 void
-__copysblk3 (upc_shared_ptr_t dest, upc_shared_ptr_t src, size_t n)
+upcr_llvm_copyns (long dthread, size_t doffset,
+		  long sthread, size_t soffset, size_t n)
 {
-  int dthread = GUPCR_PTS_THREAD (dest);
-  size_t doffset = GUPCR_PTS_OFFSET (dest);
-  int sthread = GUPCR_PTS_THREAD (src);
-  size_t soffset = GUPCR_PTS_OFFSET (src);
   gupcr_trace (FC_MEM, "COPYBLK ENTER S %d:0x%lx %d:0x%lx %lu",
 	       sthread, (long unsigned) soffset,
 	       dthread, (long unsigned) doffset, (long unsigned) n);
@@ -1835,17 +1410,6 @@ __copysblk3 (upc_shared_ptr_t dest, upc_shared_ptr_t src, size_t n)
       gupcr_pending_strict_put = 1;
     }
   gupcr_trace (FC_MEM, "COPY_BLK EXIT S");
-}
-
-/**
- * upc_fence implementation.
- */
-//inline
-void
-__upc_fence (void)
-{
-  GUPCR_MEM_BARRIER ();
-  gupcr_gmem_sync ();
 }
 
 //end lib_inline_access

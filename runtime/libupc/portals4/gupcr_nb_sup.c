@@ -199,7 +199,7 @@ gupcr_nb_get (size_t sthread, size_t soffset, char *dst_ptr,
   while (n_rem > 0)
     {
       size_t n_xfer;
-      n_xfer = GUPCR_MIN (n_rem, GUPCR_PORTALS_MAX_MSG_SIZE);
+      n_xfer = GUPCR_MIN (n_rem, GUPCR_MAX_MSG_SIZE);
       rpid.rank = sthread;
       gupcr_portals_call (PtlGet, (handle ? gupcr_nb_md : gupcr_nbi_md,
 				   local_offset,
@@ -258,7 +258,7 @@ gupcr_nb_put (size_t dthread, size_t doffset, const void *src_ptr,
   while (n_rem > 0)
     {
       size_t n_xfer;
-      n_xfer = GUPCR_MIN (n_rem, GUPCR_PORTALS_MAX_MSG_SIZE);
+      n_xfer = GUPCR_MIN (n_rem, GUPCR_MAX_MSG_SIZE);
       rpid.rank = dthread;
       gupcr_portals_call (PtlPut, (handle ? gupcr_nb_md : gupcr_nbi_md,
 				   local_offset, n_xfer, PTL_ACK_REQ, rpid,

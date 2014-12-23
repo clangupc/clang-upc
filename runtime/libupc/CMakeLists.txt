@@ -363,6 +363,7 @@ endif()
 elseif(LIBUPC_RUNTIME_MODEL STREQUAL portals4)
   set(LIBUPC_SOURCES
     portals4/gupcr_access.c
+    portals4/gupcr_llvm_access.c
     portals4/gupcr_addr.c
     portals4/gupcr_alloc.upc
     portals4/gupcr_atomic_sup.c
@@ -415,7 +416,9 @@ elseif(LIBUPC_RUNTIME_MODEL STREQUAL portals4)
 
   set(LIBUPC_SOURCES_INLINE
     ${PROJECT_SOURCE_DIR}/portals4/gupcr_access.c
+    ${PROJECT_SOURCE_DIR}/portals4/gupcr_llvm_access.c
     ${PROJECT_SOURCE_DIR}/portals4/gupcr_access.h
+    ${PROJECT_SOURCE_DIR}/portals4/gupcr_llvm_access.h
     ${PROJECT_SOURCE_DIR}/portals4/gupcr_config.h
     ${PROJECT_SOURCE_DIR}/portals4/gupcr_defs.h
     ${PROJECT_SOURCE_DIR}/portals4/gupcr_gmem.h
