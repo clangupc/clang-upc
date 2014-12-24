@@ -157,7 +157,7 @@ __upc_notify (int barrier_id)
      current synchronization phase.  */
   gupcr_gmem_sync ();
 
-#if GUPCR_USE_TRIGGERED_OPS
+#if NOT_NOW_GUPCR_USE_TRIGGERED_OPS
   if (THREADS == 1)
     return;
 
@@ -279,7 +279,7 @@ __upc_wait (int barrier_id)
       return;
     }
 
-#if GUPCR_USE_TRIGGERED_OPS
+#if NOT_NOW_GUPCR_USE_TRIGGERED_OPS
   /* Wait for the barrier ID to propagate down the tree.  */
   if (LEAF_THREAD)
     {
@@ -314,7 +314,7 @@ __upc_wait (int barrier_id)
       gupcr_debug (FC_BARRIER, "Send atomic FI_MIN %d to (%d)",
 		   barrier_value, gupcr_parent_thread);
       gupcr_barrier_atomic (&barrier_value,
-			    gupcr_parrent_id, &notify_value);
+			    gupcr_parent_thread, &notify_value);
     }
   else
     {
@@ -339,8 +339,8 @@ __upc_wait (int barrier_id)
          children.  */
       gupcr_debug (FC_BARRIER, "Send atomic FI_MIN %d to (%d)",
 		   barrier_value, gupcr_parent_thread);
-      gupcr_barrier_send (BARRIER_UP, &notify_value,
-			  gupcr_parent_id, &notify_value);
+      gupcr_barrier_put (BARRIER_UP, &notify_value,
+			  gupcr_parent_thread, &notify_value);
     }
 
   /* At this point, the derived minimal barrier ID among all threads
@@ -487,7 +487,7 @@ gupcr_bcast_recv (void *value, size_t nbytes)
 
   gupcr_gmem_sync ();
 
-#if GUPCR_USE_TRIGGERED_OPS
+#if NOT_NOW_GUPCR_USE_TRIGGERED_OPS
   if (INNER_THREAD)
     {
       /* Prepare triggers for message push to all children.  */
@@ -569,7 +569,7 @@ void
 gupcr_barrier_fini (void)
 {
   gupcr_log (FC_BARRIER, "barrier fini called");
-  gupcr_barrier_sup_init ();
+  gupcr_barrier_sup_fini ();
 }
 
 /** @} */

@@ -37,6 +37,7 @@
    space is bound which allows us to pass actual addresses through
    the support interface.  */
 
+#if BARRIER_TEST
 #define DEFINE_ENDPOINT(ep_name) \
 	static fab_ep_t gupcr_##ep_name##_ep; \
 	static fab_mr_t gupcr_##ep_name##_mr; \
@@ -47,6 +48,7 @@ DEFINE_ENDPOINT (bup_rx)
 DEFINE_ENDPOINT (bup_tx)
 DEFINE_ENDPOINT (bdown_rx)
 DEFINE_ENDPOINT (bdown_tx)
+#endif
 
 /** Send data to a remote thread
  *
@@ -58,6 +60,7 @@ DEFINE_ENDPOINT (bdown_tx)
 void
 gupcr_barrier_put (enum barrier_dir dir, int *src, int thread, int *dst)
 {
+#if BARRIER_TEST
   fab_ep_t ep = dir == BARRIER_UP ? gupcr_bup_tx_ep : gupcr_bdown_tx_ep;
 
   if (sizeof (int) <= GUPCR_MAX_OPTIM_SIZE)
@@ -76,6 +79,7 @@ gupcr_barrier_put (enum barrier_dir dir, int *src, int thread, int *dst)
 				      GUPCR_SERVICE_LOCK, GUPCR_SERVICE_BITS),
 			  (uint64_t) GUPCR_LOCAL_INDEX (dst), 0, NULL));
     }
+#endif
 }
 
 /** Setup a trigger for sending data to remote thread
@@ -150,9 +154,10 @@ gupcr_barrier_wait_delivery (size_t cnt)
  * @ingroup INIT
  *
  */
-     void
-     gupcr_barrier_sup_init (void)
+void
+gupcr_barrier_sup_init (void)
 {
+#if BARRIER_TEST
   cntr_attr_t cntr_attr = { 0 };
   cq_attr_t cq_attr = { 0 };
 
@@ -191,7 +196,9 @@ CREATE_ENDPOINT (bup_rx, GUPCR_SERVICE_BARRIER_UP,
 				GUPCR_SERVICE_BARRIER_DOWN,
 				FI_REMOTE_READ | FI_REMOTE_WRITE)
     CREATE_ENDPOINT (bdown_tx, GUPCR_SERVICE_BARRIER_DOWN,
-		       FI_READ | FI_WRITE)}
+		       FI_READ | FI_WRITE)
+#endif
+}
 
 /**
  * @fn gupcr_barrier_sup_fini (void)
@@ -201,13 +208,17 @@ CREATE_ENDPOINT (bup_rx, GUPCR_SERVICE_BARRIER_UP,
 void
 gupcr_barrier_sup_fini (void)
 {
+#if BARRIER_TEST
 #define DELETE_ENDPOINT(ep_name)\
 	gupcr_fabric_call (fi_close, (&gupcr_##ep_name##_ct->fid)); \
 	gupcr_fabric_call (fi_close, (&gupcr_##ep_name##_cq->fid)); \
 	gupcr_fabric_call (fi_close, (&gupcr_##ep_name##_mr->fid)); \
 	gupcr_fabric_call (fi_close, (&gupcr_##ep_name##_ep->fid));
-DELETE_ENDPOINT (bup_rx)
-    DELETE_ENDPOINT (bup_tx)
-    DELETE_ENDPOINT (bdown_rx) DELETE_ENDPOINT (bdown_tx)}
+  DELETE_ENDPOINT (bup_rx)
+  DELETE_ENDPOINT (bup_tx)
+  DELETE_ENDPOINT (bdown_rx)
+  DELETE_ENDPOINT (bdown_tx)
+#endif
+}
 
 /** @} */
