@@ -32,19 +32,5 @@ extern void gupcr_bcast_recv (void *, size_t);
 /* Current barrier ID.  */
 extern int gupcr_barrier_id;
 
-/* Barrier support functions.  */
-
-extern void gupcr_barrier_sup_init (void);
-extern void gupcr_barrier_sup_fini (void);
-
-extern void gupcr_barrier_send (int *, int, int *);
-extern void gupcr_barrier_tr_send (enum barrier_dir, int *, int, int *,
-				   size_t);
-extern void gupcr_barrier_atomic (int *, int, int *);
-extern void gupcr_barrier_tr_atomic (enum barrier_dir, int *, int, int *,
-				     size_t);
-extern void gupcr_barrier_wait_up (size_t);
-extern void gupcr_barrier_wait_down (size_t);
-extern void gupcr_barrier_wait_delivery (size_t);
 /** @} */
 #endif /* gupcr_barrier.h */
