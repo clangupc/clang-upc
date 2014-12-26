@@ -65,6 +65,8 @@ typedef struct fid_cq *fab_cq_t;
 typedef struct fid_eq *fab_eq_t;
 typedef struct fid_cntr *fab_cntr_t;
 typedef struct fid_mr *fab_mr_t;
+typedef struct fi_tx_ctx_attr tx_attr_t;
+typedef struct fi_rx_ctx_attr rx_attr_t;
 typedef struct fi_ep_attr ep_attr_t;
 typedef struct fi_cntr_attr cntr_attr_t;
 typedef struct fi_cq_attr cq_attr_t;

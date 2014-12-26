@@ -69,6 +69,9 @@ fab_mr_t gupcr_lock_lmr;
  * field, and the current value of the 'last' field is returned.  If NULL,
  * the acquiring thread is the new owner, otherwise it must insert itself
  * onto the waiting list.
+ *
+ * NOTE: Libfabric atomic type is determined from the argument 'size'.
+ *       Only one element of that size is being used.
  */
 void
 gupcr_lock_swap (size_t dest_thread,
@@ -78,7 +81,7 @@ gupcr_lock_swap (size_t dest_thread,
   gupcr_debug (FC_LOCK, "%lu:0x%lx",
 	       (long unsigned) dest_thread, (long unsigned) dest_offset);
   gupcr_fabric_call (fi_fetch_atomicto,
-		     (gupcr_lock_tx_ep, GUPCR_LOCAL_INDEX (val), size,
+		     (gupcr_lock_tx_ep, GUPCR_LOCAL_INDEX (val), 1,
 		      &gupcr_lock_lmr, GUPCR_LOCAL_INDEX (old),
 		      &gupcr_lock_lmr, fi_rx_addr ((fi_addr_t) dest_thread,
 						   GUPCR_SERVICE_LOCK,
@@ -111,6 +114,9 @@ gupcr_lock_swap (size_t dest_thread,
  * into the lock's 'last' field only if this field contains the pointer
  * to the owner's local lock link structure.
  *
+ * NOTE: Libfabric atomic type is determined from the argument 'size'.
+ *       Only one element of that size is being used.
+ *
  * @retval Return TRUE if the operation was successful.
  */
 int
@@ -122,7 +128,7 @@ gupcr_lock_cswap (size_t dest_thread,
 	       (long unsigned) dest_thread, (long unsigned) dest_offset);
 
   gupcr_fabric_call (fi_compare_atomicto,
-		     (gupcr_lock_tx_ep, GUPCR_LOCAL_INDEX (val), size,
+		     (gupcr_lock_tx_ep, GUPCR_LOCAL_INDEX (val), 1,
 		      &gupcr_lock_lmr, GUPCR_LOCAL_INDEX (cmp),
 		      &gupcr_lock_lmr, GUPCR_LOCAL_INDEX (gupcr_lock_buf),
 		      &gupcr_lock_lmr, fi_rx_addr ((fi_addr_t) dest_thread,
@@ -269,12 +275,14 @@ gupcr_lock_init (void)
 {
   cntr_attr_t cntr_attr = { 0 };
   cq_attr_t cq_attr = { 0 };
+  tx_attr_t tx_attr = { 0 };
 
   gupcr_log (FC_LOCK, "lock init called");
 
   /* Create context endpoints for LOC transfers.  */
+  tx_attr.op_flags = FI_REMOTE_COMPLETE;
   gupcr_fabric_call (fi_tx_context,
-		     (gupcr_ep, GUPCR_SERVICE_LOCK, NULL, &gupcr_lock_tx_ep,
+		     (gupcr_ep, GUPCR_SERVICE_LOCK, &tx_attr, &gupcr_lock_tx_ep,
 		      NULL));
   gupcr_fabric_call (fi_rx_context,
 		     (gupcr_ep, GUPCR_SERVICE_LOCK, NULL, &gupcr_lock_rx_ep,
@@ -300,16 +308,22 @@ gupcr_lock_init (void)
 			       &gupcr_lock_lcq->fid,
 			       FI_READ | FI_WRITE | FI_EVENT));
 
-  /* Enable endpoints.  */
-  gupcr_fabric_call (fi_enable, (gupcr_lock_tx_ep));
-  gupcr_fabric_call (fi_enable, (gupcr_lock_rx_ep));
-
+  /* NOTE: Create a local memory region before enabling endpoint.  */
   /* ... and memory region for local memory accesses.  */
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, USER_PROG_MEM_START,
 				 USER_PROG_MEM_SIZE, FI_READ | FI_WRITE,
 				 0, 0, 0, &gupcr_lock_lmr, NULL));
+  /* NOTE: There is no need to bind local memory region to endpoint.  */
+  /*       Hmm ... ? We can probably use only one throughout the runtime,  */
+  /*       as counters and events are bound to endpoint.  */
+#if 0
   gupcr_fabric_call (fi_bind, (&gupcr_lock_tx_ep->fid,
 			       &gupcr_lock_lmr->fid, FI_READ | FI_WRITE));
+#endif
+
+  /* Enable endpoints.  */
+  gupcr_fabric_call (fi_enable, (gupcr_lock_tx_ep));
+  gupcr_fabric_call (fi_enable, (gupcr_lock_rx_ep));
 
   /* ... and memory region for remote inbound accesses.  */
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, gupcr_gmem_base, gupcr_gmem_size,
