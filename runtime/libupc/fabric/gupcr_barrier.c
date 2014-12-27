@@ -124,11 +124,11 @@ static int wait_value;
 static size_t notify_count = 0;
 /** Number of writes into downstream buffer */
 static size_t wait_count = 0;
-/** Number of writes to downstream children */
-static size_t wait_transmit_count = 0;
 
-/** Broadcast received value memory buffer pointer.  */
-static char *bcast_buf_ptr;
+/** Broadcast signal location.  */
+static int bcast_signal;
+/** Broadcast received value memory buffer.  */
+static char bcast_buf[GUPCR_MAX_BROADCAST_SIZE];
 
 /**
  * @fn __upc_notify (int barrier_id)
@@ -188,7 +188,7 @@ __upc_notify (int barrier_id)
 	      Action: Send the barrier ID to the wait buffer of the
 		      barrier DOWN LE.  */
 	  notify_count += gupcr_child_cnt + 1;
-	  gupcr_barrier_tr_send (BARRIER_DOWN, &notify_value,
+	  gupcr_barrier_tr_put (BARRIER_DOWN, &notify_value,
 				 MYTHREAD, &wait_value,
 				 notify_count);
 	}
@@ -210,7 +210,7 @@ __upc_notify (int barrier_id)
           Action: Reinitialize the barrier UP ID to barrier MAX value
                   for the next call to upc_notify.  */
       wait_count += 1;
-      gupcr_barrier_tr_send (BARRIER_UP, &barrier_value_max,
+      gupcr_barrier_tr_put (BARRIER_UP, &barrier_value_max,
 			     MYTHREAD, &notify_value,
 			     wait_count);
 
@@ -219,7 +219,7 @@ __upc_notify (int barrier_id)
       notify_count += 1;
       for (i = 0; i < gupcr_child_cnt; i++)
 	{
-	  gupcr_barrier_tr_send (BARRIER_DOWN, &wait_value,
+	  gupcr_barrier_tr_put (BARRIER_DOWN, &wait_value,
 				 gupcr_child[i], &wait_value,
 				 notify_count);
 	}
@@ -279,21 +279,18 @@ __upc_wait (int barrier_id)
       return;
     }
 
-#if NOT_NOW_GUPCR_USE_TRIGGERED_OPS
+#if GUPCR_USE_TRIGGERED_OPS
   /* Wait for the barrier ID to propagate down the tree.  */
   if (LEAF_THREAD)
     {
-      wait_count++;
-      gupcr_barrier_wait_down (wait_count);
+      gupcr_barrier_wait_down ();
     }
   else
     {
       /* Wait for the barrier ID to flow down to the children.  */
       /* This is needed so inner nodes don't start a new barrier before
 	 leaf receives its wait barrier id.  */
-      /* TODO: check on this?  */
-      wait_transmit_count += gupcr_child_cnt;
-      gupcr_barrier_wait_down (wait_transmit_count);
+      gupcr_barrier_put_wait (BARRIER_DOWN, gupcr_child_cnt);
     }
 #else
   /* UPC Barrier implementation without Triggered Functions.
@@ -339,8 +336,8 @@ __upc_wait (int barrier_id)
          children.  */
       gupcr_debug (FC_BARRIER, "Send atomic FI_MIN %d to (%d)",
 		   barrier_value, gupcr_parent_thread);
-      gupcr_barrier_put (BARRIER_UP, &notify_value,
-			  gupcr_parent_thread, &notify_value);
+      gupcr_barrier_send (BARRIER_UP, &notify_value,
+			  gupcr_parent_id, &notify_value);
     }
 
   /* At this point, the derived minimal barrier ID among all threads
@@ -352,8 +349,7 @@ __upc_wait (int barrier_id)
   else
     {
       /* Wait for the parent to send the derived agreed on barrier ID.  */
-      wait_count++;
-      gupcr_barrier_wait_down (wait_count);
+      gupcr_barrier_wait_down ();
     }
 
   wait_value = notify_value;
@@ -371,8 +367,8 @@ __upc_wait (int barrier_id)
          this thread's children.  */
       for (i = 0; i < gupcr_child_cnt; i++)
 	{
-	  gupcr_barrier_put (BARRIER_DOWN, &wait_value,
-			      gupcr_child[i], &wait_value);
+	  gupcr_barrier_put (BARRIER_DOWN, &wait_value, gupcr_child[i],
+			     &wait_value, sizeof (wait_value));
 	}
 
       /* Wait until all children receive the consensus minimum
@@ -442,25 +438,30 @@ gupcr_bcast_send (void *value, size_t nbytes)
   gupcr_trace (FC_BROADCAST, "BROADCAST SEND ENTER 0x%lx %lu",
 	       (long unsigned) value, (long unsigned) nbytes);
 
-  /* This broadcast operation is implemented a collective operation.
+  /* This broadcast operation is implemented as a collective operation.
      Before proceeding, complete all outstanding shared memory
      read/write operations.  */
   gupcr_gmem_sync ();
+  /* Initialize the buffer used for delivery to children.  */
+  memcpy (bcast_buf, value, nbytes);
 
-  /* Copy the message into the buffer used for delivery
-     to the children threads.  */
-  memcpy (bcast_buf_ptr, value, nbytes);
+  /* Wait for all children to arrive.  */
+  gupcr_barrier_wait_up (gupcr_child_cnt);
 
-  /* Send broadcast to this thread's children.  */
+  /* Send broadcast to children threads.  */
   for (i = 0; i < gupcr_child_cnt; i++)
     {
       gupcr_debug (FC_BROADCAST, "Send broadcast message to child (%d)",
 		   gupcr_child[i]);
+      gupcr_barrier_put (BARRIER_DOWN,
+			 bcast_buf, gupcr_child[i], bcast_buf,
+			 sizeof (bcast_buf));
     }
 
   /* Wait for message delivery to all children.  This ensures that
      the source buffer is not overwritten by back-to-back
      broadcast operations.  */
+  gupcr_barrier_put_wait (BARRIER_DOWN, gupcr_child_cnt);
 
   gupcr_trace (FC_BROADCAST, "BROADCAST SEND EXIT");
 }
@@ -513,13 +514,14 @@ gupcr_bcast_recv (void *value, size_t nbytes)
 
       /* Wait to receive a message from the parent.  */
     }
-  memcpy (value, bcast_buf_ptr, nbytes);
+  memcpy (value, bcast_buf, nbytes);
 #else
-  /* Inner threads must wait for its children threads to arrive.  */
+  /* Inner thread must wait for its children threads to arrive.  */
   if (INNER_THREAD)
     {
       gupcr_debug (FC_BROADCAST, "Waiting for %d notifications",
 		   gupcr_child_cnt);
+      gupcr_barrier_wait_up (gupcr_child_cnt);
     }
 
   /* Inform the parent that this thread and all its children arrived.
@@ -527,12 +529,14 @@ gupcr_bcast_recv (void *value, size_t nbytes)
      implementation.  */
   gupcr_debug (FC_BROADCAST, "Send notification to the parent %d",
 	       gupcr_parent_thread);
-  barrier_value = BARRIER_ID_MAX;
+  gupcr_barrier_put (BARRIER_UP, &bcast_signal, gupcr_parent_thread,
+		     &bcast_signal, sizeof (bcast_signal));
 
   /* Receive the broadcast message from the parent.  */
+  gupcr_barrier_wait_down ();
 
-  /* Copy the received message.  */
-  memcpy (value, bcast_buf_ptr, nbytes);
+  /* Copy out the received message.  */
+  memcpy (value, bcast_buf, nbytes);
 
   if (INNER_THREAD)
     {
@@ -541,8 +545,11 @@ gupcr_bcast_recv (void *value, size_t nbytes)
 	{
 	  gupcr_debug (FC_BROADCAST, "Sending a message to %d",
 		       gupcr_child[i]);
+          gupcr_barrier_put (BARRIER_DOWN, bcast_buf, gupcr_child[i],
+			     bcast_buf, sizeof (bcast_buf));
 	}
       /* Wait for delivery to all children.  */
+      gupcr_barrier_put_wait (BARRIER_DOWN, gupcr_child_cnt);
     }
 #endif
   gupcr_trace (FC_BROADCAST, "BROADCAST RECV EXIT");

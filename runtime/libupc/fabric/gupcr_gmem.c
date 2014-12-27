@@ -510,18 +510,16 @@ gupcr_gmem_init (void)
 void
 gupcr_gmem_fini (void)
 {
+  int status;
   gupcr_log (FC_MEM, "gmem fini called");
-
   gupcr_fabric_call (fi_close, (&gupcr_gmem_puts.ct_handle->fid));
   gupcr_fabric_call (fi_close, (&gupcr_gmem_gets.ct_handle->fid));
   gupcr_fabric_call (fi_close, (&gupcr_gmem_cq->fid));
   gupcr_fabric_call (fi_close, (&gupcr_gmem_mr->fid));
   gupcr_fabric_call (fi_close, (&gupcr_gmem_lmr->fid));
-#if 0
-  /* NOTE: This code causes occasional failures.  */
-  gupcr_fabric_call (fi_close, (&gupcr_gmem_tx_ep->fid));
-  gupcr_fabric_call (fi_close, (&gupcr_gmem_rx_ep->fid));
-#endif
+  /* NOTE: Do not check for errors. Fails occasionally.  */
+  gupcr_fabric_call_nc (fi_close, status, (&gupcr_gmem_tx_ep->fid));
+  gupcr_fabric_call_nc (fi_close, status, (&gupcr_gmem_rx_ep->fid));
 }
 
 /** @} */
