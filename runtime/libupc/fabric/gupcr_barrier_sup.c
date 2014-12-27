@@ -151,21 +151,21 @@ gupcr_barrier_atomic (int *src, int thread, int *dst)
   if (sizeof (int) <= GUPCR_MAX_OPTIM_SIZE)
     {
       gupcr_fabric_call (fi_inject_atomicto,
-			 (gupcr_bup_rx_ep, (const void *) src, 1,
+			 (gupcr_bup_tx_ep, (const void *) src, 1,
 			  fi_rx_addr ((fi_addr_t) thread,
 			  GUPCR_SERVICE_BARRIER_UP, GUPCR_SERVICE_BITS),
 			  (uint64_t) GUPCR_LOCAL_INDEX (dst), 0,
-			  FI_UINT32, FI_SUM));
+			  FI_UINT32, FI_MIN));
     }
   else
     {
       gupcr_fabric_call (fi_atomicto,
-			 (gupcr_bup_rx_ep, (const void *) src, 1,
-			  gupcr_bup_rx_mr,
+			 (gupcr_bup_tx_ep, (const void *) src, 1,
+			  gupcr_bup_tx_mr,
 			  fi_rx_addr ((fi_addr_t) thread,
 			  GUPCR_SERVICE_BARRIER_UP, GUPCR_SERVICE_BITS),
 			  (uint64_t) GUPCR_LOCAL_INDEX (dst), 0,
-			  FI_UINT32, FI_SUM, NULL));
+			  FI_UINT32, FI_MIN, NULL));
     }
 }
 
