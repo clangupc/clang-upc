@@ -122,13 +122,26 @@ extern size_t gupcr_max_optim_size;
     while (0)
 
 /** Execute fabric call and return status */
-#define gupcr_fabric_call_nc(fabric_func, pstatus, args)	\
+#define gupcr_fabric_call_nc(fabric_func, pstatus, args)		\
     do									\
       {									\
         pstatus = fabric_func args;					\
       }									\
     while (0)
 
+/** Check for timeout error code */
+#define GUPCR_TIMEOUT_CHECK(status, msg, queue) 			\
+    if (status)								\
+      {									\
+        if (status == FI_ETIMEDOUT)					\
+	  gupcr_fatal_error (msg);					\
+        else								\
+	  {								\
+	    gupcr_process_fail_events (queue);				\
+	    gupcr_abort ();						\
+	  }								\
+      }									\
+    
 /**
  * @addtogroup GLOBAL GUPCR Global Variables
  * @{

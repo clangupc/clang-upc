@@ -93,11 +93,7 @@ gupcr_lock_swap (size_t dest_thread,
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(gupcr_lock_lct, gupcr_lock_lmr_count,
 			 GUPCR_TRANSFER_TIMEOUT));
-  if (status != 0)
-    {
-      gupcr_process_fail_events (gupcr_lock_lcq);
-      gupcr_abort ();
-    }
+  GUPCR_TIMEOUT_CHECK (status, "lock_swap", gupcr_lock_lcq);
 }
 
 /**
@@ -141,11 +137,7 @@ gupcr_lock_cswap (size_t dest_thread,
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(gupcr_lock_lct, gupcr_lock_lmr_count,
 			 GUPCR_TRANSFER_TIMEOUT));
-  if (status != 0)
-    {
-      gupcr_process_fail_events (gupcr_lock_lcq);
-      gupcr_abort ();
-    }
+  GUPCR_TIMEOUT_CHECK (status, "lock_cswap", gupcr_lock_lcq);
   return !memcmp (cmp, gupcr_lock_buf, size);
 }
 
@@ -190,11 +182,7 @@ gupcr_lock_put (size_t dest_thread, size_t dest_addr, void *val, size_t size)
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(gupcr_lock_lct, gupcr_lock_lmr_count,
 			 GUPCR_TRANSFER_TIMEOUT));
-  if (status != 0)
-    {
-      gupcr_process_fail_events (gupcr_lock_lcq);
-      gupcr_abort ();
-    }
+  GUPCR_TIMEOUT_CHECK (status, "lock_put", gupcr_lock_lcq);
 }
 
 /*
@@ -221,16 +209,7 @@ gupcr_lock_get (size_t dest_thread, size_t dest_addr, void *val, size_t size)
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(gupcr_lock_lct, gupcr_lock_lmr_count,
 			 GUPCR_TRANSFER_TIMEOUT));
-  if (status)
-    {
-      if (status == FI_ETIMEDOUT)
-	gupcr_fatal_error ("Timeout on lock get");
-      else
-	{
-	  gupcr_process_fail_events (gupcr_lock_lcq);
-	  gupcr_abort ();
-	}
-    }
+  GUPCR_TIMEOUT_CHECK (status, "lock_get", gupcr_lock_lcq);
 }
 
 /**
@@ -254,16 +233,7 @@ gupcr_lock_wait (void)
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(gupcr_lock_ct, gupcr_lock_mr_count,
 			 GUPCR_TRANSFER_TIMEOUT));
-  if (status)
-    {
-      if (status == FI_ETIMEDOUT)
-	gupcr_fatal_error ("Timeout on lock wait");
-      else
-	{
-	  gupcr_process_fail_events (gupcr_lock_cq);
-	  gupcr_abort ();
-	}
-    }
+  GUPCR_TIMEOUT_CHECK (status, "lock_wait", gupcr_lock_cq);
 }
 
 /**
@@ -365,14 +335,16 @@ gupcr_lock_init (void)
 void
 gupcr_lock_fini (void)
 {
+  int status;
   gupcr_log (FC_LOCK, "lock fini called");
   gupcr_fabric_call (fi_close, (&gupcr_lock_ct->fid));
   gupcr_fabric_call (fi_close, (&gupcr_lock_lct->fid));
   gupcr_fabric_call (fi_close, (&gupcr_lock_cq->fid));
   gupcr_fabric_call (fi_close, (&gupcr_lock_mr->fid));
   gupcr_fabric_call (fi_close, (&gupcr_lock_lmr->fid));
-  gupcr_fabric_call (fi_close, (&gupcr_lock_rx_ep->fid));
-  gupcr_fabric_call (fi_close, (&gupcr_lock_tx_ep->fid));
+  /* NOTE: Do not check for errors.  Fails occasionally.  */
+  gupcr_fabric_call_nc (fi_close, status, (&gupcr_lock_rx_ep->fid));
+  gupcr_fabric_call_nc (fi_close, status, (&gupcr_lock_tx_ep->fid));
 }
 
 /** @} */
