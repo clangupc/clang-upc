@@ -120,11 +120,6 @@ static int notify_value;
 /** Consensus barrier ID among all threads */
 static int wait_value;
 
-/** Number of writes into upstream buffer */
-static size_t notify_count = 0;
-/** Number of writes into downstream buffer */
-static size_t wait_count = 0;
-
 /** Broadcast signal location.  */
 static int bcast_signal;
 /** Broadcast received value memory buffer.  */
@@ -279,7 +274,7 @@ __upc_wait (int barrier_id)
       return;
     }
 
-#if GUPCR_USE_TRIGGERED_OPS
+#if NOT_NOW_GUPCR_USE_TRIGGERED_OPS
   /* Wait for the barrier ID to propagate down the tree.  */
   if (LEAF_THREAD)
     {
@@ -325,8 +320,7 @@ __upc_wait (int barrier_id)
 
       /* Wait for all children threads to report their barrier IDs.
          Account for this thread's atomic FI_MIN.  */
-      notify_count += gupcr_child_cnt + 1;
-      gupcr_barrier_wait_up (notify_count);
+      gupcr_barrier_wait_up (gupcr_child_cnt + 1);
     }
 
   if (INNER_THREAD)
@@ -336,20 +330,22 @@ __upc_wait (int barrier_id)
          children.  */
       gupcr_debug (FC_BARRIER, "Send atomic FI_MIN %d to (%d)",
 		   barrier_value, gupcr_parent_thread);
-      gupcr_barrier_send (BARRIER_UP, &notify_value,
-			  gupcr_parent_id, &notify_value);
+      gupcr_barrier_put (BARRIER_UP, &notify_value,
+			 gupcr_parent_thread, &notify_value,
+			 sizeof (notify_value));
     }
 
   /* At this point, the derived minimal barrier ID among all threads
      has arrived at the root thread.  */
-  if (ROOT_THREAD)
-    {
-      wait_value = notify_value;
-    }
-  else
+  if (!ROOT_THREAD)
     {
       /* Wait for the parent to send the derived agreed on barrier ID.  */
       gupcr_barrier_wait_down ();
+    }
+  else
+    {
+      gupcr_debug (FC_BARRIER, "root: barrier ID at %lx := %d",
+		   (unsigned long) &notify_value, notify_value);
     }
 
   wait_value = notify_value;
@@ -373,8 +369,7 @@ __upc_wait (int barrier_id)
 
       /* Wait until all children receive the consensus minimum
          barrier ID that is propagated down the tree.  */
-      wait_transmit_count += gupcr_child_cnt;
-      gupcr_barrier_wait_delivery (wait_transmit_count);
+      gupcr_barrier_put_wait (BARRIER_DOWN, gupcr_child_cnt);
     }
 
 #endif /* GUPCR_USE_TRIGGERED_OPS */
@@ -406,12 +401,8 @@ __upc_wait (int barrier_id)
 void
 __upc_barrier (int barrier_id)
 {
-#if BARRIER_TEST
   __upc_notify (barrier_id);
   __upc_wait (barrier_id);
-#else
-  gupcr_runtime_barrier ();
-#endif
 }
 
 /* This broadcast implementation uses barrier resources
@@ -564,6 +555,7 @@ void
 gupcr_barrier_init (void)
 {
   gupcr_log (FC_BARRIER, "barrier init called");
+  notify_value = BARRIER_ID_MAX;
   gupcr_barrier_sup_init ();
 }
 
