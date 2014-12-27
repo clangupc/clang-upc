@@ -348,7 +348,7 @@ gupcr_gmem_copy (int dthread, size_t doffset,
       /* Read the source data into the bounce buffer.  */
       gupcr_gmem_get (bounce_buf, sthread, src_addr, n_xfer);
       gupcr_gmem_sync_gets ();
-      local_offset = bounce_buf - gupcr_gmem_put_bb;
+      local_offset = (size_t) bounce_buf;
       ++gupcr_gmem_puts.num_pending;
       gupcr_fabric_call (fi_writeto,
 			 (gupcr_gmem_tx_ep,
@@ -404,7 +404,7 @@ gupcr_gmem_set (int thread, size_t offset, int c, size_t n)
 	  already_filled = (bounce_buf == gupcr_gmem_put_bb
 			    && n_xfer == GUPCR_BOUNCE_BUFFER_SIZE);
 	}
-      local_offset = bounce_buf - gupcr_gmem_put_bb;
+      local_offset = (size_t) bounce_buf;
       ++gupcr_gmem_puts.num_pending;
       gupcr_fabric_call (fi_writeto,
 			 (gupcr_gmem_tx_ep, GUPCR_LOCAL_INDEX (local_offset),
