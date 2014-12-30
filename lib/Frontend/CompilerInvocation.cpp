@@ -1769,19 +1769,22 @@ bool CompilerInvocation::CreateFromArgs(CompilerInvocation &Res,
                               Res.getFrontendOpts().ProgramAction);
   ParseTargetArgs(Res.getTargetOpts(), *Args);
 
-  // For UPC struct representation fields sizes depend on the
-  // target configuration (e.g. -m32 option on 64 bits host).
-  // Check for X86 or PPC target is done similarly to the code
-  // in InitHeaderSearch.cpp.  This check must be done only after
-  // the target options have been processed.
-  if (Res.getLangOpts()->UPCPtsRep == 0) {
+  {
     llvm::Triple CTriple(Res.getTargetOpts().Triple);
-    if (!CTriple.isArch64Bit()) {
+    // For UPC struct representation fields sizes depend on the
+    // target configuration (e.g. -m32 option on 64 bits host).
+    // Check for X86 or PPC target is done similarly to the code
+    // in InitHeaderSearch.cpp.  This check must be done only after
+    // the target options have been processed.
+    if (Res.getLangOpts()->UPCPtsRep == 0 && !CTriple.isArch64Bit()) {
       Res.getLangOpts()->UPCPhaseBits = 16;
       Res.getLangOpts()->UPCThreadBits = 16;
       Res.getLangOpts()->UPCAddrBits = 32;
     }
-  }  
+    // Disable UPC shared pointer lowering to LLVM on 32 bits
+    if (CTriple.isArch32Bit())
+      Res.getLangOpts()->UPCGenIr = false;
+  }
 
   return Success;
 }
