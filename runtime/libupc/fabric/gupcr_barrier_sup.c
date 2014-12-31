@@ -55,6 +55,12 @@
 DEFINE_ENDPOINTS (bup)
 DEFINE_ENDPOINTS (bdown)
 
+/** Max number of outstanding triggered operations  */
+#define GUPCR_BAR_MAX_TRIG_CTX 3
+/** Triggered context structures.  Libfabric spec requires context
+    data structure to be available until operation completes.  */
+fi_trig_t trig_ctx[GUPCR_BAR_MAX_TRIG_CTX];
+
 /** Send data to a remote thread
  *
  * @param [in] dir Direction (up/down)
@@ -128,12 +134,50 @@ gupcr_barrier_put_wait (enum barrier_dir dir, size_t count)
  * @param [in] src Address of the source
  * @param [in] thread Remote thread
  * @param [in] dst Address of the destination
- * @param [in] cnt Trigger counter
+ * @param [in] count Number of bytes to put
+ * @param [in] from_dir Barrier direction for trigger
+ * @param [in] trig Trigger counter
+ * @param [in] ctx Context index
  */
 void
-gupcr_barrier_tr_put (enum barrier_dir dir, int *src,
-		      int thread, int *dst, size_t cnt)
+gupcr_barrier_tr_put (enum barrier_dir dir, void *src,
+		      int thread, void *dst, size_t count,
+		      enum barrier_dir from_dir, size_t trig, int ctx)
 {
+  fab_ep_t ep = dir == BARRIER_UP ? gupcr_bup_tx_ep : gupcr_bdown_tx_ep;
+  int bar_serv = dir == BARRIER_UP ?
+		GUPCR_SERVICE_BARRIER_UP : GUPCR_SERVICE_BARRIER_DOWN;
+  gupcr_assert (ctx < GUPCR_MAX_TRIG_CTX);
+  gupcr_debug (FC_BARRIER, "%lx -> %d:%lx (%ld)", (unsigned long)src,
+	       thread, (unsigned long) dst, (unsigned long) count);
+  trig_ctx[ctx].event_type = FI_TRIGGER_THRESHOLD;
+  if (from_dir == BARRIER_UP)
+    {
+      gupcr_bup_rx_count += trig;
+      trig_ctx[ctx].threshold.cntr = gupcr_bup_rx_ct;
+      trig_ctx[ctx].threshold.threshold = gupcr_bup_rx_count;
+    }
+  else
+    {
+      gupcr_bdown_rx_count += trig;
+      trig_ctx[ctx].threshold.cntr = gupcr_bdown_rx_ct;
+      trig_ctx[ctx].threshold.threshold = gupcr_bdown_rx_count;
+    }
+  {
+    struct fi_msg_rma msg_rma = {0};
+    struct iovec msg = {0};
+    struct fi_rma_iov endpt = {0};
+
+    msg.iov_base = src;
+    msg.iov_len = count;
+    endpt.addr = (uint64_t) dst;
+    msg_rma.msg_iov = &msg;
+    msg_rma.addr = fi_rx_addr ((fi_addr_t) thread, bar_serv,
+			       GUPCR_SERVICE_BITS);
+    msg_rma.rma_iov = &endpt;
+    msg_rma.context = &trig_ctx[ctx];
+    gupcr_fabric_call (fi_writemsg, (ep, &msg_rma, FI_TRIGGER));
+  }
 }
 
 /** Atomically send data to the remote thread
@@ -169,18 +213,39 @@ gupcr_barrier_atomic (int *src, int thread, int *dst)
     }
 }
 
-/** Setup a trigger for atomically send data to a remote thread
+/** Setup a trigger for atomically send data to the parent thread
  *
- * @param [in] dir Barrier direction
  * @param [in] src Address of the source
  * @param [in] thread Remote thread
  * @param [in] dst Address of the destination
- * @param [in] cnt Trigger count
+ * @param [in] trig Trigger count
+ * @param [in] ctx Trigger context index
  */
 void
-gupcr_barrier_tr_atomic (enum barrier_dir dir, int *src, int thread,
-			 int *dst, size_t cnt)
+gupcr_barrier_tr_atomic (int *src, int thread, int *dst, size_t trig, int ctx)
 {
+  struct fi_msg_atomic msg_atomic = {0};
+  struct fi_ioc msg = {0};
+  struct fi_rma_ioc endpt = {0};
+  gupcr_assert (ctx < GUPCR_MAX_TRIG_CTX);
+  gupcr_debug (FC_BARRIER, "%lx -> %d:%lx (%ld)", (unsigned long)src,
+	       thread, (unsigned long) dst, sizeof (int));
+  trig_ctx[ctx].event_type = FI_TRIGGER_THRESHOLD;
+  gupcr_bup_rx_count += trig;
+  trig_ctx[ctx].threshold.cntr = gupcr_bup_rx_ct;
+  trig_ctx[ctx].threshold.threshold = gupcr_bup_rx_count;
+  msg.addr = src;
+  msg.count = 1;
+  endpt.addr = (uint64_t) dst;
+  msg_atomic.msg_iov = &msg;
+  msg_atomic.addr = fi_rx_addr ((fi_addr_t) thread, GUPCR_SERVICE_BARRIER_UP,
+				GUPCR_SERVICE_BITS);
+  msg_atomic.rma_iov = &endpt;
+  msg_atomic.context = &trig_ctx[ctx];
+  msg_atomic.datatype = FI_UINT32;
+  msg_atomic.op = FI_MIN;
+  gupcr_fabric_call (fi_atomicmsg, (gupcr_bup_tx_ep, &msg_atomic,
+				    FI_TRIGGER));
 }
 
 /** Wait for notifying barrier value (up phase).

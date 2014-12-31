@@ -19,6 +19,7 @@
 #include <rdma/fi_errno.h>
 #include <rdma/fi_prov.h>
 #include <rdma/fi_rma.h>
+#include <rdma/fi_trigger.h>
 
 /**
  * @file gupcr_fabric.h
@@ -72,6 +73,7 @@ typedef struct fi_cntr_attr cntr_attr_t;
 typedef struct fi_cq_attr cq_attr_t;
 typedef struct fi_eq_attr eq_attr_t;
 typedef struct fi_av_attr av_attr_t;
+typedef struct fi_triggered_context fi_trig_t;
 
 /** Endpoint to/form Rank/Service mapping */
 extern fab_ep_t gupcr_ep;
