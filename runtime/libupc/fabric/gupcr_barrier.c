@@ -178,14 +178,13 @@ __upc_notify (int barrier_id)
       if (ROOT_THREAD)
 	{
 	  /* The consensus MIN barrier ID derived in the notify (UP) phase
-	     must be transferred to the wait LE for delivery to all children.
+	     must be transferred to the wait for delivery to all children.
 	     Trigger: Barrier ID received in the notify phase.
 	      Action: Send the barrier ID to the wait buffer of the
 		      barrier DOWN LE.  */
-	  notify_count += gupcr_child_cnt + 1;
 	  gupcr_barrier_tr_put (BARRIER_DOWN, &notify_value,
-				 MYTHREAD, &wait_value,
-				 notify_count);
+				MYTHREAD, &wait_value, sizeof (wait_value),
+				BARRIER_UP, gupcr_child_cnt + 1, 0);
 	}
       else
 	{
@@ -195,28 +194,25 @@ __upc_notify (int barrier_id)
 		      atomic FIL_MIN using each thread's UP NC.
 	      Action: Transfer the consensus minimum barrier ID to the
 		      this thread's parent.  */
-	  notify_count += gupcr_child_cnt + 1;
-	  gupcr_barrier_tr_atomic (BARRIER_UP, &notify_value,
-				   gupcr_parent_thread, &notify_value,
-				   notify_count);
+	  gupcr_barrier_tr_atomic (&notify_value, gupcr_parent_thread,
+				   &notify_value, gupcr_child_cnt + 1, 0);
 	}
 
       /* Trigger: Barrier ID received in the wait buffer.
           Action: Reinitialize the barrier UP ID to barrier MAX value
                   for the next call to upc_notify.  */
-      wait_count += 1;
       gupcr_barrier_tr_put (BARRIER_UP, &barrier_value_max,
-			     MYTHREAD, &notify_value,
-			     wait_count);
+			    MYTHREAD, &notify_value,
+			    sizeof (notify_value), BARRIER_DOWN, 1, 1);
 
       /* Trigger: The barrier ID is reinitialized to MAX.
           Action: Send the consensus barrier ID to all children.  */
-      notify_count += 1;
       for (i = 0; i < gupcr_child_cnt; i++)
 	{
 	  gupcr_barrier_tr_put (BARRIER_DOWN, &wait_value,
-				 gupcr_child[i], &wait_value,
-				 notify_count);
+				gupcr_child[i], &wait_value,
+				sizeof (wait_value),
+				BARRIER_UP, 1, 2);
 	}
 
       /* Allow notify to proceed and to possibly complete the wait
@@ -357,7 +353,7 @@ __upc_wait (int barrier_id)
       int i;
 
       /* Re-initialize the barrier ID maximum range value.  */
-      notify_value = BARRIER_ID_MAX;
+      notify_value = barrier_value_max;
 
       /* Send the derived consensus minimum barrier ID to
          this thread's children.  */
@@ -428,6 +424,7 @@ gupcr_bcast_send (void *value, size_t nbytes)
 
   gupcr_trace (FC_BROADCAST, "BROADCAST SEND ENTER 0x%lx %lu",
 	       (long unsigned) value, (long unsigned) nbytes);
+  gupcr_assert (nbytes <= sizeof (bcast_buf));
 
   /* This broadcast operation is implemented as a collective operation.
      Before proceeding, complete all outstanding shared memory
@@ -446,7 +443,7 @@ gupcr_bcast_send (void *value, size_t nbytes)
 		   gupcr_child[i]);
       gupcr_barrier_put (BARRIER_DOWN,
 			 bcast_buf, gupcr_child[i], bcast_buf,
-			 sizeof (bcast_buf));
+			 nbytes);
     }
 
   /* Wait for message delivery to all children.  This ensures that
@@ -483,17 +480,29 @@ gupcr_bcast_recv (void *value, size_t nbytes)
   if (INNER_THREAD)
     {
       /* Prepare triggers for message push to all children.  */
+      /* Trigger: message received from the parent.
+	 Action: send message to a child.  */
       for (i = 0; i < gupcr_child_cnt; i++)
 	{
+          gupcr_debug (FC_BROADCAST,
+		       "Set put trigger to the child (%d)", gupcr_child[i]);
+	  gupcr_barrier_tr_put (BARRIER_DOWN, &bcast_buf,
+				gupcr_child[i], &bcast_buf, nbytes,
+				BARRIER_DOWN, 1, 0);
 	}
 
       /* Prepare a trigger to send notification to the parent.  */
       gupcr_debug (FC_BROADCAST,
 		   "Set notification trigger to the parent (%d)",
 		   gupcr_parent_thread);
-      barrier_value = BARRIER_ID_MAX;
-
+      /* Trigger: message received from children.
+	 Action: send message to the parent.  */
+      gupcr_barrier_tr_put (BARRIER_UP, &bcast_signal,
+	 		    gupcr_parent_thread, &bcast_signal,
+			    sizeof (bcast_signal),
+			    BARRIER_UP, gupcr_child_cnt, 1);
       /* Wait for delivery to all children.  */
+      gupcr_barrier_put_wait (BARRIER_DOWN, gupcr_child_cnt);
     }
   else
     {
@@ -501,9 +510,11 @@ gupcr_bcast_recv (void *value, size_t nbytes)
          it is ready to receive the broadcast value.  */
       gupcr_debug (FC_BROADCAST, "Send notification to the parent (%d)",
 		   gupcr_parent_thread);
-      barrier_value = BARRIER_ID_MAX;
+      gupcr_barrier_put (BARRIER_UP, &bcast_signal, gupcr_parent_thread,
+			 &bcast_signal, sizeof (bcast_signal));
 
       /* Wait to receive a message from the parent.  */
+      gupcr_barrier_wait_down ();
     }
   memcpy (value, bcast_buf, nbytes);
 #else

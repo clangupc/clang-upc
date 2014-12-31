@@ -30,11 +30,10 @@ extern void gupcr_barrier_sup_fini (void);
 
 extern void gupcr_barrier_put (enum barrier_dir, void *, int, void *, size_t);
 extern void gupcr_barrier_put_wait (enum barrier_dir, size_t);
-extern void gupcr_barrier_tr_put (enum barrier_dir, int *, int, int *,
-				   size_t);
+extern void gupcr_barrier_tr_put (enum barrier_dir, void *, int, void *,
+				  size_t, enum barrier_dir, size_t, int);
 extern void gupcr_barrier_atomic (int *, int, int *);
-extern void gupcr_barrier_tr_atomic (enum barrier_dir, int *, int, int *,
-				     size_t);
+extern void gupcr_barrier_tr_atomic (int *, int, int *, size_t, int);
 extern void gupcr_barrier_wait_up (size_t);
 extern void gupcr_barrier_wait_down (void);
 extern void gupcr_barrier_wait_delivery (size_t);
