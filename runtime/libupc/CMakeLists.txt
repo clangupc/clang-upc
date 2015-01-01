@@ -515,9 +515,9 @@ elseif(LIBUPC_RUNTIME_MODEL STREQUAL fabric)
   )
 
   list(APPEND LIBUPC_SOURCES
-    common/gupcr_coll_broadcast.upc
-    fabric/gupcr_coll_init.upc
-    fabric/gupcr_coll_reduce.upc
+    collectives/upc_coll_broadcast.upc
+    collectives/upc_coll_init.upc
+    collectives/upc_coll_reduce.upc
   )
 
   set(LIBUPC_SOURCES_INLINE
