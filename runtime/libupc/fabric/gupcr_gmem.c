@@ -424,20 +424,20 @@ gupcr_gmem_set (int thread, size_t offset, int c, size_t n)
 void
 gupcr_gmem_init (void)
 {
-  cntr_attr_t cntr_attr = {
-    0
-  };
-  cq_attr_t cq_attr = {
-    0
-  };
+  cntr_attr_t cntr_attr = { 0 };
+  cq_attr_t cq_attr = { 0 };
+  tx_attr_t tx_attr = { 0 };
 
   gupcr_log (FC_MEM, "gmem init called");
+
   /* Allocate memory for this thread's contribution to shared memory.  */
   gupcr_gmem_alloc_shared ();
 
+  /* Create context endpoints for LOC transfers.  */
+  tx_attr.op_flags = FI_REMOTE_COMPLETE;
   /* Create context endpoints for GMEM transfers.  */
   gupcr_fabric_call (fi_tx_context,
-		     (gupcr_ep, GUPCR_SERVICE_GMEM, NULL, &gupcr_gmem_tx_ep,
+		     (gupcr_ep, GUPCR_SERVICE_GMEM, &tx_attr, &gupcr_gmem_tx_ep,
 		      NULL));
   gupcr_fabric_call (fi_rx_context,
 		     (gupcr_ep, GUPCR_SERVICE_GMEM, NULL, &gupcr_gmem_rx_ep,
