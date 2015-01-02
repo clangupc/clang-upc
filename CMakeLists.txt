@@ -178,13 +178,13 @@ set(UPC_PACKED_BITS "20,10,34" CACHE STRING "UPC shared pointer bits per field (
 set(UPC_PTS_VADDR_ORDER "first" CACHE STRING "UPC shared pointer field order default first")
 
 # UPC IR Remote Pointer Representation
-set(UPC_IR_REMOTE_POINTER_BITS "20,44" CACHE STRING "UPC remote pointer bits per field (thread,addr) default 20,44")
-string(REPLACE "," ";" UPC_IR_RP_LIST ${UPC_IR_REMOTE_POINTER_BITS})
+set(UPC_IR_RP_BITS "20,44" CACHE STRING "UPC remote pointer bits per field (thread,addr) default 20,44")
+string(REPLACE "," ";" UPC_IR_RP_LIST ${UPC_IR_RP_BITS})
 list(GET UPC_IR_RP_LIST 0 UPC_RP_THREAD)
 list(GET UPC_IR_RP_LIST 1 UPC_RP_ADDR)
 math(EXPR UPC_RP_SIZE "${UPC_RP_THREAD} + ${UPC_RP_ADDR}")
 if (NOT UPC_RP_SIZE EQUAL 64)
-  message(FATAL_ERROR "UPC Remote Pointer fields must add to 64 bits (UPC_IR_REMOTE_POINTER_BITS).") 
+  message(FATAL_ERROR "UPC Remote Pointer fields must add to 64 bits (UPC_IR_RP_BITS).") 
 endif()
 set(UPC_IR_RP_THREAD ${UPC_RP_THREAD})
 set(UPC_IR_RP_ADDR ${UPC_RP_ADDR})
