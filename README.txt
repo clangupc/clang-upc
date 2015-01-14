@@ -11,11 +11,9 @@ Welcome to Clang UPC.  This is a compiler front-end for the C family
 of languages (C, UPC, C++, Objective-C, and Objective-C++) which
 is built as part of the LLVM compiler infrastructure project.
 
-Unlike many other compiler frontends, Clang UPC is useful for a number
-of things beyond just compiling code: we intend for Clang UPC to be
-host to a number of different source level tools.  One example
-might be a Clang UPC Static Analyzer, which provides similar
-capabilities to the Clang Static Analyzer.
+Unlike many other compiler frontends, Clang UPC is useful for a number of things
+beyond just compiling code: we intend for Clang UPC to be host to a number of
+different source-level tools.  One example of this is the Clang Static Analyzer.
 
 For details on how to build, install, and use Clang UPC,
 consult the wiki at:

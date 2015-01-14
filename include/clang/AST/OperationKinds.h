@@ -298,6 +298,9 @@ enum CastKind {
   // Convert a zero value for OpenCL event_t initialization.
   CK_ZeroToOCLEvent,
 
+  // Convert a pointer to a different address space.
+  CK_AddressSpaceConversion,
+
   /// \brief [UPC] Converts from a UPC pointer-to-shared to
   // a regular C pointer.
   CK_UPCSharedToLocal,

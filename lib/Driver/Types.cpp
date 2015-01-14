@@ -176,6 +176,8 @@ types::ID types::lookupTypeForExtension(const char *Ext) {
            .Case("F95", TY_Fortran)
            .Case("mii", TY_PP_ObjCXX)
            .Case("pcm", TY_ModuleFile)
+           .Case("pch", TY_PCH)
+           .Case("gch", TY_PCH)
            .Case("upc", TY_UPC)
            .Case("upci", TY_PP_UPC)
            .Default(TY_INVALID);
