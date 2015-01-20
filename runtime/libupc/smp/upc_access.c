@@ -46,8 +46,8 @@ __upc_rptr_to_addr (int thread, size_t vaddr)
 }
 
 //inline
-void
-upcr_llvm_remote_get (long sthread, long saddr, void *dest, size_t n)
+static void
+__remote_get (long sthread, long saddr, void *dest, size_t n)
 {
   char *srcp = (char *)__upc_rptr_to_addr (sthread, saddr);
   for (;;)
@@ -64,8 +64,8 @@ upcr_llvm_remote_get (long sthread, long saddr, void *dest, size_t n)
 }
 
 //inline
-void
-upcr_llvm_remote_put (const void *src, long dthread, long daddr, size_t n)
+static void
+__remote_put (const void *src, long dthread, long daddr, size_t n)
 {
   char *destp = (char *)__upc_rptr_to_addr (dthread, daddr);
   for (;;)
@@ -83,31 +83,31 @@ upcr_llvm_remote_put (const void *src, long dthread, long daddr, size_t n)
 
 //inline
 void
-upcr_llvm_getn (long sthread, long saddr, void *dest, size_t n)
+__getblk4 (long sthread, long saddr, void *dest, size_t n)
 {
   if (!dest)
     __upc_fatal ("Invalid access via null local pointer");
   if (!saddr)
     __upc_fatal ("Invalid access via null remote pointer");
-  upcr_llvm_remote_get (sthread, saddr, dest, n);
+  __remote_get (sthread, saddr, dest, n);
 }
 
 //inline
 void
-upcr_llvm_getns (long sthread, long saddr, void *dest, size_t n)
+__getsblk4 (long sthread, long saddr, void *dest, size_t n)
 {
   if (!dest)
     __upc_fatal ("Invalid access via null local pointer");
   if (!saddr)
     __upc_fatal ("Invalid access via null remote pointer");
   GUPCR_FENCE ();
-  upcr_llvm_remote_get (sthread, saddr, dest, n);
+  __remote_get (sthread, saddr, dest, n);
   GUPCR_READ_FENCE ();
 }
 
 //inline
 u_intQI_t
-upcr_llvm_get_i8 (long sthread, long saddr)
+__getqi3 (long sthread, long saddr)
 {
   u_intQI_t result;
   if (!saddr)
@@ -119,7 +119,7 @@ upcr_llvm_get_i8 (long sthread, long saddr)
 
 //inline
 u_intQI_t
-upcr_llvm_get_i8s (long sthread, long saddr)
+__getsqi3 (long sthread, long saddr)
 {
   u_intQI_t result;
   if (!saddr)
@@ -133,7 +133,7 @@ upcr_llvm_get_i8s (long sthread, long saddr)
 
 //inline
 u_intHI_t
-upcr_llvm_get_i16 (long sthread, long saddr)
+__gethi3 (long sthread, long saddr)
 {
   u_intHI_t result;
   if (!saddr)
@@ -145,7 +145,7 @@ upcr_llvm_get_i16 (long sthread, long saddr)
 
 //inline
 u_intHI_t
-upcr_llvm_get_i16s (long sthread, long saddr)
+__getshi3 (long sthread, long saddr)
 {
   u_intHI_t result;
   if (!saddr)
@@ -159,7 +159,7 @@ upcr_llvm_get_i16s (long sthread, long saddr)
 
 //inline
 u_intSI_t
-upcr_llvm_get_i32 (long sthread, long saddr)
+__getsi3 (long sthread, long saddr)
 {
   u_intSI_t result;
   if (!saddr)
@@ -171,7 +171,7 @@ upcr_llvm_get_i32 (long sthread, long saddr)
 
 //inline
 u_intSI_t
-upcr_llvm_get_i32s (long sthread, long saddr)
+__getssi3 (long sthread, long saddr)
 {
   u_intSI_t result;
   if (!saddr)
@@ -185,7 +185,7 @@ upcr_llvm_get_i32s (long sthread, long saddr)
 
 //inline
 u_intDI_t
-upcr_llvm_get_i64 (long sthread, long saddr)
+__getdi3 (long sthread, long saddr)
 {
   u_intDI_t result;
   if (!saddr)
@@ -197,7 +197,7 @@ upcr_llvm_get_i64 (long sthread, long saddr)
 
 //inline
 u_intDI_t
-upcr_llvm_get_i64s (long sthread, long saddr)
+__getsdi3 (long sthread, long saddr)
 {
   u_intDI_t result;
   if (!saddr)
@@ -213,7 +213,7 @@ upcr_llvm_get_i64s (long sthread, long saddr)
 
 //inline
 u_intTI_t
-upcr_llvm_get_i128 (long sthread, long saddr)
+__getti3 (long sthread, long saddr)
 {
   u_intTI_t result;
   if (!saddr)
@@ -225,7 +225,7 @@ upcr_llvm_get_i128 (long sthread, long saddr)
 
 //inline
 u_intTI_t
-upcr_llvm_get_i128s (long sthread, long saddr)
+__getsti3 (long sthread, long saddr)
 {
   u_intTI_t result;
   if (!saddr)
@@ -241,7 +241,7 @@ upcr_llvm_get_i128s (long sthread, long saddr)
 
 //inline
 float
-upcr_llvm_get_float (long sthread, long saddr)
+__getsf3 (long sthread, long saddr)
 {
   float result;
   if (!saddr)
@@ -253,7 +253,7 @@ upcr_llvm_get_float (long sthread, long saddr)
 
 //inline
 float
-upcr_llvm_get_floats (long sthread, long saddr)
+__getssf3 (long sthread, long saddr)
 {
   float result;
   if (!saddr)
@@ -267,7 +267,7 @@ upcr_llvm_get_floats (long sthread, long saddr)
 
 //inline
 double
-upcr_llvm_get_double (long sthread, long saddr)
+__getdf3 (long sthread, long saddr)
 {
   double result;
   if (!saddr)
@@ -279,7 +279,7 @@ upcr_llvm_get_double (long sthread, long saddr)
 
 //inline
 double
-upcr_llvm_get_doubles (long sthread, long saddr)
+__getsdf3 (long sthread, long saddr)
 {
   double result;
   if (!saddr)
@@ -293,31 +293,31 @@ upcr_llvm_get_doubles (long sthread, long saddr)
 
 //inline
 void
-upcr_llvm_putn (const void *src, long dthread, long daddr, size_t n)
+__putblk4 (const void *src, long dthread, long daddr, size_t n)
 {
   if (!src)
     __upc_fatal ("Invalid access via null local pointer");
   if (!daddr)
     __upc_fatal ("Invalid access via null remote pointer");
-  upcr_llvm_remote_put (src, dthread, daddr, n);
+  __remote_put (src, dthread, daddr, n);
 }
 
 //inline
 void
-upcr_llvm_putns (const void *src, long dthread, long daddr, size_t n)
+__putsblk4 (const void *src, long dthread, long daddr, size_t n)
 {
   if (!src)
     __upc_fatal ("Invalid access via null local pointer");
   if (!daddr)
     __upc_fatal ("Invalid access via null remote pointer");
   GUPCR_WRITE_FENCE ();
-  upcr_llvm_remote_put (src, dthread, daddr, n);
+  __remote_put (src, dthread, daddr, n);
   GUPCR_FENCE ();
 }
 
 //inline
 void
-upcr_llvm_put_i8 (long dthread, long daddr, u_intQI_t val)
+__putqi3 (long dthread, long daddr, u_intQI_t val)
 {
   if (!daddr)
     __upc_fatal ("Invalid access via null remote pointer");
@@ -326,7 +326,7 @@ upcr_llvm_put_i8 (long dthread, long daddr, u_intQI_t val)
 
 //inline
 void
-upcr_llvm_put_i8s (long dthread, long daddr, u_intQI_t val)
+__putsqi3 (long dthread, long daddr, u_intQI_t val)
 {
   if (!daddr)
     __upc_fatal ("Invalid access via null remote pointer");
@@ -337,7 +337,7 @@ upcr_llvm_put_i8s (long dthread, long daddr, u_intQI_t val)
 
 //inline
 void
-upcr_llvm_put_i16 (long dthread, long daddr, u_intHI_t val)
+__puthi3 (long dthread, long daddr, u_intHI_t val)
 {
   if (!daddr)
     __upc_fatal ("Invalid access via null remote pointer");
@@ -346,7 +346,7 @@ upcr_llvm_put_i16 (long dthread, long daddr, u_intHI_t val)
 
 //inline
 void
-upcr_llvm_put_i16s (long dthread, long daddr, u_intHI_t val)
+__putshi3 (long dthread, long daddr, u_intHI_t val)
 {
   if (!daddr)
     __upc_fatal ("Invalid access via null remote pointer");
@@ -357,7 +357,7 @@ upcr_llvm_put_i16s (long dthread, long daddr, u_intHI_t val)
 
 //inline
 void
-upcr_llvm_put_i32 (long dthread, long daddr, u_intSI_t val)
+__putsi3 (long dthread, long daddr, u_intSI_t val)
 {
   if (!daddr)
     __upc_fatal ("Invalid access via null remote pointer");
@@ -366,7 +366,7 @@ upcr_llvm_put_i32 (long dthread, long daddr, u_intSI_t val)
 
 //inline
 void
-upcr_llvm_put_i32s (long dthread, long daddr, u_intSI_t val)
+__putssi3 (long dthread, long daddr, u_intSI_t val)
 {
   if (!daddr)
     __upc_fatal ("Invalid access via null remote pointer");
@@ -377,7 +377,7 @@ upcr_llvm_put_i32s (long dthread, long daddr, u_intSI_t val)
 
 //inline
 void
-upcr_llvm_put_i64 (long dthread, long daddr, u_intDI_t val)
+__putdi3 (long dthread, long daddr, u_intDI_t val)
 {
   if (!daddr)
     __upc_fatal ("Invalid access via null remote pointer");
@@ -386,7 +386,7 @@ upcr_llvm_put_i64 (long dthread, long daddr, u_intDI_t val)
 
 //inline
 void
-upcr_llvm_put_i64s (long dthread, long daddr, u_intDI_t val)
+__putsdi3 (long dthread, long daddr, u_intDI_t val)
 {
   if (!daddr)
     __upc_fatal ("Invalid access via null remote pointer");
@@ -399,7 +399,7 @@ upcr_llvm_put_i64s (long dthread, long daddr, u_intDI_t val)
 
 //inline
 void
-upcr_llvm_put_i128 (long dthread, long daddr, u_intTI_t val)
+__putti3 (long dthread, long daddr, u_intTI_t val)
 {
   if (!daddr)
     __upc_fatal ("Invalid access via null remote pointer");
@@ -408,7 +408,7 @@ upcr_llvm_put_i128 (long dthread, long daddr, u_intTI_t val)
 
 //inline
 void
-upcr_llvm_put_i128s (long dthread, long daddr, u_intTI_t val)
+__putsti3 (long dthread, long daddr, u_intTI_t val)
 {
   if (!daddr)
     __upc_fatal ("Invalid access via null remote pointer");
@@ -421,7 +421,7 @@ upcr_llvm_put_i128s (long dthread, long daddr, u_intTI_t val)
 
 //inline
 void
-upcr_llvm_put_float (long dthread, long daddr, float val)
+__putsf3 (long dthread, long daddr, float val)
 {
   if (!daddr)
     __upc_fatal ("Invalid access via null remote pointer");
@@ -430,7 +430,7 @@ upcr_llvm_put_float (long dthread, long daddr, float val)
 
 //inline
 void
-upcr_llvm_put_floats (long dthread, long daddr, float val)
+__putssf3 (long dthread, long daddr, float val)
 {
   if (!daddr)
     __upc_fatal ("Invalid access via null remote pointer");
@@ -441,7 +441,7 @@ upcr_llvm_put_floats (long dthread, long daddr, float val)
 
 //inline
 void
-upcr_llvm_put_double (long dthread, long daddr, double val)
+__putdf3 (long dthread, long daddr, double val)
 {
   if (!daddr)
     __upc_fatal ("Invalid access via null remote pointer");
@@ -450,7 +450,7 @@ upcr_llvm_put_double (long dthread, long daddr, double val)
 
 //inline
 void
-upcr_llvm_put_doubles (long dthread, long daddr, double val)
+__putsdf3 (long dthread, long daddr, double val)
 {
   if (!daddr)
     __upc_fatal ("Invalid access via null remote pointer");
