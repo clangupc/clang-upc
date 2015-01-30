@@ -1,3 +1,16 @@
+/*===-- upc_llvm_access.h - UPC Runtime Support Library ------------------===
+|*
+|*                  The LLVM Compiler Infrastructure
+|*
+|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
+|* This file is distributed under a BSD-style Open Source License.
+|* See LICENSE-INTREPID.TXT for details.
+|*
+|*===---------------------------------------------------------------------===*/
+
+#ifndef _GUPCR_LLVM_ACCESS_H_
+#define _GUPCR_LLVM_ACCESS_H_
+
 extern u_intQI_t upcr_llvm_get_i8 (long thread, size_t offset);
 extern u_intHI_t upcr_llvm_get_i16 (long thread, size_t offset);
 extern u_intSI_t upcr_llvm_get_i32 (long thread, size_t offset);
@@ -43,3 +56,5 @@ extern void upcr_llvm_put_doubles (long thread, size_t offset, double v);
 extern void upcr_llvm_putns (void *src, long thread, size_t offset, size_t n);
 extern void upcr_llvm_copyns (long dthread, size_t doffset,
 			      long sthread, size_t soffset, size_t n);
+
+#endif /* gupcr_llvm_access.h */
