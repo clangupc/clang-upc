@@ -5481,6 +5481,10 @@ static const char *GetUPCBeginFile(const ArgList &Args) {
   return upc_crtbegin;
 }
 
+const char *ToolChain::GetUPCBeginFile(const ArgList &Args) {
+  return ::GetUPCBeginFile(Args);
+}
+
 static const char *GetUPCEndFile(const ArgList &Args) {
   const char *upc_crtend;
   if (Args.hasArg(options::OPT_static))
@@ -5773,7 +5777,7 @@ void darwin::Link::ConstructJob(Compilation &C, const JobAction &JA,
                                 const InputInfoList &Inputs,
                                 const ArgList &Args,
                                 const char *LinkingOutput) const {
-  const toolchains::Darwin& ToolChain = getDarwinToolChain();
+  const ToolChain& ToolChain = getToolChain();
   const Driver &D = ToolChain.getDriver();
 
   assert(Output.getType() == types::TY_Image && "Invalid linker output type.");

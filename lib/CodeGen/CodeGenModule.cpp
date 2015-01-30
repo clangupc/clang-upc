@@ -350,7 +350,7 @@ void CodeGenModule::Release() {
       conf->setSection("__DATA,upc_pgm_info");
     else
       conf->setSection("upc_pgm_info");
-    AddUsedGlobal(conf);
+    addUsedGlobal(conf);
   }
   EmitDeferred();
   applyReplacements();
@@ -668,7 +668,7 @@ void CodeGenModule::EmitUPCInits(const CtorList &Fns, const char *GlobalName) {
   // Construct the constructor and destructor arrays.
   SmallVector<llvm::Constant*, 8> Ctors;
   for (CtorList::const_iterator I = Fns.begin(), E = Fns.end(); I != E; ++I) {
-    Ctors.push_back(llvm::ConstantExpr::getBitCast(I->first, CtorPFTy));
+    Ctors.push_back(llvm::ConstantExpr::getBitCast(I->Initializer, CtorPFTy));
   }
 
   if (!Ctors.empty()) {

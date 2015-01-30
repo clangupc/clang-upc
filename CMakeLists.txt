@@ -261,7 +261,6 @@ if (LLVM_COMPILER_IS_GCC_COMPATIBLE)
   endif()
 endif ()
 
-<<<<<<< HEAD
 # UPC pointer to shared representation
 set(UPC_PTS "packed" CACHE STRING "UPC shared pointer representation (packed|struct) default packed")
 set(UPC_PACKED_BITS "20,10,34" CACHE STRING "UPC shared pointer bits per field (phase,thread,addr) default 20,10,34")

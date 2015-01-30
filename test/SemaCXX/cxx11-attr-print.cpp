@@ -42,7 +42,7 @@ int f3 [[gnu::warn_unused_result]] ();
 // CHECK: {{\[}}[noreturn]]void f4();
 void f4 [[noreturn]] ();
 
-// CHECK: __attribute__((gnu_inline));
+// CHECK: __attribute__((gnu_inline))void f6();
 inline void f6() __attribute__((gnu_inline));
 
 // CHECK: inline {{\[}}[gnu::gnu_inline]]void f7();

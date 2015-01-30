@@ -236,6 +236,13 @@ void Parser::initializePragmaHandlers() {
     PP.AddPragmaHandler(MSSection.get());
   }
 
+  if(getLangOpts().UPC) {
+    UPCHandler.reset(new PragmaUPCHandler());
+    PP.AddPragmaHandler(UPCHandler.get());
+    PUPCHandler.reset(new PragmaPUPCHandler());
+    PP.AddPragmaHandler(PUPCHandler.get());
+  }
+
   OptimizeHandler.reset(new PragmaOptimizeHandler(Actions));
   PP.AddPragmaHandler("clang", OptimizeHandler.get());
 

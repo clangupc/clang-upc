@@ -1986,7 +1986,7 @@ ScalarExprEmitter::VisitUnaryExprOrTypeTraitExpr(
     } else if (TypeToSize->isUPCThreadArrayType()) {
       QualType eltType;
       llvm::Value *numElts;
-      llvm::tie(numElts, eltType) = CGF.getVLASize(TypeToSize);
+      std::tie(numElts, eltType) = CGF.getVLASize(TypeToSize);
 
       llvm::Value *size = numElts;
 

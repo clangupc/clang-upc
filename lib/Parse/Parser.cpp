@@ -64,13 +64,6 @@ Parser::Parser(Preprocessor &pp, Sema &actions, bool skipFunctionBodies)
   // Add #pragma handlers. These are removed and destroyed in the
   // destructor.
   initializePragmaHandlers();
-
-  if (getLangOpts().UPC) {
-    UPCHandler.reset(new PragmaUPCHandler());
-    PP.AddPragmaHandler(UPCHandler.get());
-    PUPCHandler.reset(new PragmaPUPCHandler());
-    PP.AddPragmaHandler(PUPCHandler.get());
-  }
       
   CommentSemaHandler.reset(new ActionCommentHandler(actions));
   PP.addCommentHandler(CommentSemaHandler.get());

@@ -507,9 +507,9 @@ static void CheckUPCReferenceType(Sema &S, Expr *&E) {
 }
 
 static void CheckUPCReferenceType(Sema &S, ExprResult &E) {
-  Expr *Temp = E.take();
+  Expr *Temp = E.get();
   CheckUPCReferenceType(S, Temp);
-  E = S.Owned(Temp);
+  E = Temp;
 }
 
 static void DiagnoseDirectIsaAccess(Sema &S, const ObjCIvarRefExpr *OIRE,
@@ -3338,11 +3338,11 @@ ExprResult Sema::ActOnNumericConstant(const Token &Tok, Scope *UDLScope) {
 }
 
 ExprResult Sema::ActOnUPCThreadsExpr(SourceLocation Loc) {
-  return Owned(new (Context) UPCThreadExpr(Loc, Context.IntTy));
+  return new (Context) UPCThreadExpr(Loc, Context.IntTy);
 }
 
 ExprResult Sema::ActOnUPCMyThreadExpr(SourceLocation Loc) {
-  return Owned(new (Context) UPCMyThreadExpr(Loc, Context.IntTy));
+  return new (Context) UPCMyThreadExpr(Loc, Context.IntTy);
 }
 
 ExprResult Sema::ActOnParenExpr(SourceLocation L, SourceLocation R, Expr *E) {
@@ -12428,6 +12428,7 @@ bool Sema::tryCaptureVariable(VarDecl *Var, SourceLocation ExprLoc,
           break;
         case Type::ConstantArray:
         case Type::IncompleteArray:
+        case Type::UPCThreadArray:
           // Losing element qualification here is fine.
           QTy = cast<ArrayType>(Ty)->getElementType();
           break;

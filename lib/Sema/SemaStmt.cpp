@@ -69,7 +69,7 @@ StmtResult Sema::ActOnPragmaUPC(SourceLocation PragmaLoc, PragmaUPCKind Kind) {
     UPCIsStrict = IsStrict;
   else
     getCurCompoundScope().UPCIsStrict = IsStrict;
-  return Owned(new (Context) UPCPragmaStmt(PragmaLoc, IsStrict));
+  return new (Context) UPCPragmaStmt(PragmaLoc, IsStrict);
 }
 
 Decl * Sema::ActOnPragmaPUPC(SourceLocation PragmaLoc, PragmaPUPCKind Kind) {
@@ -1689,19 +1689,19 @@ Sema::ActOnUPCForAllStmt(SourceLocation ForLoc, SourceLocation LParenLoc,
       return StmtError();
   }
 
-  Expr *Third  = third.release().takeAs<Expr>();
+  Expr *Third  = third.release().getAs<Expr>();
 
   DiagnoseUnusedExprResult(First);
   DiagnoseUnusedExprResult(Third);
   DiagnoseUnusedExprResult(Body);
 
-  Expr *Fourth = fourth.release().takeAs<Expr>();
+  Expr *Fourth = fourth.release().getAs<Expr>();
   if (Fourth) {
     ExprResult E = DefaultFunctionArrayLvalueConversion(Fourth);
     if (E.isInvalid())
       Fourth = 0;
     else {
-      Fourth = E.take();
+      Fourth = E.get();
       QualType T = Fourth->getType();
       // UPC 1.2 6.6.2p4
       // The expression for affinity shall have pointer-to-shared
@@ -1722,10 +1722,10 @@ Sema::ActOnUPCForAllStmt(SourceLocation ForLoc, SourceLocation LParenLoc,
 
   getCurFunction()->setHasBranchProtectedScope();
 
-  return Owned(new (Context) UPCForAllStmt(Context, First,
-                                           SecondResult.take(), ConditionVar,
-                                           Third, Fourth, Body, ForLoc, LParenLoc,
-                                           RParenLoc));
+  return new (Context) UPCForAllStmt(Context, First,
+                                     SecondResult.get(), ConditionVar,
+                                     Third, Fourth, Body, ForLoc, LParenLoc,
+                                     RParenLoc);
 }
 
 /// In an Objective C collection iteration statement:
@@ -3150,7 +3150,7 @@ StmtResult Sema::ActOnUPCNotifyStmt(SourceLocation NotifyLoc, Expr *IdExp) {
      if(!Res.isInvalid())
        CheckImplicitConversions(Res.get(), NotifyLoc);
   }
-  return Owned(new (Context) UPCNotifyStmt(NotifyLoc, Res.take()));
+  return new (Context) UPCNotifyStmt(NotifyLoc, Res.get());
 }
 
 StmtResult Sema::ActOnUPCWaitStmt(SourceLocation WaitLoc, Expr *IdExp) {
@@ -3162,7 +3162,7 @@ StmtResult Sema::ActOnUPCWaitStmt(SourceLocation WaitLoc, Expr *IdExp) {
     if(!Res.isInvalid())
       CheckImplicitConversions(Res.get(), WaitLoc);
   }
-  return Owned(new (Context) UPCWaitStmt(WaitLoc, Res.take()));
+  return new (Context) UPCWaitStmt(WaitLoc, Res.get());
 }
 
 StmtResult Sema::ActOnUPCBarrierStmt(SourceLocation BarrierLoc, Expr *IdExp) {
@@ -3174,11 +3174,11 @@ StmtResult Sema::ActOnUPCBarrierStmt(SourceLocation BarrierLoc, Expr *IdExp) {
     if(!Res.isInvalid())
       CheckImplicitConversions(Res.get(), BarrierLoc);
   }
-  return Owned(new (Context) UPCBarrierStmt(BarrierLoc, Res.take()));
+  return new (Context) UPCBarrierStmt(BarrierLoc, Res.get());
 }
 
 StmtResult Sema::ActOnUPCFenceStmt(SourceLocation FenceLoc) {
-  return Owned(new (Context) UPCFenceStmt(FenceLoc));
+  return new (Context) UPCFenceStmt(FenceLoc);
 }
 
 StmtResult

@@ -904,7 +904,7 @@ void OMPClausePrinter::VisitOMPFlushClause(OMPFlushClause *Node) {
 //===----------------------------------------------------------------------===//
 
 void StmtPrinter::PrintOMPExecutableDirective(OMPExecutableDirective *S) {
-  PrintLineDirective(Node);
+  PrintLineDirective(S);
   OMPClausePrinter Printer(OS, Policy);
   ArrayRef<OMPClause *> Clauses = S->clauses();
   for (ArrayRef<OMPClause *>::iterator I = Clauses.begin(), E = Clauses.end();

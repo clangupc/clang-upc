@@ -841,6 +841,9 @@ DEF_TRAVERSE_TYPE(ConstantArrayType,
 DEF_TRAVERSE_TYPE(IncompleteArrayType,
                   { TRY_TO(TraverseType(T->getElementType())); })
 
+DEF_TRAVERSE_TYPE(UPCThreadArrayType,
+                  { TRY_TO(TraverseType(T->getElementType())); })
+
 DEF_TRAVERSE_TYPE(VariableArrayType, {
   TRY_TO(TraverseType(T->getElementType()));
   TRY_TO(TraverseStmt(T->getSizeExpr()));
@@ -1025,6 +1028,11 @@ bool RecursiveASTVisitor<Derived>::TraverseArrayTypeLocHelper(ArrayTypeLoc TL) {
 }
 
 DEF_TRAVERSE_TYPELOC(ConstantArrayType, {
+  TRY_TO(TraverseTypeLoc(TL.getElementLoc()));
+  return TraverseArrayTypeLocHelper(TL);
+})
+
+DEF_TRAVERSE_TYPELOC(UPCThreadArrayType, {
   TRY_TO(TraverseTypeLoc(TL.getElementLoc()));
   return TraverseArrayTypeLocHelper(TL);
 })
@@ -1835,6 +1843,8 @@ DEF_TRAVERSE_DECL(ParmVarDecl, {
     TRY_TO(TraverseStmt(D->getDefaultArg()));
 })
 
+DEF_TRAVERSE_DECL(PragmaPupcDecl, {})
+
 #undef DEF_TRAVERSE_DECL
 
 // ----------------- Stmt traversal -----------------
@@ -1912,6 +1922,12 @@ DEF_TRAVERSE_STMT(IndirectGotoStmt, {})
 DEF_TRAVERSE_STMT(LabelStmt, {})
 DEF_TRAVERSE_STMT(AttributedStmt, {})
 DEF_TRAVERSE_STMT(NullStmt, {})
+DEF_TRAVERSE_STMT(UPCWaitStmt, {})
+DEF_TRAVERSE_STMT(UPCNotifyStmt, {})
+DEF_TRAVERSE_STMT(UPCBarrierStmt, {})
+DEF_TRAVERSE_STMT(UPCFenceStmt, {})
+DEF_TRAVERSE_STMT(UPCPragmaStmt, {})
+DEF_TRAVERSE_STMT(UPCForAllStmt, {})
 DEF_TRAVERSE_STMT(ObjCAtCatchStmt, {})
 DEF_TRAVERSE_STMT(ObjCAtFinallyStmt, {})
 DEF_TRAVERSE_STMT(ObjCAtSynchronizedStmt, {})
@@ -2228,6 +2244,9 @@ DEF_TRAVERSE_STMT(UnresolvedMemberExpr, {
                                               S->getNumTemplateArgs()));
   }
 })
+
+DEF_TRAVERSE_STMT(UPCThreadExpr, {})
+DEF_TRAVERSE_STMT(UPCMyThreadExpr, {})
 
 DEF_TRAVERSE_STMT(SEHTryStmt, {})
 DEF_TRAVERSE_STMT(SEHExceptStmt, {})

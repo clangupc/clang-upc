@@ -323,6 +323,8 @@ public:
   virtual bool
   AddFastMathRuntimeIfAvailable(const llvm::opt::ArgList &Args,
                                 llvm::opt::ArgStringList &CmdArgs) const;
+
+  static const char *GetUPCBeginFile(const llvm::opt::ArgList &Args);
 };
 
 } // end namespace driver

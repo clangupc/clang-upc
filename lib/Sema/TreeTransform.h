@@ -4154,8 +4154,8 @@ TreeTransform<Derived>::TransformUPCThreadArrayType(TypeLocBuilder &TLB,
   if (Size) {
     EnterExpressionEvaluationContext Unevaluated(SemaRef,
                                                  Sema::ConstantEvaluated);
-    Size = getDerived().TransformExpr(Size).template takeAs<Expr>();
-    Size = SemaRef.ActOnConstantExpression(Size).take();
+    Size = getDerived().TransformExpr(Size).template getAs<Expr>();
+    Size = SemaRef.ActOnConstantExpression(Size).get();
   }
   NewTL.setSizeExpr(Size);
 
@@ -5950,7 +5950,7 @@ TreeTransform<Derived>::TransformUPCNotifyStmt(UPCNotifyStmt *S) {
 
   if (!getDerived().AlwaysRebuild() &&
       Result.get() == S->getIdValue())
-    return SemaRef.Owned(S);
+    return S;
 
   return getDerived().RebuildUPCNotifyStmt(S->getNotifyLoc(), Result.get());
 }
@@ -5964,7 +5964,7 @@ TreeTransform<Derived>::TransformUPCWaitStmt(UPCWaitStmt *S) {
 
   if (!getDerived().AlwaysRebuild() &&
       Result.get() == S->getIdValue())
-    return SemaRef.Owned(S);
+    return S;
 
   return getDerived().RebuildUPCWaitStmt(S->getWaitLoc(), Result.get());
 }
@@ -5978,7 +5978,7 @@ TreeTransform<Derived>::TransformUPCBarrierStmt(UPCBarrierStmt *S) {
 
   if (!getDerived().AlwaysRebuild() &&
       Result.get() == S->getIdValue())
-    return SemaRef.Owned(S);
+    return S;
 
   return getDerived().RebuildUPCBarrierStmt(S->getBarrierLoc(), Result.get());
 }
@@ -5987,7 +5987,7 @@ template<typename Derived>
 StmtResult
 TreeTransform<Derived>::TransformUPCFenceStmt(UPCFenceStmt *S) {
   if (!getDerived().AlwaysRebuild())
-    return SemaRef.Owned(S);
+    return S;
   return getDerived().RebuildUPCFenceStmt(S->getFenceLoc());
 }
 
@@ -6037,7 +6037,7 @@ TreeTransform<Derived>::TransformUPCForAllStmt(UPCForAllStmt *S) {
     }
   }
 
-  Sema::FullExprArg FullCond(getSema().MakeFullExpr(Cond.take()));  
+  Sema::FullExprArg FullCond(getSema().MakeFullExpr(Cond.get()));  
   if (!S->getConditionVariable() && S->getCond() && !FullCond.get())
     return StmtError();
 
@@ -6070,7 +6070,7 @@ TreeTransform<Derived>::TransformUPCForAllStmt(UPCForAllStmt *S) {
       Inc.get() == S->getInc() &&
       Afnty.get() == S->getAfnty() &&
       Body.get() == S->getBody())
-    return SemaRef.Owned(S);
+    return S;
 
   return getDerived().RebuildUPCForAllStmt(S->getForLoc(), S->getLParenLoc(),
                                            Init.get(), FullCond, ConditionVar,
@@ -7245,13 +7245,13 @@ TreeTransform<Derived>::TransformCharacterLiteral(CharacterLiteral *E) {
 template<typename Derived>
 ExprResult
 TreeTransform<Derived>::TransformUPCThreadExpr(UPCThreadExpr *E) {
-  return SemaRef.Owned(E);
+  return E;
 }
 
 template<typename Derived>
 ExprResult
 TreeTransform<Derived>::TransformUPCMyThreadExpr(UPCMyThreadExpr *E) {
-  return SemaRef.Owned(E);
+  return E;
 }
 
 template<typename Derived>
@@ -10258,7 +10258,7 @@ TreeTransform<Derived>::RebuildArrayType(QualType ElementType,
                                           SemaRef.Context.IntTy);
     ExprResult Op = SemaRef.CreateBuiltinBinOp(/*FIXME*/BracketsRange.getBegin(),
                                                BO_Mul, ArraySize, Thread);
-    ArraySize = Op.take();
+    ArraySize = Op.get();
   }
 
   return SemaRef.BuildArrayType(ElementType, SizeMod, ArraySize,
@@ -10273,7 +10273,7 @@ TreeTransform<Derived>::RebuildConstantArrayType(QualType ElementType,
                                                  const llvm::APInt &Size,
                                                  unsigned IndexTypeQuals,
                                                  SourceRange BracketsRange) {
-  return getDerived().RebuildArrayType(ElementType, SizeMod, &Size, nullptr,
+  return getDerived().RebuildArrayType(ElementType, SizeMod, &Size, false, nullptr,
                                         IndexTypeQuals, BracketsRange);
 }
 
@@ -10285,7 +10285,7 @@ TreeTransform<Derived>::RebuildUPCThreadArrayType(QualType ElementType,
                                                   bool HasThread,
                                                   unsigned IndexTypeQuals,
                                                   SourceRange BracketsRange) {
-  return getDerived().RebuildArrayType(ElementType, SizeMod, &Size, nullptr,
+  return getDerived().RebuildArrayType(ElementType, SizeMod, &Size, HasThread, nullptr,
                                         IndexTypeQuals, BracketsRange);
 }
 
@@ -10318,7 +10318,7 @@ TreeTransform<Derived>::RebuildDependentSizedArrayType(QualType ElementType,
                                                        Expr *SizeExpr,
                                                        unsigned IndexTypeQuals,
                                                    SourceRange BracketsRange) {
-  return getDerived().RebuildArrayType(ElementType, SizeMod, nullptr, false
+  return getDerived().RebuildArrayType(ElementType, SizeMod, nullptr, false,
                                        SizeExpr,
                                        IndexTypeQuals, BracketsRange);
 }

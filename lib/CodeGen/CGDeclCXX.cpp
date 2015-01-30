@@ -429,11 +429,7 @@ CodeGenModule::EmitCXXGlobalInitFunc() {
       AddGlobalCtor(Fn, Priority);
     }
   }
-  
-  llvm::Twine GlobalInitName;
-  if(getContext().getLangOpts().UPC) {
-    GlobalInitName = "__upc_init_decls";
-  } else {
+
   // Include the filename in the symbol name. Including "sub_" matches gcc and
   // makes sure these symbols appear lexicographically behind the symbols with
   // priority emitted above.
@@ -446,10 +442,10 @@ CodeGenModule::EmitCXXGlobalInitFunc() {
     if (!isPreprocessingNumberBody(FileName[i]))
       FileName[i] = '_';
   }
-  GlobalInitName = llvm::Twine("_GLOBAL__sub_I_", FileName);
-  }
   llvm::Function *Fn = CreateGlobalInitOrDestructFunction(
-      *this, FTy, GlobalInitName);
+    *this, FTy, getContext().getLangOpts().UPC?
+                  "__upc_init_decls" :
+                  llvm::Twine("_GLOBAL__sub_I_", FileName));
 
   CodeGenFunction(*this).GenerateCXXGlobalInitFunc(Fn, CXXGlobalInits);
   AddGlobalCtor(Fn);

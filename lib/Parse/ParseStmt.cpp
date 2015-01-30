@@ -950,7 +950,7 @@ StmtResult Parser::ParseCompoundStatementBody(bool isStmtExpr) {
   while(Tok.is(tok::annot_pragma_upc)) {
     StmtResult R = HandlePragmaUPC();
     if (R.isUsable())
-      Stmts.push_back(R.release());
+      Stmts.push_back(R.get());
   }
 
   // "__label__ X, Y, Z;" is the GNU "Local Label" extension.  These are
@@ -1924,7 +1924,7 @@ StmtResult Parser::ParseUPCForAllStatement(SourceLocation *TrailingElseLoc) {
     // missing both semicolons
   } else {
     ExprResult Third = ParseExpression();
-    ThirdPart = Actions.MakeFullExpr(Third.take());
+    ThirdPart = Actions.MakeFullExpr(Third.get());
   }
 
   if (Tok.is(tok::semi)) {
@@ -1938,7 +1938,7 @@ StmtResult Parser::ParseUPCForAllStatement(SourceLocation *TrailingElseLoc) {
     // missing semicolon
   } else {
     ExprResult Fourth = ParseExpression();
-    FourthPart = Actions.MakeFullExpr(Fourth.take());
+    FourthPart = Actions.MakeFullExpr(Fourth.get());
   }
 
   // Match the ')'.
@@ -1970,9 +1970,9 @@ StmtResult Parser::ParseUPCForAllStatement(SourceLocation *TrailingElseLoc) {
   if (Body.isInvalid())
     return StmtError();
 
-  return Actions.ActOnUPCForAllStmt(ForLoc, T.getOpenLocation(), FirstPart.take(),
+  return Actions.ActOnUPCForAllStmt(ForLoc, T.getOpenLocation(), FirstPart.get(),
                                     SecondPart, SecondVar, ThirdPart, FourthPart,
-                                    T.getCloseLocation(), Body.take());
+                                    T.getCloseLocation(), Body.get());
 }
 
 /// ParseGotoStatement
@@ -2079,7 +2079,7 @@ StmtResult Parser::ParseUPCNotifyStatement() {
       return StmtError();
     }
   }
-  return Actions.ActOnUPCNotifyStmt(NotifyLoc, R.take());
+  return Actions.ActOnUPCNotifyStmt(NotifyLoc, R.get());
 }
 
 /// ParseUPCWaitStatement
@@ -2097,7 +2097,7 @@ StmtResult Parser::ParseUPCWaitStatement() {
       return StmtError();
     }
   }
-  return Actions.ActOnUPCWaitStmt(WaitLoc, R.take());
+  return Actions.ActOnUPCWaitStmt(WaitLoc, R.get());
 }
 
 /// ParseUPCBarrierStatement
@@ -2115,7 +2115,7 @@ StmtResult Parser::ParseUPCBarrierStatement() {
       return StmtError();
     }
   }
-  return Actions.ActOnUPCBarrierStmt(BarrierLoc, R.take());
+  return Actions.ActOnUPCBarrierStmt(BarrierLoc, R.get());
 }
 
 /// ParseUPCFenceStatement

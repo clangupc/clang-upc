@@ -3821,12 +3821,11 @@ void PragmaPupcDecl::anchor() {}
 
 PragmaPupcDecl *PragmaPupcDecl::Create(ASTContext &C, DeclContext *DC,
                                        SourceLocation L, bool Val) {
-  return new (C) PragmaPupcDecl(DC, L, Val);
+  return new (C, DC) PragmaPupcDecl(DC, L, Val);
 }
 
 PragmaPupcDecl *PragmaPupcDecl::CreateDeserialized(ASTContext &C, unsigned ID) {
-  void *Mem = AllocateDeserializedDecl(C, ID, sizeof(PragmaPupcDecl));
-  return new (Mem) PragmaPupcDecl(0, SourceLocation(), false);
+  return new (C, ID) PragmaPupcDecl(0, SourceLocation(), false);
 }
 
 void EmptyDecl::anchor() {}

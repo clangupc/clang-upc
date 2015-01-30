@@ -127,7 +127,7 @@ static const char * getUPCTypeID(CodeGenFunction& CGF,
   unsigned UnitWidth = Context.getCharWidth();
   const char *Result;
 
-  if (!Ty->isPrimitiveType() && !Ty->isIntegerTy() && !Ty->isPointerTy())
+  if (!Ty->isSingleValueType())
     return 0;
 
   if(Ty->isFloatTy()) {
@@ -611,7 +611,7 @@ llvm::Value *CodeGenFunction::EmitUPCPointerArithmetic(
   QualType PointeeTy = PtrTy->getAs<PointerType>()->getPointeeType();
   QualType ElemTy;
   llvm::Value *Dim;
-  llvm::tie(ElemTy, Dim) = unwrapArray(*this, PointeeTy);
+  std::tie(ElemTy, Dim) = unwrapArray(*this, PointeeTy);
   if (Dim) {
     Index = Builder.CreateMul(Index, Dim, "idx.dim", !isSigned, isSigned);
   }
@@ -688,7 +688,7 @@ llvm::Value *CodeGenFunction::EmitUPCPointerDiff(
   QualType PointeeTy = PtrTy->getAs<PointerType>()->getPointeeType();
   QualType ElemTy;
   llvm::Value *Dim;
-  llvm::tie(ElemTy, Dim) = unwrapArray(*this, PointeeTy);
+  std::tie(ElemTy, Dim) = unwrapArray(*this, PointeeTy);
   Qualifiers Quals = ElemTy.getQualifiers();
 
   llvm::Constant *ElemSize = 

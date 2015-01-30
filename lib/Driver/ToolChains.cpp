@@ -1102,9 +1102,9 @@ void Darwin::addStartObjectFileArgs(const llvm::opt::ArgList &Args,
     }
   }
 
-  if (D.CCCIsUPC()) {
+  if (getDriver().CCCIsUPC()) {
     const char *upc_crtbegin = GetUPCBeginFile(Args);
-    CmdArgs.push_back(Args.MakeArgString(getToolChain().GetFilePath(upc_crtbegin)));
+    CmdArgs.push_back(Args.MakeArgString(GetFilePath(upc_crtbegin)));
   }
 
   if (!isTargetIPhoneOS() && Args.hasArg(options::OPT_shared_libgcc) &&
@@ -3207,7 +3207,6 @@ Linux::Linux(const Driver &D, const llvm::Triple &Triple, const ArgList &Args)
   addPathIfExists(SysRoot + "/usr/lib", Paths);
 
   addPathIfExists(getDriver().Dir + "/../lib", Paths);
-  addPathIfExists(getDriver().Dir + "/../" + Multilib, Paths);
 }
 
 bool Linux::HasNativeLLVMSupport() const {
