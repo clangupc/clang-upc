@@ -23141,8 +23141,7 @@ echo "$as_me: error: NUMA enabled but not supported - use --disable-upc-numa" >&
       upc_numa=yes ;;
     no)
       upc_numa=no ;;
-    *)
-      { { echo "$as_me:$LINENO: error: --enable-upc-numa accepts only yes or no" >&5
+    *)      { { echo "$as_me:$LINENO: error: --enable-upc-numa accepts only yes or no" >&5
 echo "$as_me: error: --enable-upc-numa accepts only yes or no" >&2;}
    { (exit 1); exit 1; }; }
     esac
