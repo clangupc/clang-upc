@@ -11,6 +11,7 @@
 #include <cctype>
 #include <vector>
 #include <sstream>
+#include <memory>
 #include <cassert>
 
 #include "clang/Frontend/CompilerInstance.h"
@@ -20,7 +21,6 @@
 #include "clang/Lex/Preprocessor.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/ADT/SmallVector.h"
-#include "llvm/ADT/OwningPtr.h"
 #include "llvm/ADT/IntrusiveRefCntPtr.h"
 
 #include "clang/Basic/AttrKinds.h"
@@ -692,7 +692,7 @@ int main(int argc, const char **argv) {
   llvm::SmallVector<const char *, 16> Args(argv + 1, argv + argc);
   Args.push_back("-fsyntax-only");
 
-  llvm::OwningPtr<CompilerInstance> Clang(new CompilerInstance());
+  std::unique_ptr<CompilerInstance> Clang(new CompilerInstance());
   llvm::IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
 
   DiagnosticOptions *DiagOpts = new DiagnosticOptions;
@@ -727,7 +727,7 @@ int main(int argc, const char **argv) {
   // We can emit custom diagnostic messages that must be registered here.
   registerCustomDiagnostics(Clang->getDiagnostics());
 
-  llvm::OwningPtr<FrontendAction> WalkAct(new ASTWalkerAction(Clang->getDiagnostics()));
+  std::unique_ptr<FrontendAction> WalkAct(new ASTWalkerAction(Clang->getDiagnostics()));
   if(!Clang->ExecuteAction(*WalkAct)) {
     return EXIT_FAILURE;
   }
