@@ -10,6 +10,9 @@ add_clang_library(clangTooling
   RefactoringCallbacks.cpp
   Tooling.cpp
 
+  DEPENDS
+  ClangDriverOptions
+
   LINK_LIBS
   clangAST
   clangASTMatchers
