@@ -41,7 +41,7 @@
  */
 //inline
 u_intQI_t
-upcr_llvm_get_i8 (long thread, size_t offset)
+__getqi3 (long thread, size_t offset)
 {
   u_intQI_t result;
   gupcr_assert (thread < THREADS);
@@ -76,7 +76,7 @@ upcr_llvm_get_i8 (long thread, size_t offset)
  */
 //inline
 u_intHI_t
-upcr_llvm_get_i16 (long thread, size_t offset)
+__gethi3 (long thread, size_t offset)
 {
   u_intHI_t result;
   gupcr_assert (thread < THREADS);
@@ -111,7 +111,7 @@ upcr_llvm_get_i16 (long thread, size_t offset)
  */
 //inline
 u_intSI_t
-upcr_llvm_get_i32 (long thread, size_t offset)
+__getsi3 (long thread, size_t offset)
 {
   u_intSI_t result;
   gupcr_assert (thread < THREADS);
@@ -146,7 +146,7 @@ upcr_llvm_get_i32 (long thread, size_t offset)
  */
 //inline
 u_intDI_t
-upcr_llvm_get_i64 (long thread, size_t offset)
+__getdi3 (long thread, size_t offset)
 {
   u_intDI_t result;
   gupcr_assert (thread < THREADS);
@@ -182,7 +182,7 @@ upcr_llvm_get_i64 (long thread, size_t offset)
  */
 //inline
 u_intTI_t
-upcr_llvm_get_i128 (long thread, size_t offset)
+__getti3 (long thread, size_t offset)
 {
   u_intTI_t result;
   gupcr_assert (thread < THREADS);
@@ -217,7 +217,7 @@ upcr_llvm_get_i128 (long thread, size_t offset)
  */
 //inline
 float
-upcr_llvm_get_float (long thread, size_t offset)
+__getsf3 (long thread, size_t offset)
 {
   float result;
   gupcr_assert (thread < THREADS);
@@ -252,7 +252,7 @@ upcr_llvm_get_float (long thread, size_t offset)
  */
 //inline
 double
-upcr_llvm_get_double (long thread, size_t offset)
+__getdf3 (long thread, size_t offset)
 {
   double result;
   gupcr_assert (thread < THREADS);
@@ -289,7 +289,7 @@ upcr_llvm_get_double (long thread, size_t offset)
  */
 //inline
 void
-upcr_llvm_getn (long thread, size_t offset, void *dest, size_t n)
+__getblk4 (long thread, size_t offset, void *dest, size_t n)
 {
   gupcr_trace (FC_MEM, "GETBLK ENTER R");
   gupcr_assert (thread < THREADS);
@@ -324,7 +324,7 @@ upcr_llvm_getn (long thread, size_t offset, void *dest, size_t n)
  */
 //inline
 void
-upcr_llvm_put_i8 (long thread, size_t offset, u_intQI_t v)
+__putqi3 (long thread, size_t offset, u_intQI_t v)
 {
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -368,7 +368,7 @@ upcr_llvm_put_i8 (long thread, size_t offset, u_intQI_t v)
  */
 //inline
 void
-upcr_llvm_put_i16 (long thread, size_t offset, u_intHI_t v)
+__puthi3 (long thread, size_t offset, u_intHI_t v)
 {
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -412,7 +412,7 @@ upcr_llvm_put_i16 (long thread, size_t offset, u_intHI_t v)
  */
 //inline
 void
-upcr_llvm_put_i32 (long thread, size_t offset, u_intSI_t v)
+__putsi3 (long thread, size_t offset, u_intSI_t v)
 {
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -456,7 +456,7 @@ upcr_llvm_put_i32 (long thread, size_t offset, u_intSI_t v)
  */
 //inline
 void
-upcr_llvm_put_i64 (long thread, size_t offset, u_intDI_t v)
+__putdi3 (long thread, size_t offset, u_intDI_t v)
 {
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -503,7 +503,7 @@ upcr_llvm_put_i64 (long thread, size_t offset, u_intDI_t v)
  */
 //inline
 void
-upcr_llvm_put_i128 (long thread, size_t offset, u_intTI_t v)
+__putti3 (long thread, size_t offset, u_intTI_t v)
 {
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -549,7 +549,7 @@ upcr_llvm_put_i128 (long thread, size_t offset, u_intTI_t v)
  */
 //inline
 void
-upcr_llvm_put_float (long thread, size_t offset, float v)
+__putsf3 (long thread, size_t offset, float v)
 {
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -593,7 +593,7 @@ upcr_llvm_put_float (long thread, size_t offset, float v)
  */
 //inline
 void
-upcr_llvm_put_double (long thread, size_t offset, double v)
+__putdf3 (long thread, size_t offset, double v)
 {
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -639,7 +639,7 @@ upcr_llvm_put_double (long thread, size_t offset, double v)
  */
 //inline
 void
-upcr_llvm_putn (void *src, long thread, size_t offset, size_t n)
+__putblk4 (void *src, long thread, size_t offset, size_t n)
 {
   gupcr_trace (FC_MEM, "PUTBLK ENTER R 0x%lx %d:0x%lx %lu",
 	       (long unsigned) src, thread,
@@ -672,8 +672,8 @@ upcr_llvm_putn (void *src, long thread, size_t offset, size_t n)
  */
 //inline
 void
-upcr_llvm_copyn (long dthread, size_t doffset,
-		 long sthread, size_t soffset, size_t n)
+__copyblk5 (long dthread, size_t doffset,
+	    long sthread, size_t soffset, size_t n)
 {
   gupcr_trace (FC_MEM, "COPYBLK ENTER R %d:0x%lx %d:0x%lx %lu",
 	       sthread, (long unsigned) soffset,
@@ -718,7 +718,7 @@ upcr_llvm_copyn (long dthread, size_t doffset,
  */
 //inline
 u_intQI_t
-upcr_llvm_get_i8s (long thread, size_t offset)
+__getsqi3 (long thread, size_t offset)
 {
   u_intQI_t result;
   gupcr_assert (thread < THREADS);
@@ -755,7 +755,7 @@ upcr_llvm_get_i8s (long thread, size_t offset)
  */
 //inline
 u_intHI_t
-upcr_llvm_get_i16s (long thread, size_t offset)
+__getshi3 (long thread, size_t offset)
 {
   u_intHI_t result;
   gupcr_assert (thread < THREADS);
@@ -792,7 +792,7 @@ upcr_llvm_get_i16s (long thread, size_t offset)
  */
 //inline
 u_intSI_t
-upcr_llvm_get_i32s (long thread, size_t offset)
+__getssi3 (long thread, size_t offset)
 {
   u_intSI_t result;
   gupcr_assert (thread < THREADS);
@@ -829,7 +829,7 @@ upcr_llvm_get_i32s (long thread, size_t offset)
  */
 //inline
 u_intDI_t
-upcr_llvm_get_i64s (long thread, size_t offset)
+__getsdi3 (long thread, size_t offset)
 {
   u_intDI_t result;
   gupcr_assert (thread < THREADS);
@@ -867,7 +867,7 @@ upcr_llvm_get_i64s (long thread, size_t offset)
  */
 //inline
 u_intTI_t
-upcr_llvm_get_i128s (long thread, size_t offset)
+__getsti3 (long thread, size_t offset)
 {
   u_intTI_t result;
   gupcr_assert (thread < THREADS);
@@ -904,7 +904,7 @@ upcr_llvm_get_i128s (long thread, size_t offset)
  */
 //inline
 float
-upcr_llvm_get_floats (long thread, size_t offset)
+__getssf3 (long thread, size_t offset)
 {
   float result;
   gupcr_assert (thread < THREADS);
@@ -941,7 +941,7 @@ upcr_llvm_get_floats (long thread, size_t offset)
  */
 //inline
 double
-upcr_llvm_get_doubles (long thread, size_t offset)
+__getsdf3 (long thread, size_t offset)
 {
   double result;
   gupcr_assert (thread < THREADS);
@@ -980,7 +980,7 @@ upcr_llvm_get_doubles (long thread, size_t offset)
  */
 //inline
 void
-upcr_llvm_getns (long thread, size_t offset, void *dest, size_t n)
+__getsblk4 (long thread, size_t offset, void *dest, size_t n)
 {
   gupcr_trace (FC_MEM, "GETBLK ENTER S");
   gupcr_assert (thread < THREADS);
@@ -1015,7 +1015,7 @@ upcr_llvm_getns (long thread, size_t offset, void *dest, size_t n)
  */
 //inline
 void
-upcr_llvm_put_i8s (long thread, size_t offset, u_intQI_t v)
+__putsqi3 (long thread, size_t offset, u_intQI_t v)
 {
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -1060,7 +1060,7 @@ upcr_llvm_put_i8s (long thread, size_t offset, u_intQI_t v)
  */
 //inline
 void
-upcr_llvm_put_i16s (long thread, size_t offset, u_intHI_t v)
+__putshi3 (long thread, size_t offset, u_intHI_t v)
 {
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -1105,7 +1105,7 @@ upcr_llvm_put_i16s (long thread, size_t offset, u_intHI_t v)
  */
 //inline
 void
-upcr_llvm_put_i32s (long thread, size_t offset, u_intSI_t v)
+__putssi3 (long thread, size_t offset, u_intSI_t v)
 {
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -1150,7 +1150,7 @@ upcr_llvm_put_i32s (long thread, size_t offset, u_intSI_t v)
  */
 //inline
 void
-upcr_llvm_put_i64s (long thread, size_t offset, u_intDI_t v)
+__putsdi3 (long thread, size_t offset, u_intDI_t v)
 {
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -1198,7 +1198,7 @@ upcr_llvm_put_i64s (long thread, size_t offset, u_intDI_t v)
  */
 //inline
 void
-upcr_llvm_put_i128s (long thread, size_t offset, u_intTI_t v)
+__putsti3 (long thread, size_t offset, u_intTI_t v)
 {
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -1245,7 +1245,7 @@ upcr_llvm_put_i128s (long thread, size_t offset, u_intTI_t v)
  */
 //inline
 void
-upcr_llvm_put_floats (long thread, size_t offset, float v)
+__putssf3 (long thread, size_t offset, float v)
 {
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -1290,7 +1290,7 @@ upcr_llvm_put_floats (long thread, size_t offset, float v)
  */
 //inline
 void
-upcr_llvm_put_doubles (long thread, size_t offset, double v)
+__putsdf3 (long thread, size_t offset, double v)
 {
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -1337,7 +1337,7 @@ upcr_llvm_put_doubles (long thread, size_t offset, double v)
  */
 //inline
 void
-upcr_llvm_putns (void *src, long thread, size_t offset, size_t n)
+__putsblk4 (void *src, long thread, size_t offset, size_t n)
 {
   gupcr_trace (FC_MEM, "PUTBLK ENTER S 0x%lx %d:0x%lx %lu",
 	       (long unsigned) src, thread,
@@ -1373,8 +1373,8 @@ upcr_llvm_putns (void *src, long thread, size_t offset, size_t n)
  */
 //inline
 void
-upcr_llvm_copyns (long dthread, size_t doffset,
-		  long sthread, size_t soffset, size_t n)
+__copysblk5 (long dthread, size_t doffset,
+	     long sthread, size_t soffset, size_t n)
 {
   gupcr_trace (FC_MEM, "COPYBLK ENTER S %d:0x%lx %d:0x%lx %lu",
 	       sthread, (long unsigned) soffset,
