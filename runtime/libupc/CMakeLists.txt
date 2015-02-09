@@ -532,7 +532,6 @@ foreach(config ${CONFIGURATIONS})
   add_dependencies(${lib_name} clang)
   add_dependencies(${lib_name} clang-upc-lib-h)
   add_dependencies(${lib_name} upc-headers)
-  add_dependencies(${lib_name} upc-atomic)
 
   install(TARGETS ${lib_name}
     DESTINATION lib${LLVM_LIBDIR_SUFFIX})
