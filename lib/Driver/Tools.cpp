@@ -5826,6 +5826,11 @@ void darwin::Link::ConstructJob(Compilation &C, const JobAction &JA,
 
   Args.AddAllArgs(CmdArgs, options::OPT_L);
 
+  const ToolChain::path_list Paths = getToolChain().getFilePaths();
+  for (ToolChain::path_list::const_iterator i = Paths.begin(), e = Paths.end();
+       i != e; ++i)
+    CmdArgs.push_back(Args.MakeArgString(StringRef("-L") + *i));
+
   LibOpenMP UsedOpenMPLib = LibUnknown;
   if (Args.hasArg(options::OPT_fopenmp)) {
     UsedOpenMPLib = LibGOMP;
