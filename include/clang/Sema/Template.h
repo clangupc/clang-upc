@@ -426,6 +426,11 @@ namespace clang {
                             TemplateParameterList *TemplateParams);
     Decl *VisitDecl(Decl *D);
     Decl *VisitVarDecl(VarDecl *D, bool InstantiatingVarTemplate);
+    void TouchOMPVarlist(llvm::MutableArrayRef<clang::Expr*> VL,
+                         SmallVector<Expr *, 4> &NewVL,
+                         Decl *FuncDecl);
+    Decl *TouchOMPDeclareSimdDecl(OMPDeclareSimdDecl *D,
+                                  Decl *NewFunc, DeclContext *DC);
 
     // Enable late instantiation of attributes.  Late instantiated attributes
     // will be stored in LA.

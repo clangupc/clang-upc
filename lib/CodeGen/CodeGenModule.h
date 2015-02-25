@@ -305,6 +305,25 @@ class CodeGenModule : public CodeGenTypeCache {
   std::unique_ptr<llvm::IndexedInstrProfReader> PGOReader;
   InstrProfStats PGOStats;
 
+  struct ElementalVariantInfo {
+    /// \brief The CodeGen infomation of this function.
+    const CGFunctionInfo *FnInfo;
+    /// \brief The elemental function declaration.
+    const FunctionDecl *FD;
+    /// \brief The LLVM function of this declaration.
+    llvm::Function *Fn;
+    /// \brief The metadata describing this elemental function.
+    llvm::MDNode *KernelMD;
+
+    ElementalVariantInfo(const CGFunctionInfo *FnInfo, const FunctionDecl *FD,
+                         llvm::Function *Fn, llvm::MDNode *KernelMD)
+    : FnInfo(FnInfo), FD(FD), Fn(Fn), KernelMD(KernelMD) { }
+  };
+
+  /// ElementalVariantToEmit - This contains all Cilk Plus elemental function
+  /// variants to be emitted.
+  llvm::SmallVector<ElementalVariantInfo, 8> ElementalVariantToEmit;
+
   // A set of references that have only been seen via a weakref so far. This is
   // used to remove the weak of the reference if we ever see a direct reference
   // or a definition.
@@ -327,6 +346,9 @@ class CodeGenModule : public CodeGenTypeCache {
   void addDeferredDeclToEmit(llvm::GlobalValue *GV, GlobalDecl GD) {
     DeferredDeclsToEmit.push_back(DeferredGlobal(GV, GD));
   }
+
+  /// DeferredOMP -- deferred OpenMP directives (e.g. #omp declare simd).
+  std::vector<const OMPDeclareSimdDecl*> DeferredOMP;
 
   /// List of alias we have emitted. Used to make sure that what they point to
   /// is defined once we get to the end of the of the translation unit.
@@ -437,7 +459,7 @@ class CodeGenModule : public CodeGenTypeCache {
   /// \brief The type used to describe the state of a fast enumeration in
   /// Objective-C's for..in loop.
   QualType ObjCFastEnumerationStateType;
-  
+
   /// @}
 
   /// Lazily create the Objective-C runtime
@@ -524,6 +546,75 @@ public:
     assert(CUDARuntime != nullptr);
     return *CUDARuntime;
   }
+
+  // A common data structure to represent vector function attributes in
+  // cilk vector functions and 'omp declare simd' functions.
+  struct CilkElementalGroup {
+    typedef SmallVector<QualType, 1> VecLengthForVector;
+    typedef SmallVector<unsigned, 1> VecLengthVector;
+    // Masking: 0-nomask/notinbranch, 1-mask/inbranch
+    typedef SmallVector<unsigned, 2> MaskVector;
+    typedef std::map<std::string, std::pair<int,std::string> > LinearMap;
+    typedef std::map<std::string, unsigned> AlignedMap;
+    typedef std::set<std::string> UniformSet;
+
+    VecLengthVector VecLength;
+    VecLengthForVector VecLengthFor;
+    LinearMap  LinearParms;
+    AlignedMap AlignedParms;
+    UniformSet UniformParms;
+    MaskVector Mask;
+
+    bool getUniformAttr(std::string Name) const {
+      return UniformParms.count(Name) != 0;
+    }
+
+    bool getLinearAttr(std::string Name, std::pair<int,std::string> *out_step) const {
+      const LinearMap::const_iterator it = LinearParms.find(Name);
+      if (it == LinearParms.end()) return false;
+      *out_step = it->second;
+      return true;
+    }
+
+    bool getAlignedAttr(std::string Name, unsigned *out_alignment) const {
+      const AlignedMap::const_iterator I = AlignedParms.find(Name);
+      if (I == AlignedParms.end()) return false;
+      *out_alignment = I->second;
+      return true;
+    }
+
+    void setLinear(std::string Name, std::string Idname, int Step) {
+      LinearParms[Name].first = Step;
+      LinearParms[Name].second = Idname;
+    }
+
+    void setAligned(std::string Name, unsigned Alignment) {
+      AlignedParms[Name] = Alignment;
+    }
+
+    void setUniform(std::string Name) {
+      UniformParms.insert(Name);
+    }
+  };
+
+  typedef llvm::SmallDenseMap<unsigned, CilkElementalGroup, 4> GroupMap;
+
+  // The following is common part for 'cilk vector functions' and
+  // 'omp declare simd' functions metadata generation.
+  //
+  void EmitVectorVariantsMetadata(const CGFunctionInfo &FnInfo,
+                                  const FunctionDecl *FD,
+                                  llvm::Function *Fn,
+                                  GroupMap &Groups);
+
+  /// Add an elemental function metadata node to the named metadata node
+  /// 'cilk.functions'.
+  void EmitCilkElementalMetadata(const CGFunctionInfo &FnInfo,
+                                 const FunctionDecl *FD, llvm::Function *Fn);
+
+  /// Emit all elemental function vector variants in this module.
+  void EmitCilkElementalVariants();
+
 
   ARCEntrypoints &getARCEntrypoints() const {
     assert(getLangOpts().ObjCAutoRefCount && ARCData != nullptr);
@@ -1046,6 +1137,215 @@ public:
   // Emit the initializer for a shared array, if it needs special treatment
   llvm::Constant *MaybeEmitUPCSharedArrayInits(const VarDecl *VD);
 
+  /// \brief Emit a code for threadprivate variables.
+  ///
+  void EmitOMPThreadPrivate(const OMPThreadPrivateDecl *D);
+  /// \brief Emit a code for threadprivate variable.
+  ///
+  void EmitOMPThreadPrivate(const VarDecl *VD, const Expr *TPE);
+  /// \brief Emit a code for declare reduction variables.
+  ///
+  void EmitOMPDeclareReduction(const OMPDeclareReductionDecl *D);
+  /// \brief Emit vector variants and metadata for 'omp declare simd'.
+  ///
+  void EmitOMPDeclareSimd(const OMPDeclareSimdDecl *D);
+  /// \brief Emit declare target decls.
+  ///
+  void EmitOMPDeclareTarget(const OMPDeclareTargetDecl *D);
+
+  class OpenMPSupportStackTy {
+    /// \brief A set of OpenMP threadprivate variables.
+    llvm::DenseMap<const Decl *, const Expr *> OpenMPThreadPrivate;
+    /// \brief A set of OpenMP private variables.
+    typedef llvm::DenseMap<const Decl *, llvm::Value *> OMPPrivateVarsTy;
+    struct OMPStackElemTy {
+      OMPPrivateVarsTy PrivateVars;
+      llvm::BasicBlock *IfEnd;
+      llvm::Function *ReductionFunc;
+      CodeGenModule &CGM;
+      CodeGenFunction *RedCGF;
+      llvm::SmallVector<llvm::Type *, 16> ReductionTypes;
+      llvm::DenseMap<const VarDecl *, unsigned> ReductionMap;
+      llvm::StructType *ReductionRec;
+      llvm::Value *ReductionRecVar;
+      llvm::Value *RedArg1;
+      llvm::Value *RedArg2;
+      llvm::Value *ReduceSwitch;
+      llvm::BasicBlock *BB1;
+      llvm::Instruction *BB1IP;
+      llvm::BasicBlock *BB2;
+      llvm::Instruction *BB2IP;
+      llvm::Value *LockVar;
+      llvm::BasicBlock *LastprivateBB;
+      llvm::Instruction *LastprivateIP;
+      llvm::BasicBlock *LastprivateEndBB;
+      llvm::Value *LastIterVar;
+      llvm::Value *TaskFlags;
+      llvm::Value *PTaskTValue;
+      llvm::Value *PTask;
+      llvm::Value *UntiedPartIdAddr;
+      unsigned     UntiedCounter;
+      llvm::Value *UntiedSwitch;
+      llvm::BasicBlock *UntiedEnd;
+      CodeGenFunction *ParentCGF;
+      bool NoWait;
+      bool Mergeable;
+      bool Ordered;
+      int Schedule;
+      const Expr *ChunkSize;
+      bool NewTask;
+      bool Untied;
+      bool TargetDeclare;
+      bool HasLastPrivate;
+      bool Distribute;
+      llvm::DenseMap<const ValueDecl *, FieldDecl *> TaskFields;
+      llvm::Type *TaskPrivateTy;
+      QualType TaskPrivateQTy;
+      llvm::Value *TaskPrivateBase;
+      llvm::Value *NumTeams;
+      llvm::Value *ThreadLimit;
+      llvm::Value **WaitDepsArgs;
+      llvm::SmallVector<llvm::Value*,16> MapPointers;
+      llvm::SmallVector<llvm::Value*,16> MapSizes;
+      llvm::SmallVector<unsigned,16> MapTypes;
+      llvm::Value* OffloadingDevice;
+      OMPStackElemTy(CodeGenModule &CGM);
+      ~OMPStackElemTy();
+    };
+    typedef llvm::SmallVector<OMPStackElemTy, 16> OMPStackTy;
+    OMPStackTy OpenMPStack;
+    CodeGenModule &CGM;
+    llvm::Type *KMPDependInfoType;
+    unsigned KMPDependInfoTypeAlign;
+  public:
+    OpenMPSupportStackTy(CodeGenModule &CGM)
+      : OpenMPThreadPrivate(), OpenMPStack(), CGM(CGM), KMPDependInfoType(0) { }
+    const Expr *hasThreadPrivateVar(const VarDecl *VD) {
+      const VarDecl *RVD = VD->getMostRecentDecl();
+      while (RVD) {
+        llvm::DenseMap<const Decl *, const Expr *>::iterator I =
+            OpenMPThreadPrivate.find(RVD);
+        if (I != OpenMPThreadPrivate.end())
+          return I->second;
+        RVD = RVD->getPreviousDecl();
+      }
+      return 0;
+    }
+    void addThreadPrivateVar(const VarDecl *VD, const Expr *TPE) {
+      OpenMPThreadPrivate[VD] = TPE;
+    }
+    /// \brief Checks, if the specified variable is currently marked as
+    /// private.
+    /// \return 0 if the variable is not private, or address of private
+    /// otherwise.
+    llvm::Value *getOpenMPPrivateVar(const VarDecl *VD) {
+      if (OpenMPStack.empty()) return 0;
+      for (OMPStackTy::reverse_iterator I = OpenMPStack.rbegin(),
+                                        E = OpenMPStack.rend();
+           I != E; ++I) {
+        if (I->PrivateVars.count(VD) > 0 && I->PrivateVars[VD])
+          return I->PrivateVars[VD];
+        if (I->NewTask) return 0;
+      }
+      return 0;
+    }
+    llvm::Value *getTopOpenMPPrivateVar(const VarDecl *VD) {
+      if (OpenMPStack.empty()) return 0;
+      return OpenMPStack.back().PrivateVars.count(VD) > 0 ? OpenMPStack.back().PrivateVars[VD] : 0;
+    }
+    llvm::Value *getPrevOpenMPPrivateVar(const VarDecl *VD) {
+      if (OpenMPStack.size()< 2) return 0;
+      return OpenMPStack[OpenMPStack.size() - 2].PrivateVars.count(VD) > 0 ? OpenMPStack[OpenMPStack.size() - 2].PrivateVars[VD] : 0;
+    }
+    void startOpenMPRegion(bool NewTask) {
+      OpenMPStack.push_back(OMPStackElemTy(CGM));
+      OpenMPStack.back().NewTask = NewTask;
+    }
+    bool isNewTask() { return OpenMPStack.back().NewTask; };
+    void endOpenMPRegion();
+    void addOpenMPPrivateVar(const VarDecl *VD, llvm::Value *Addr) {
+      assert(!OpenMPStack.empty() &&
+             "OpenMP private variables region is not started.");
+      OpenMPStack.back().PrivateVars[VD] = Addr;
+    }
+    void delOpenMPPrivateVar(const VarDecl *VD) {
+      assert(!OpenMPStack.empty() &&
+             "OpenMP private variables region is not started.");
+      OpenMPStack.back().PrivateVars[VD] = 0;
+    }
+    void delPrevOpenMPPrivateVar(const VarDecl *VD) {
+      assert(OpenMPStack.size() >= 2 &&
+             "OpenMP private variables region is not started.");
+      OpenMPStack[OpenMPStack.size() - 2].PrivateVars[VD] = 0;
+    }
+    void setIfDest(llvm::BasicBlock *EndBB) {OpenMPStack.back().IfEnd = EndBB;}
+    llvm::BasicBlock *takeIfDest() {
+      llvm::BasicBlock *BB = OpenMPStack.back().IfEnd;
+      OpenMPStack.back().IfEnd = 0;
+      return BB;
+    }
+    CodeGenFunction &getCGFForReductionFunction();
+    void getReductionFunctionArgs(llvm::Value *&Arg1, llvm::Value *&Arg2);
+    void registerReductionVar(const VarDecl *VD, llvm::Type *Type);
+    llvm::Value *getReductionRecVar(CodeGenFunction &CGF);
+    llvm::Type *getReductionRec();
+    llvm::Value *getReductionSwitch();
+    void setReductionSwitch(llvm::Value *Switch);
+    void setReductionIPs(llvm::BasicBlock *BB1, llvm::Instruction *IP1,
+                         llvm::BasicBlock *BB2, llvm::Instruction *IP2);
+    void getReductionIPs(llvm::BasicBlock *&BB1, llvm::Instruction *&IP1,
+                         llvm::BasicBlock *&BB2, llvm::Instruction *&IP2);
+    llvm::Value *getReductionLockVar();
+    void setReductionLockVar(llvm::Value *Var);
+    void setLastprivateIP(llvm::BasicBlock *BB, llvm::Instruction *IP, llvm::BasicBlock *EndBB);
+    void getLastprivateIP(llvm::BasicBlock *&BB, llvm::Instruction *&IP, llvm::BasicBlock *&EndBB);
+    llvm::Value *getLastIterVar();
+    void setLastIterVar(llvm::Value *Var);
+    unsigned getReductionVarIdx(const VarDecl *VD);
+    unsigned getNumberOfReductionVars();
+    void setNoWait(bool Flag);
+    bool getNoWait();
+    void setScheduleChunkSize(int Sched, const Expr *Size);
+    void getScheduleChunkSize(int &Sched, const Expr *&Size);
+    void setMergeable(bool Flag);
+    bool getMergeable();
+    void setOrdered(bool Flag);
+    bool getOrdered();
+    void setUntied(bool Flag);
+    bool getUntied();
+    void setTargetDeclare(bool Flag);
+    bool getTargetDeclare();
+    void setDistribute(bool Flag);
+    bool getDistribute();
+    bool getParentUntied();
+    void setHasLastPrivate(bool Flag);
+    bool hasLastPrivate();
+    llvm::Value *getTaskFlags();
+    void setTaskFlags(llvm::Value *Flags);
+    void setPTask(llvm::Value *Task, llvm::Value *TaskT, llvm::Type *PTy, QualType PQTy, llvm::Value *PB);
+    void getPTask(llvm::Value *&Task, llvm::Value *&TaskT, llvm::Type *&PTy, QualType &PQTy, llvm::Value *&PB);
+    llvm::DenseMap<const ValueDecl *, FieldDecl *> &getTaskFields();
+    void setUntiedData(llvm::Value *UntiedPartIdAddr, llvm::Value *UntiedSwitch, llvm::BasicBlock *UntiedEnd, unsigned UntiedCounter, CodeGenFunction *CGF);
+    void getUntiedData(llvm::Value *&UntiedPartIdAddr, llvm::Value *&UntiedSwitch, llvm::BasicBlock *&UntiedEnd, unsigned &UntiedCounter);
+    void setParentUntiedData(llvm::Value *UntiedPartIdAddr, llvm::Value *UntiedSwitch, llvm::BasicBlock *UntiedEnd, unsigned UntiedCounter, CodeGenFunction *CGF);
+    void getParentUntiedData(llvm::Value *&UntiedPartIdAddr, llvm::Value *&UntiedSwitch, llvm::BasicBlock *&UntiedEnd, unsigned &UntiedCounter, CodeGenFunction *&CGF);
+    void setKMPDependInfoType(llvm::Type *Ty, unsigned Align) { KMPDependInfoType = Ty; KMPDependInfoTypeAlign = Align; }
+    llvm::Type *getKMPDependInfoType() { return KMPDependInfoType; }
+    unsigned getKMPDependInfoTypeAlign() { return KMPDependInfoTypeAlign; }
+    void setNumTeams(llvm::Value *Num);
+    void setThreadLimit(llvm::Value *Num);
+    llvm::Value *getNumTeams();
+    llvm::Value *getThreadLimit();
+    void setWaitDepsArgs(llvm::Value **Args);
+    llvm::Value **getWaitDepsArgs();
+    void getMapData(ArrayRef<llvm::Value*> &MapPointers, ArrayRef<llvm::Value*> &MapSizes, ArrayRef<unsigned> &MapTypes);
+    void addMapData(llvm::Value *MapPointer, llvm::Value *MapSize, unsigned MapType);
+    void setOffloadingDevice(llvm::Value *device);
+    llvm::Value* getOffloadingDevice();
+  };
+
+  OpenMPSupportStackTy OpenMPSupport;
+
   /// Emit code for a singal global function or var decl. Forward declarations
   /// are emitted lazily.
   void EmitGlobal(GlobalDecl D);
@@ -1062,6 +1362,23 @@ private:
                                         llvm::PointerType *PTy,
                                         const VarDecl *D);
 
+  /// \brief Creates OpenMP threadprivate function for specified variable
+  /// and returns this function and constructor, copy constructor and
+  /// destructor.
+  void CreateOpenMPCXXInit(const VarDecl *Var, CXXRecordDecl *Ty,
+                           llvm::Function *&InitFunction,
+                           llvm::Value *&Ctor,
+                           llvm::Value *&CCtor,
+                           llvm::Value *&Dtor);
+
+  /// \brief Creates OpenMP threadprivate function for specified array variable
+  /// and returns this function and constructor, copy constructor and
+  /// destructor.
+  void CreateOpenMPArrCXXInit(const VarDecl *Var, CXXRecordDecl *Ty,
+                              llvm::Function *&InitFunction,
+                              llvm::Value *&Ctor,
+                              llvm::Value *&CCtor,
+                              llvm::Value *&Dtor);
   /// Set attributes which are common to any form of a global definition (alias,
   /// Objective-C method, function, global variable).
   ///

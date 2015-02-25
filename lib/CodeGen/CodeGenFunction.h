@@ -24,6 +24,8 @@
 #include "clang/AST/CharUnits.h"
 #include "clang/AST/ExprCXX.h"
 #include "clang/AST/ExprObjC.h"
+#include "clang/AST/OpenMPClause.h"
+#include "clang/AST/StmtOpenMP.h"
 #include "clang/AST/Type.h"
 #include "clang/Basic/ABI.h"
 #include "clang/Basic/CapturedStmt.h"
@@ -146,9 +148,10 @@ public:
   LoopInfoStack LoopStack;
   CGBuilderTy Builder;
 
-  /// \brief CGBuilder insert helper. This function is called after an
-  /// instruction is created using Builder.
-  void InsertHelper(llvm::Instruction *I, const llvm::Twine &Name,
+  /// CGBuilder insert helper. This function is called after an instruction is
+  /// created using Builder.
+  void InsertHelper(llvm::Instruction *I,
+                    const llvm::Twine &Name,
                     llvm::BasicBlock *BB,
                     llvm::BasicBlock::iterator InsertPt) const;
 
@@ -157,6 +160,9 @@ public:
   const Decl *CurFuncDecl;
   /// CurCodeDecl - This is the inner-most code context, which includes blocks.
   const Decl *CurCodeDecl;
+  /// Root CodeGenFunction for OpenMP context in which current CodeGenFunction
+  /// was created.
+  CodeGenFunction *OpenMPRoot;
   const CGFunctionInfo *CurFnInfo;
   QualType FnRetTy;
   llvm::Function *CurFn;
@@ -178,6 +184,7 @@ public:
   /// AllocaInsertPoint - This is an instruction in the entry block before which
   /// we prefer to insert allocas.
   llvm::AssertingVH<llvm::Instruction> AllocaInsertPt;
+  llvm::AssertingVH<llvm::Instruction> FirstprivateInsertPt;
 
   /// \brief API for captured statement code generation.
   class CGCapturedStmtInfo {
@@ -224,6 +231,11 @@ public:
     /// \brief Get the name of the capture helper.
     virtual StringRef getHelperName() const { return "__captured_stmt"; }
 
+    static bool classof(const CGCapturedStmtInfo *) { return true; }
+
+    virtual void addCachedVar(const VarDecl *VD, llvm::Value *Addr) { }
+    virtual llvm::Value *getCachedVar(const VarDecl *VD) { return 0; }
+
   private:
     /// \brief The kind of captured statement being generated.
     CapturedRegionKind Kind;
@@ -238,7 +250,164 @@ public:
     /// \brief Captured 'this' type.
     FieldDecl *CXXThisFieldDecl;
   };
+  /// \brief API for captured statement code generation for OpenMP regions.
+  class CGOpenMPCapturedStmtInfo : public CGCapturedStmtInfo {
+    //CodeGenModule &CGM;
+  public:
+    explicit CGOpenMPCapturedStmtInfo(llvm::Value* Context,
+                                      const CapturedStmt &S,
+                                      CodeGenModule &CGM,
+                                      CapturedRegionKind K = CR_Default)
+      : CGCapturedStmtInfo(S, K)/*, CGM(CGM)*/ { setContextValue(Context); }
+
+    virtual ~CGOpenMPCapturedStmtInfo() { };
+
+    virtual void addCachedVar(const VarDecl *VD, llvm::Value *Addr) { CachedVars[VD] = Addr; }
+    virtual llvm::Value *getCachedVar(const VarDecl *VD) { return CachedVars[VD]; }
+  private:
+
+    /// \brief Keep the map between VarDecl and FieldDecl.
+    llvm::SmallDenseMap<const VarDecl *, llvm::Value *> CachedVars;
+
+  };
+
   CGCapturedStmtInfo *CapturedStmtInfo;
+
+  class CGSIMDForStmtInfo; // Defined below, after simd wrappers.
+
+  /// \brief Wrapper for "#pragma simd" and "#pragma omp simd".
+  class CGPragmaSimdWrapper {
+    public:
+      // \brief Helper for EmitPragmaSimd - process 'safelen' clause.
+      virtual bool emitSafelen(CodeGenFunction *CGF) const = 0;
+
+      // \brief Emit updates of local variables from clauses
+      // and loop counters in the beginning of __simd_helper.
+      virtual bool walkLocalVariablesToEmit(
+                      CodeGenFunction *CGF,
+                      CGSIMDForStmtInfo *Info) const = 0;
+
+      /// \brief Emit the SIMD loop initalization, loop stride expression
+      /// as loop invariants, and cache those values.
+      virtual void emitInit(CodeGenFunction &CGF,
+          llvm::Value *&LoopIndex, llvm::Value *&LoopCount) = 0;
+
+      /// \brief Emit the loop increment.
+      virtual void emitIncrement(CodeGenFunction &CGF,
+                                 llvm::Value *IndexVar) const = 0;
+
+      // \brief Emit final values of loop counters and linear vars.
+      virtual void emitLinearFinal(CodeGenFunction &CGF) const = 0;
+
+      /// \brief Get the beginning location of for stmt.
+      virtual SourceLocation getForLoc() const = 0;
+
+      /// \brief Get the source range.
+      virtual SourceRange getSourceRange() const = 0;
+
+      /// \brief Retrieve the initialization expression.
+      virtual const Stmt *getInit() const = 0;
+
+      /// \brief Retrieve the loop condition expression.
+      virtual const Expr *getCond() const = 0;
+
+      /// \brief Retrieve the loop body.
+      virtual const CapturedStmt *getAssociatedStmt() const = 0;
+
+      /// \brief Retrieve the loop count expression.
+      virtual const Expr *getLoopCount() const = 0;
+
+      /// \brief Extract the loop body from the collapsed loop nest.
+      /// Useful for openmp (it is noop for SIMDForStmt).
+      virtual Stmt *extractLoopBody(Stmt *S) const = 0;
+
+      /// \brief Return true if it is openmp pragma.
+      virtual bool isOmp() const = 0;
+
+      /// \brief Get the wrapped SIMDForStmt or OMPSimdDirective.
+      virtual const Stmt *getStmt() const = 0;
+
+      virtual ~CGPragmaSimdWrapper() { };
+  };
+
+
+  class CGPragmaOmpSimd : public CGPragmaSimdWrapper {
+    public:
+      CGPragmaOmpSimd(const OMPExecutableDirective *S)
+        : SimdOmp(S) {}
+
+      virtual bool emitSafelen(CodeGenFunction *CGF) const;
+      virtual bool walkLocalVariablesToEmit(
+                      CodeGenFunction *CGF,
+                      CGSIMDForStmtInfo *Info) const;
+
+      virtual void emitInit(CodeGenFunction &CGF,
+          llvm::Value *&LoopIndex, llvm::Value *&LoopCount);
+
+      virtual void emitIncrement(CodeGenFunction &CGF,
+                                 llvm::Value *IndexVar) const { }
+
+      virtual void emitLinearFinal(CodeGenFunction &CGF) const;
+
+      virtual SourceLocation getForLoc() const;
+      virtual SourceRange getSourceRange() const;
+      virtual const Stmt *getInit() const;
+      virtual const Expr *getCond() const;
+      virtual const CapturedStmt *getAssociatedStmt() const;
+      virtual const Expr *getLoopCount() const;
+      virtual Stmt *extractLoopBody(Stmt *S) const;
+      virtual bool isOmp() const { return true; }
+      virtual const Stmt *getStmt() const { return SimdOmp; }
+      llvm::ConstantInt *emitClauseTail(CodeGenFunction *CGF, Expr *E) const;
+      virtual ~CGPragmaOmpSimd() { }
+
+    private:
+      const OMPExecutableDirective *SimdOmp;
+  };
+
+  /// \brief API for SIMD for statement code generation.
+  /// This class is intended to provide an interface to CG to work in the
+  /// same manner with "#pragma simd" and "#pragma omp simd", using wrapper
+  /// (CGPragmaSimdWrapper) for addressing any differences between them.
+  class CGSIMDForStmtInfo : public CGCapturedStmtInfo {
+  public:
+    CGSIMDForStmtInfo(const CGPragmaSimdWrapper &Wr, llvm::MDNode *LoopID,
+                      bool LoopParallel)
+      : CGCapturedStmtInfo(*(Wr.getAssociatedStmt()), CR_SIMDFor),
+        Wrapper(Wr), LoopID(LoopID), LoopParallel(LoopParallel) { }
+
+    virtual StringRef getHelperName() const { return "__simd_for_helper"; }
+
+    virtual void EmitBody(CodeGenFunction &CGF, Stmt *S) {
+      CGF.EmitSIMDForHelperBody(Wrapper.extractLoopBody(S));
+    }
+
+    llvm::MDNode *getLoopID() const { return LoopID; }
+    bool getLoopParallel() const { return LoopParallel; }
+
+
+    bool isOmp() const { return Wrapper.isOmp(); }
+    const Stmt *getStmt() const { return Wrapper.getStmt(); }
+
+    // \brief Emit updates of local variables from clauses
+    // and loop counters in the beginning of __simd_helper.
+    bool walkLocalVariablesToEmit(CodeGenFunction *CGF) {
+      return Wrapper.walkLocalVariablesToEmit(CGF, this);
+    }
+
+    static bool classof(const CGSIMDForStmtInfo *) { return true; }
+    static bool classof(const CGCapturedStmtInfo *I) {
+      return I->getKind() == CR_SIMDFor;
+    }
+  private:
+    /// \brief Wrapper around SIMDForStmt/OMPSimdDirective.
+    const CGPragmaSimdWrapper &Wrapper;
+    /// \brief The loop id metadata.
+    llvm::MDNode *LoopID;
+    /// \brief Is loop parallel.
+    bool LoopParallel;
+
+  };
 
   /// BoundsChecking - Emit run-time bounds checks. Higher values mean
   /// potentially higher performance penalties.
@@ -857,6 +1026,7 @@ private:
     JumpDest ContinueBlock;
   };
   SmallVector<BreakContinue, 8> BreakContinueStack;
+  llvm::DenseMap<unsigned, JumpDest> OMPCancelMap;
 
   CodeGenPGO PGO;
 
@@ -905,6 +1075,24 @@ private:
   SourceLocation LastStopPoint;
 
 public:
+  /// This class is used for instantiation of local variables, but restores
+  /// LocalDeclMap state after instantiation. If Empty is true, the LocalDeclMap
+  /// is cleared completely and then restored to original state upon
+  /// destruction.
+  class LocalVarsDeclGuard {
+    CodeGenFunction &CGF;
+    DeclMapTy LocalDeclMap;
+    public:
+      LocalVarsDeclGuard(CodeGenFunction &CGF, bool Empty = false)
+        : CGF(CGF), LocalDeclMap() {
+          if (Empty) {
+            LocalDeclMap.swap(CGF.LocalDeclMap);
+          } else {
+            LocalDeclMap.copyFrom(CGF.LocalDeclMap);
+          }
+        }
+      ~LocalVarsDeclGuard() { CGF.LocalDeclMap.swap(LocalDeclMap); }
+  };
   /// A scope within which we are constructing the fields of an object which
   /// might use a CXXDefaultInitExpr. This stashes away a 'this' value to use
   /// if we need to evaluate a CXXDefaultInitExpr within the evaluation.
@@ -964,6 +1152,9 @@ private:
   /// The current lexical scope.
   LexicalScope *CurLexicalScope;
 
+  /// ExceptionsDisabled - Whether exceptions are currently disabled.
+  bool ExceptionsDisabled;
+
   /// The current source location that should be used for exception
   /// handling code.
   SourceLocation CurEHLocation;
@@ -987,7 +1178,7 @@ private:
   ///   "work_group_size_hint", and three 32-bit integers X, Y and Z.
   /// - A node for the reqd_work_group_size(X,Y,Z) qualifier contains string 
   ///   "reqd_work_group_size", and three 32-bit integers X, Y and Z.
-  void EmitOpenCLKernelMetadata(const FunctionDecl *FD, 
+  void EmitOpenCLKernelMetadata(const FunctionDecl *FD,
                                 llvm::Function *Fn);
 
 public:
@@ -1034,6 +1225,9 @@ public:
     if (!EHStack.requiresLandingPad()) return nullptr;
     return getInvokeDestImpl();
   }
+
+  void disableExceptions() { ExceptionsDisabled = true; }
+  void enableExceptions() { ExceptionsDisabled = false; }
 
   const TargetInfo &getTarget() const { return Target; }
   llvm::LLVMContext &getLLVMContext() { return CGM.getLLVMContext(); }
@@ -1217,7 +1411,7 @@ public:
   void EmitCtorPrologue(const CXXConstructorDecl *CD, CXXCtorType Type,
                         FunctionArgList &Args);
 
-  void EmitInitializerForField(FieldDecl *Field, LValue LHS, Expr *Init,
+  void EmitInitializerForField(const FieldDecl *Field, LValue LHS, Expr *Init,
                                ArrayRef<VarDecl *> ArrayIndexes);
 
   /// InitializeVTablePointer - Initialize the vtable pointer of the given
@@ -1973,25 +2167,170 @@ public:
   void EmitCXXForRangeStmt(const CXXForRangeStmt &S,
                            const ArrayRef<const Attr *> &Attrs = None);
 
+  LValue InitCapturedStruct(const CapturedStmt &S);
+  void InitOpenMPFunction(llvm::Value *Context, const CapturedStmt &S);
+  void InitOpenMPTargetFunction(const CapturedStmt &S);
   llvm::Function *EmitCapturedStmt(const CapturedStmt &S, CapturedRegionKind K);
   llvm::Function *GenerateCapturedStmtFunction(const CapturedStmt &S);
   llvm::Value *GenerateCapturedStmtArgument(const CapturedStmt &S);
 
+  void EmitPragmaSimd(CGPragmaSimdWrapper &W);
+  llvm::Function *EmitSimdFunction(CGPragmaSimdWrapper &W);
+
+  void EmitSIMDForHelperCall(llvm::Function *BodyFunc,
+                             LValue CapStruct, llvm::Value *LoopIndex,
+                             bool IsLastIter);
+  void EmitSIMDForHelperBody(const Stmt *S);
+
+
+  LValue GetCapturedField(const VarDecl *VD);
+  void EmitUniversalStore(llvm::Value *Dst, llvm::Value *Src, QualType ExprTy);
+  void EmitUniversalStore(LValue Dst, llvm::Value *Src, QualType ExprTy);
+public:
   void EmitOMPParallelDirective(const OMPParallelDirective &S);
-  void EmitOMPSimdDirective(const OMPSimdDirective &S);
-  void EmitOMPForDirective(const OMPForDirective &S);
-  void EmitOMPSectionsDirective(const OMPSectionsDirective &S);
-  void EmitOMPSectionDirective(const OMPSectionDirective &S);
-  void EmitOMPSingleDirective(const OMPSingleDirective &S);
-  void EmitOMPMasterDirective(const OMPMasterDirective &S);
-  void EmitOMPCriticalDirective(const OMPCriticalDirective &S);
   void EmitOMPParallelForDirective(const OMPParallelForDirective &S);
-  void EmitOMPParallelSectionsDirective(const OMPParallelSectionsDirective &S);
+  void EmitOMPParallelForSimdDirective(const OMPParallelForSimdDirective &S);
+  void EmitOMPForDirective(const OMPForDirective &S);
+  void EmitOMPSimdDirective(const OMPSimdDirective &S);
+  void EmitOMPForSimdDirective(const OMPForSimdDirective &S);
+  void EmitOMPDistributeSimdDirective(const OMPDistributeSimdDirective &S);
+  void EmitOMPDistributeParallelForDirective(
+      const OMPDistributeParallelForDirective &S);
+  void EmitOMPDistributeParallelForSimdDirective(
+      const OMPDistributeParallelForSimdDirective &S);
+  void EmitOMPTeamsDistributeParallelForDirective(
+      const OMPTeamsDistributeParallelForDirective &S);
+  void EmitOMPTeamsDistributeParallelForSimdDirective(
+      const OMPTeamsDistributeParallelForSimdDirective &S);
+  void EmitOMPTargetTeamsDistributeParallelForDirective(
+      const OMPTargetTeamsDistributeParallelForDirective &S);
+  void EmitOMPTargetTeamsDistributeParallelForSimdDirective(
+      const OMPTargetTeamsDistributeParallelForSimdDirective &S);
   void EmitOMPTaskDirective(const OMPTaskDirective &S);
-  void EmitOMPTaskyieldDirective(const OMPTaskyieldDirective &S);
+  void EmitOMPSectionsDirective(const OMPSectionsDirective &S);
+  void EmitOMPParallelSectionsDirective(const OMPParallelSectionsDirective &S);
+  void EmitOMPSectionDirective(const OMPSectionDirective &S);
+  void EmitOMPTeamsDirective(const OMPTeamsDirective &S);
+  void EmitOMPDistributeDirective(const OMPDistributeDirective &S);
+  void EmitOMPTargetDirective(const OMPTargetDirective &S);
+  void EmitOMPTargetDataDirective(const OMPTargetDataDirective &S);
+  void EmitOMPTargetUpdateDirective(const OMPTargetUpdateDirective &S);
+  void EmitOMPTargetTeamsDirective(const OMPTargetTeamsDirective &S);
+  void EmitOMPTeamsDistributeDirective(const OMPTeamsDistributeDirective &S);
+  void
+  EmitOMPTeamsDistributeSimdDirective(const OMPTeamsDistributeSimdDirective &S);
+  void EmitOMPTargetTeamsDistributeDirective(
+      const OMPTargetTeamsDistributeDirective &S);
+  void EmitOMPTargetTeamsDistributeSimdDirective(
+      const OMPTargetTeamsDistributeSimdDirective &S);
+  void EmitInitOMPClause(const OMPClause &C,
+                         const OMPExecutableDirective &S);
+  void EmitAfterInitOMPClause(const OMPClause &C,
+                              const OMPExecutableDirective &S);
+  void EmitPreOMPClause(const OMPClause &C,
+                        const OMPExecutableDirective &S);
+  void EmitPostOMPClause(const OMPClause &C, const OMPExecutableDirective &S);
+  void EmitCloseOMPClause(const OMPClause &C,
+                          const OMPExecutableDirective &S);
+  void EmitFinalOMPClause(const OMPClause &C, const OMPExecutableDirective &S);
+  void EmitInitOMPNumThreadsClause(const OMPNumThreadsClause &C,
+                                   const OMPExecutableDirective &S);
+  void EmitInitOMPNumTeamsClause(const OMPNumTeamsClause &C,
+                                 const OMPExecutableDirective &S);
+  void EmitInitOMPThreadLimitClause(const OMPThreadLimitClause &C,
+                                    const OMPExecutableDirective &S);
+  void EmitInitOMPProcBindClause(const OMPProcBindClause &C,
+                                 const OMPExecutableDirective &S);
+  void EmitInitOMPDeviceClause(const OMPDeviceClause &C,
+                            const OMPExecutableDirective &S);
+  void EmitInitOMPMapClause(const OMPMapClause &C,
+                            const OMPExecutableDirective &S);
+  void EmitAfterInitOMPIfClause(const OMPIfClause &C,
+                                const OMPExecutableDirective &S);
+  void EmitFinalOMPIfClause(const OMPIfClause &C,
+                            const OMPExecutableDirective &S);
+  void EmitInitOMPNowaitClause(const OMPNowaitClause &C,
+                               const OMPExecutableDirective &S);
+  void EmitInitOMPOrderedClause(const OMPOrderedClause &C,
+                                const OMPExecutableDirective &S);
+  void EmitInitOMPUntiedClause(const OMPUntiedClause &C,
+                               const OMPExecutableDirective &S);
+  void EmitInitOMPFinalClause(const OMPFinalClause &C,
+                              const OMPExecutableDirective &S);
+  void EmitInitOMPMergeableClause(const OMPMergeableClause &C,
+                                  const OMPExecutableDirective &S);
+  void EmitPreOMPScheduleClause(const OMPScheduleClause &C,
+                                const OMPExecutableDirective &S);
+  void EmitPreOMPDistScheduleClause(const OMPDistScheduleClause &C,
+                                    const OMPExecutableDirective &S);
+  void EmitPreOMPCopyinClause(const OMPCopyinClause &C,
+                              const OMPExecutableDirective &S);
+  void EmitPreOMPPrivateClause(const OMPPrivateClause &C,
+                               const OMPExecutableDirective &S);
+  void EmitPreOMPFirstPrivateClause(const OMPFirstPrivateClause &C,
+                                    const OMPExecutableDirective &S);
+  void EmitPreOMPLastPrivateClause(const OMPLastPrivateClause &C,
+                                   const OMPExecutableDirective &S);
+  void EmitPostOMPLastPrivateClause(const OMPLastPrivateClause &C,
+                                    const OMPExecutableDirective &S);
+  void EmitCloseOMPLastPrivateClause(const OMPLastPrivateClause &C,
+                                     const OMPExecutableDirective &S);
+  void EmitInitOMPReductionClause(const OMPReductionClause &C,
+                                  const OMPExecutableDirective &S);
+  void EmitPreOMPReductionClause(const OMPReductionClause &C,
+                                 const OMPExecutableDirective &S);
+  void EmitPostOMPReductionClause(const OMPReductionClause &C,
+                                  const OMPExecutableDirective &S);
+  void EmitCloseOMPReductionClause(const OMPReductionClause &C,
+                                   const OMPExecutableDirective &S);
+  void EmitFinalOMPReductionClause(const OMPReductionClause &C,
+                                   const OMPExecutableDirective &S);
   void EmitOMPBarrierDirective(const OMPBarrierDirective &S);
+  void EmitOMPTaskyieldDirective(const OMPTaskyieldDirective &S);
   void EmitOMPTaskwaitDirective(const OMPTaskwaitDirective &S);
   void EmitOMPFlushDirective(const OMPFlushDirective &S);
+  void EmitOMPCancelDirective(const OMPCancelDirective &S);
+  void EmitOMPCancellationPointDirective(
+                             const OMPCancellationPointDirective &S);
+  void EmitOMPAtomicDirective(const OMPAtomicDirective &S);
+  void EmitOMPTaskgroupDirective(const OMPTaskgroupDirective &S);
+  void EmitOMPMasterDirective(const OMPMasterDirective &S);
+  void EmitOMPSingleDirective(const OMPSingleDirective &S);
+  void EmitOMPCriticalDirective(const OMPCriticalDirective &S);
+  void EmitOMPOrderedDirective(const OMPOrderedDirective &S);
+  llvm::CallInst *EmitOMPCallWithLocAndTidHelper(llvm::Value *F,
+        SourceLocation L, unsigned Flags = 0x02);
+  void EmitOMPConditionalIfHelper(const OMPExecutableDirective &S,
+        llvm::Value *Func, SourceLocation Loc,
+        llvm::Value *EndFunc, SourceLocation EndLoc,
+        bool HasClauses, llvm::AllocaInst *DidIt,
+        const std::string &NameStr);
+  void EmitOMPCapturedBodyHelper(const OMPExecutableDirective &S);
+  void EmitCopyAssignment(
+    ArrayRef<const Expr *>::iterator I,
+    ArrayRef<const Expr *>::iterator AssignIter,
+    ArrayRef<const Expr *>::iterator VarIter1,
+    ArrayRef<const Expr *>::iterator VarIter2,
+    llvm::Value *Dst,
+    llvm::Value *Src);
+  void EmitOMPDirectiveWithLoop(
+    OpenMPDirectiveKind DKind,
+    OpenMPDirectiveKind SKind,
+    const OMPExecutableDirective &S);
+  void EmitOMPSectionsDirective(
+    OpenMPDirectiveKind DKind,
+    OpenMPDirectiveKind SKind,
+    const OMPExecutableDirective &S);
+  void EmitOMPDirectiveWithParallel(
+    OpenMPDirectiveKind DKind,
+    ArrayRef<OpenMPDirectiveKind> SKinds,
+    const OMPExecutableDirective &S);
+  void EmitOMPDirectiveWithTeams(OpenMPDirectiveKind DKind,
+                                 ArrayRef<OpenMPDirectiveKind> SKinds,
+                                 const OMPExecutableDirective &S);
+  void EmitOMPBarrier(SourceLocation L, unsigned Flags);
+  void EmitOMPCancelBarrier(SourceLocation L, unsigned Flags,
+                            bool IgnoreResult = false);
 
   //===--------------------------------------------------------------------===//
   //                         LValue Expression Emission

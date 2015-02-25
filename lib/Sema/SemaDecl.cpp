@@ -4572,6 +4572,10 @@ NamedDecl *Sema::HandleDeclarator(Scope *S, Declarator &D,
       CurContext->addHiddenDecl(New);
   }
 
+  if (IsDeclContextInOpenMPTarget(CurContext)) {
+    CheckDeclIsAllowedInOpenMPTarget(0, New);
+  }
+
   return New;
 }
 

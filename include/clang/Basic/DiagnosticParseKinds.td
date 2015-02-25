@@ -910,6 +910,12 @@ def err_seh___finally_block : Error<
   "%0 only allowed in __finally block">;
 
 // OpenMP support.
+def err_expected_ident : Error<"expected identifier">;
+def err_expected_rparen : Error<"expected ')'">;
+def err_expected_colon : Error<"expected ':'">;
+def err_expected_comma : Error<"expected ','">;
+def err_expected_equal_after : Error<"expected '=' after %0">;
+
 def warn_pragma_omp_ignored : Warning<
   "unexpected '#pragma omp ...' in program">, InGroup<SourceUsesOpenMP>, DefaultIgnore;
 def warn_omp_extra_tokens_at_eol : Warning<
@@ -919,16 +925,30 @@ def err_omp_unknown_directive : Error<
   "expected an OpenMP directive">;
 def err_omp_unexpected_directive : Error<
   "unexpected OpenMP directive '#pragma omp %0'">;
+def err_omp_expected_var : Error<
+  "expected '#pragma omp %0' argument to be a variable name">;
 def err_omp_expected_punc : Error<
-  "expected ',' or ')' in '%0' %select{clause|directive}1">;
+  "expected ',' or ')' in %select{'#pragma omp %1'|'%1' clause}0">;
+def err_omp_unknown_clause : Error<
+  "expected OpenMP clause for directive '#pragma omp %0' or end of directive">;
 def err_omp_unexpected_clause : Error<
   "unexpected OpenMP clause '%0' in directive '#pragma omp %1'">;
 def err_omp_more_one_clause : Error<
   "directive '#pragma omp %0' cannot contain more than one '%1' clause">;
+def err_omp_expected_colon : Error<
+  "expected ':' in '%0' clause">;
+def err_omp_unknown_reduction_op : Error<
+  "expected reduction identifier">;
 def err_omp_immediate_directive : Error<
-  "'#pragma omp %0' cannot be an immediate substatement">;
-def err_omp_expected_identifier_for_critical : Error<
-  "expected identifier specifying the name of the 'omp critical' directive">;
+  "'#pragma omp %0' cannot be immediate substatement">;
+def err_omp_expected_reduction_identifier : Error<
+  "expected identifier or one of the following operators: '+', '-', '*', '&', '|', '^', '&&' and '||'">;
+def err_omp_unknown_dependence_type : Error<
+  "expected dependence type 'in', 'out' or 'inout'">;
+def err_omp_expected_cancel_construct_type : Error<
+  "expected 'parallel', 'sections', 'for' or 'taskgroup' construct type">;
+def err_expected_end_declare_target : Error<
+  "expected '#pragma omp end declare target'">;
 
 // Pragma loop support.
 def err_pragma_loop_invalid_option : Error<

@@ -2131,69 +2131,51 @@ enum CXCursorKind {
    */
   CXCursor_DeclStmt                      = 231,
 
-  /** \brief OpenMP parallel directive.
+  /** \brief OpenMP directives.
    */
   CXCursor_OMPParallelDirective          = 232,
-
-  /** \brief OpenMP simd directive.
-   */
-  CXCursor_OMPSimdDirective              = 233,
-
-  /** \brief OpenMP for directive.
-   */
-  CXCursor_OMPForDirective               = 234,
-
-  /** \brief OpenMP sections directive.
-   */
-  CXCursor_OMPSectionsDirective          = 235,
-
-  /** \brief OpenMP section directive.
-   */
-  CXCursor_OMPSectionDirective           = 236,
-
-  /** \brief OpenMP single directive.
-   */
-  CXCursor_OMPSingleDirective            = 237,
-
-  /** \brief OpenMP parallel for directive.
-   */
-  CXCursor_OMPParallelForDirective       = 238,
-
-  /** \brief OpenMP parallel sections directive.
-   */
-  CXCursor_OMPParallelSectionsDirective  = 239,
-
-  /** \brief OpenMP task directive.
-   */
-  CXCursor_OMPTaskDirective              = 240,
-
-  /** \brief OpenMP master directive.
-   */
-  CXCursor_OMPMasterDirective            = 241,
-
-  /** \brief OpenMP critical directive.
-   */
-  CXCursor_OMPCriticalDirective          = 242,
-
-  /** \brief OpenMP taskyield directive.
-   */
-  CXCursor_OMPTaskyieldDirective         = 243,
-
-  /** \brief OpenMP barrier directive.
-   */
-  CXCursor_OMPBarrierDirective           = 244,
-
-  /** \brief OpenMP taskwait directive.
-   */
-  CXCursor_OMPTaskwaitDirective          = 245,
-
-  /** \brief OpenMP flush directive.
-   */
-  CXCursor_OMPFlushDirective             = 246,
+  CXCursor_OMPForDirective               = 233,
+  CXCursor_OMPSectionsDirective          = 234,
+  CXCursor_OMPSectionDirective           = 235,
+  CXCursor_OMPSingleDirective            = 236,
+  CXCursor_OMPTaskDirective              = 237,
+  CXCursor_OMPTaskyieldDirective         = 238,
+  CXCursor_OMPMasterDirective            = 239,
+  CXCursor_OMPCriticalDirective          = 240,
+  CXCursor_OMPBarrierDirective           = 241,
+  CXCursor_OMPTaskwaitDirective          = 242,
+  CXCursor_OMPTaskgroupDirective         = 243,
+  CXCursor_OMPAtomicDirective            = 244,
+  CXCursor_OMPFlushDirective             = 245,
+  CXCursor_OMPOrderedDirective           = 246,
+  CXCursor_OMPSimdDirective              = 247,
+  CXCursor_OMPForSimdDirective           = 248,
+  CXCursor_OMPTeamsDirective             = 249,
+  CXCursor_OMPCancelDirective            = 250,
+  CXCursor_OMPCancellationPointDirective = 251,
+  CXCursor_OMPDistributeDirective        = 252,
+  CXCursor_OMPDistributeSimdDirective    = 253,
+  CXCursor_OMPParallelForDirective       = 254,
+  CXCursor_OMPParallelForSimdDirective   = 255,
+  CXCursor_OMPParallelSectionsDirective  = 256,
+  CXCursor_OMPDistributeParallelForDirective = 257,
+  CXCursor_OMPDistributeParallelForSimdDirective = 258,
+  CXCursor_OMPTargetDirective            = 259,
+  CXCursor_OMPTargetDataDirective        = 260,
+  CXCursor_OMPTargetUpdateDirective      = 261,
+  CXCursor_OMPTargetTeamsDirective       = 262,
+  CXCursor_OMPTeamsDistributeDirective   = 263,
+  CXCursor_OMPTeamsDistributeSimdDirective = 264,
+  CXCursor_OMPTargetTeamsDistributeDirective = 265,
+  CXCursor_OMPTargetTeamsDistributeSimdDirective = 266,
+  CXCursor_OMPTeamsDistributeParallelForDirective = 267,
+  CXCursor_OMPTeamsDistributeParallelForSimdDirective = 268,
+  CXCursor_OMPTargetTeamsDistributeParallelForDirective = 269,
+  CXCursor_OMPTargetTeamsDistributeParallelForSimdDirective = 270,
 
   /** \brief Windows Structured Exception Handling's leave statement.
    */
-  CXCursor_SEHLeaveStmt                  = 247,
+  CXCursor_SEHLeaveStmt                  = 271,
 
   CXCursor_LastStmt                      = CXCursor_SEHLeaveStmt,
 

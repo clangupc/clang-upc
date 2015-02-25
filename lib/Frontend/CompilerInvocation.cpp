@@ -33,6 +33,7 @@
 #include "llvm/Support/CodeGen.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FileSystem.h"
+#include "llvm/Support/Format.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/Process.h"
@@ -1616,10 +1617,48 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
   }
 
   // Check if -fopenmp= is specified.
-  if (const Arg *A = Args.getLastArg(options::OPT_fopenmp_EQ)) {
-    Opts.OpenMP = llvm::StringSwitch<bool>(A->getValue())
-        .Case("libiomp5", true)
-        .Default(false);
+  //if (const Arg *A = Args.getLastArg(options::OPT_fopenmp_EQ)) {
+  //  Opts.OpenMP = llvm::StringSwitch<bool>(A->getValue())
+  //      .Case("libiomp5", true)
+  //      .Default(false);
+  //}
+  Opts.OpenMP = Args.hasArg(OPT_fopenmp);
+  Opts.OpenMPTargetMode = Args.hasArg(OPT_omp_target_mode);
+
+  // Get the OpenMP target triples if any
+  if ( Arg *A = Args.getLastArg(options::OPT_omptargets_EQ) ){
+
+    for (unsigned i=0; i < A->getNumValues(); ++i){
+      llvm::Triple TT(A->getValue(i));
+
+      if (TT.getArch() == llvm::Triple::UnknownArch)
+        Diags.Report(clang::diag::err_drv_invalid_omp_target) << A->getValue(i);
+      else
+        Opts.OMPTargetTriples.push_back(TT);
+    }
+  }
+
+  // Make sure that we have a module ID if we need to generate code for a target
+  if (Opts.OpenMP && (Opts.OpenMPTargetMode || Opts.OMPTargetTriples.size())){
+
+    // Obtain the main file path that is being used to generate target code
+    if ( Arg *A = Args.getLastArg(options::OPT_omp_main_file_path) ){
+      llvm::sys::fs::UniqueID ModuleID;
+      std::error_code err = llvm::sys::fs::getUniqueID(Twine(A->getValue()),
+                                                       ModuleID);
+      if ( err )
+        Diags.Report(clang::diag::err_drv_omp_module_id_required)
+          << A->getValue();
+      else {
+        Opts.OMPModuleUniqueID.clear();
+        llvm::raw_string_ostream OS(Opts.OMPModuleUniqueID);
+        OS << llvm::format("%llx",ModuleID.getFile())
+            << "_" << llvm::format("%llx",ModuleID.getDevice());
+        OS.flush();
+      }
+    }
+    else
+      Diags.Report(clang::diag::err_drv_omp_target_requires_main_file_path);
   }
 
   // Record whether the __DEPRECATED define was requested.

@@ -32,7 +32,7 @@ using namespace serialization;
 
 namespace clang {
   class ASTDeclWriter : public DeclVisitor<ASTDeclWriter, void> {
-
+    friend class OMPClauseWriter;
     ASTWriter &Writer;
     ASTContext &Context;
     typedef ASTWriter::RecordData RecordData;
@@ -130,6 +130,9 @@ namespace clang {
     void VisitObjCPropertyDecl(ObjCPropertyDecl *D);
     void VisitObjCPropertyImplDecl(ObjCPropertyImplDecl *D);
     void VisitOMPThreadPrivateDecl(OMPThreadPrivateDecl *D);
+    void VisitOMPDeclareReductionDecl(OMPDeclareReductionDecl *D);
+    void VisitOMPDeclareSimdDecl(OMPDeclareSimdDecl *D);
+    void VisitOMPDeclareTargetDecl(OMPDeclareTargetDecl *D);
 
     void AddFunctionDefinition(const FunctionDecl *FD) {
       assert(FD->doesThisDeclarationHaveABody());
@@ -1440,11 +1443,54 @@ void ASTDeclWriter::VisitRedeclarable(Redeclarable<T> *D) {
 void ASTDeclWriter::VisitOMPThreadPrivateDecl(OMPThreadPrivateDecl *D) {
   Record.push_back(D->varlist_size());
   VisitDecl(D);
-  for (auto *I : D->varlists())
-    Writer.AddStmt(I);
+  for (OMPThreadPrivateDecl::varlist_iterator I = D->varlist_begin(),
+                                              E = D->varlist_end();
+       I != E; ++I)
+    Writer.AddStmt(*I);
   Code = serialization::DECL_OMP_THREADPRIVATE;
 }
 
+void ASTDeclWriter::VisitOMPDeclareReductionDecl(OMPDeclareReductionDecl *D) {
+  Record.push_back(D->datalist_size());
+  VisitDecl(D);
+  Writer.AddDeclarationName(D->getDeclName(), Record);
+  for (OMPDeclareReductionDecl::datalist_iterator I = D->datalist_begin(),
+                                                  E = D->datalist_end();
+       I != E; ++I) {
+    Writer.AddTypeRef(I->QTy, Record);
+    Writer.AddSourceRange(I->TyRange, Record);
+    Writer.AddStmt(I->CombinerFunction);
+    Writer.AddStmt(I->InitFunction);
+  }
+  Code = serialization::DECL_OMP_DECLAREREDUCTION;
+}
+
+void ASTDeclWriter::VisitOMPDeclareSimdDecl(OMPDeclareSimdDecl *D) {
+  Record.push_back(D->simd_variants_size());
+  Record.push_back(D->clauses_size());
+  VisitDecl(D);
+  OMPClauseWriter ClauseWriter(Writer, Record);
+  for (OMPDeclareSimdDecl::clauses_iterator IC = D->clauses_begin(),
+       EC = D->clauses_end(); IC != EC; ++IC) {
+    // Save the clause.
+    ClauseWriter.writeClause(*IC);
+  }
+  for (OMPDeclareSimdDecl::simd_variants_iterator
+      IV = D->simd_variants_begin(),
+      EV = D->simd_variants_end(); IV != EV; ++IV) {
+    // Save the variant info.
+    Writer.AddSourceRange(IV->SrcRange, Record);
+    Record.push_back(IV->BeginIdx);
+    Record.push_back(IV->EndIdx);
+  }
+  Writer.AddDeclRef(D->getFunction(), Record);
+  Code = serialization::DECL_OMP_DECLARESIMD;
+}
+
+void ASTDeclWriter::VisitOMPDeclareTargetDecl(OMPDeclareTargetDecl *D) {
+  VisitDecl(D);
+  Code = serialization::DECL_OMP_DECLARETARGET;
+}
 //===----------------------------------------------------------------------===//
 // ASTWriter Implementation
 //===----------------------------------------------------------------------===//
@@ -1827,7 +1873,10 @@ static bool isRequiredDecl(const Decl *D, ASTContext &Context) {
   // File scoped assembly or obj-c implementation must be seen. ImportDecl is
   // used by codegen to determine the set of imported modules to search for
   // inputs for automatic linking.
-  if (isa<FileScopeAsmDecl>(D) || isa<ObjCImplDecl>(D) || isa<ImportDecl>(D))
+  if (isa<FileScopeAsmDecl>(D) || isa<ObjCImplDecl>(D) ||
+      isa<OMPThreadPrivateDecl>(D) || isa<OMPDeclareSimdDecl>(D) ||
+      isa<OMPDeclareTargetDecl>(D) || isa<OMPDeclareReductionDecl>(D) ||
+      isa<ImportDecl>(D))
     return true;
 
   return Context.DeclMustBeEmitted(D);
