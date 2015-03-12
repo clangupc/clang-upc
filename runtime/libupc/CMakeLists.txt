@@ -580,7 +580,7 @@ if(LIBUPC_ENABLE_LINK_SCRIPT)
 set(upc_link_script ${LLVM_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}/upc.ld)
 add_custom_target(upc-link-script ALL DEPENDS ${upc_link_script})
 add_custom_command(OUTPUT ${upc_link_script}
-   COMMAND ld --verbose | ${PERL_EXECUTABLE} ${PROJECT_SOURCE_DIR}/gen-upc-ld-script.pl > ${upc_link_script}
+   COMMAND ${CMAKE_C_COMPILER} ${CRT_CFLAGS} -nostdlib -Wl,--verbose | ${PERL_EXECUTABLE} ${PROJECT_SOURCE_DIR}/gen-upc-ld-script.pl > ${upc_link_script}
    VERBATIM)
 
 endif()
