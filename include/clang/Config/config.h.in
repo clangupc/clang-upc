@@ -56,8 +56,8 @@
 /* Libfabric support */
 #undef LIBUPC_FABRIC
 
-/* SLURM support */
-#undef LIBUPC_SLURM
+/* SLURM job launcher support */
+#undef LIBUPC_JOB_LAUNCHER_SLURM
 
 /* Define if we have libxml2 */
 #undef CLANG_HAVE_LIBXML
