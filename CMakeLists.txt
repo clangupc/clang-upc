@@ -281,7 +281,7 @@ set(UPC_IR_RP_ADDR ${UPC_RP_ADDR})
 set(UPC_IR_RP_ADDRSPACE "16" CACHE STRING "UPC remote pointer address space")
 set(UPC_IR_RP_ADDRSPACE ${UPC_IR_RP_ADDRSPACE})
 
-# Check for Portals4 and SLURM libraries if necessary
+# Check for Portals4/Libfabric and job launcher libraries if necessary
 set(LIBUPC_RUNTIME_MODEL smp CACHE STRING "specify the runtime implementation model for UPC, where MODEL may be: '
 smp' (Symmetric Multiprocessing), 'portals4' (Infiniband), or 'fabric' (Infiniband)")
 string(TOLOWER ${LIBUPC_RUNTIME_MODEL} LIBUPC_RUNTIME_MODEL)
@@ -316,8 +316,8 @@ endif()
 include(CheckIncludeFiles)
 set(LIBUPC_JOB_LAUNCHER slurm CACHE STRING "select UPC job launcher (default=slurm).")
 if( LIBUPC_JOB_LAUNCHER STREQUAL "slurm" )
-  CHECK_INCLUDE_FILES("slurm/slurm.h" LIBUPC_SLURM)
-  if( NOT LIBUPC_SLURM )
+  CHECK_INCLUDE_FILES("slurm/slurm.h" LIBUPC_JOB_LAUNCHER_SLURM)
+  if( NOT LIBUPC_JOB_LAUNCHER_SLURM )
     message(fatal_error "UPC job launcher (${LIBUPC_JOB_LAUNCHER}) not available")
   endif()
 endif()
