@@ -582,6 +582,7 @@ add_custom_target(upc-link-script ALL DEPENDS ${upc_link_script})
 add_custom_command(OUTPUT ${upc_link_script}
    COMMAND ${CMAKE_C_COMPILER} ${CRT_CFLAGS} -nostdlib -Wl,--verbose | ${PERL_EXECUTABLE} ${PROJECT_SOURCE_DIR}/gen-upc-ld-script.pl > ${upc_link_script}
    VERBATIM)
+add_dependencies(upc-link-script clang)
 
 endif()
 
