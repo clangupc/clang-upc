@@ -260,6 +260,14 @@ add_definitions(
  ${LIBUPC_FEATURE_FLAGS}
  )
 
+set(DEFAULT_MULTILIB "64")
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  set(INITIAL_MULTILIB "64")
+else()
+  set(INITIAL_MULTILIB "32")
+endif()
+set(LIBUPC_MULTILIB ${INITIAL_MULTILIB} CACHE STRING "Whether to build the libraries for 32-bit as well as 64-bit.")
+
 # Default packed pointer representation
 set(UPC_PACKED_BITS "20,10,34" CACHE STRING "UPC shared pointer bits per field (phase,thread,addr) default 20,10,34")
 string(REPLACE "," ";" bits_list ${UPC_PACKED_BITS})
@@ -434,6 +442,15 @@ else()
   message(fatal_error "Unknown value of LIBUPC_RUNTIME_MODEL")
 endif()
 
+macro(set_multilib_suffix multilib var)
+  if(${multilib} STREQUAL ${DEFAULT_MULTILIB})
+    set(${var} "")
+  else()
+    set(${var} "/${multilib}")
+  endif()
+endmacro()
+
+foreach(multilib ${LIBUPC_MULTILIB})
 foreach(config ${CONFIGURATIONS})
   set(pts_type PACKED)
   set(vaddr_order FIRST)
@@ -513,29 +530,39 @@ foreach(config ${CONFIGURATIONS})
     set(flags "${flags} -fupc-pts-vaddr-order=last")
   endif()
 
+  set(flags "${flags} -m${multilib}")
+
   # Add special include directories (if any)
   set(flags "${flags} ${LIBUPC_RUNTIME_FLAGS}")
 
   # Build in the target library
   set(lib_defs ${lib_defs};IN_TARGET_LIBS=1)
 
+  set(lib_target ${lib_name}-${multilib})
+
   # Build the library
   if(LIBUPC_ENABLE_SHARED)
-    add_library(${lib_name} SHARED ${LIBUPC_SOURCES})
+    add_library(${lib_target} SHARED ${LIBUPC_SOURCES})
   else()
-    add_library(${lib_name} STATIC ${LIBUPC_SOURCES})
+    add_library(${lib_target} STATIC ${LIBUPC_SOURCES})
   endif()
 
-  set_property(TARGET ${lib_name} PROPERTY COMPILE_DEFINITIONS ${lib_defs})
-  set_property(TARGET ${lib_name} PROPERTY COMPILE_FLAGS ${flags})
+  set_multilib_suffix(${multilib} MULTILIB_LIBDIR_SUFFIX)
 
-  add_dependencies(${lib_name} clang)
-  add_dependencies(${lib_name} clang-upc-lib-h)
-  add_dependencies(${lib_name} upc-headers)
+  set_property(TARGET ${lib_target} PROPERTY LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${MULTILIB_LIBDIR_SUFFIX})
+  set_property(TARGET ${lib_target} PROPERTY ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/${MULTILIB_LIBDIR_SUFFIX})
+  set_property(TARGET ${lib_target} PROPERTY OUTPUT_NAME ${lib_name})
+  set_property(TARGET ${lib_target} PROPERTY COMPILE_DEFINITIONS ${lib_defs})
+  set_property(TARGET ${lib_target} PROPERTY COMPILE_FLAGS ${flags})
 
-  install(TARGETS ${lib_name}
-    DESTINATION lib${LLVM_LIBDIR_SUFFIX})
+  add_dependencies(${lib_target} clang)
+  add_dependencies(${lib_target} clang-upc-lib-h)
+  add_dependencies(${lib_target} upc-headers)
 
+  install(TARGETS ${lib_target}
+    DESTINATION lib${LLVM_LIBDIR_SUFFIX}${MULTILIB_LIBDIR_SUFFIX})
+
+endforeach()
 endforeach()
 
 set_property(SOURCE ${LIBUPC_SOURCES} PROPERTY LANGUAGE C)
@@ -554,35 +581,41 @@ if( CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32 )
 endif()
 
 macro(add_crt_target name opts)
-  set(obj ${LLVM_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}/${name}.o)
-  list(APPEND objects ${obj})
-  add_custom_target(${name} ALL DEPENDS ${obj})
+  set_multilib_suffix(${multilib} MULTILIB_LIBDIR_SUFFIX)
+  set(obj ${LLVM_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}${MULTILIB_LIBDIR_SUFFIX}/${name}.o)
+  list(APPEND objects-${multilib} ${obj})
+  add_custom_target(${name}-${multilib} ALL DEPENDS ${obj})
   add_custom_command(OUTPUT ${obj}
-  COMMAND ${CMAKE_C_COMPILER} ${CRT_CFLAGS} -c -o ${obj} ${PROJECT_SOURCE_DIR}/upc-crtstuff.c -I${PROJECT_SOURCE_DIR}/config/${config_dir} -I${PROJECT_BINARY_DIR} ${opts}
+  COMMAND ${CMAKE_C_COMPILER} ${CRT_CFLAGS} -m${multilib} -c -o ${obj} ${PROJECT_SOURCE_DIR}/upc-crtstuff.c -I${PROJECT_SOURCE_DIR}/config/${config_dir} -I${PROJECT_BINARY_DIR} ${opts}
   MAIN_DEPENDENCY upc-crtstuff.c
   IMPLICIT_DEPENDENCY upc-crtstuff.c
   VERBATIM)
-  add_dependencies(${name} clang)
+  add_dependencies(${name}-${multilib} clang)
 endmacro()
 
-add_crt_target(upc-crtbegin -DCRT_BEGIN)
-add_crt_target(upc-crtend -DCRT_END)
-add_crt_target(upc-crtbeginS -DCRT_BEGIN)
-add_crt_target(upc-crtendS -DCRT_END)
-add_crt_target(upc-crtbeginT -DCRT_BEGIN)
-add_crt_target(upc-crtendT -DCRT_END)
+foreach(multilib ${LIBUPC_MULTILIB})
+  add_crt_target(upc-crtbegin -DCRT_BEGIN)
+  add_crt_target(upc-crtend -DCRT_END)
+  add_crt_target(upc-crtbeginS -DCRT_BEGIN)
+  add_crt_target(upc-crtendS -DCRT_END)
+  add_crt_target(upc-crtbeginT -DCRT_BEGIN)
+  add_crt_target(upc-crtendT -DCRT_END)
+endforeach()
 
 find_program(PERL_EXECUTABLE perl)
 find_program(AUTOGEN_EXECUTABLE autogen)
 
 if(LIBUPC_ENABLE_LINK_SCRIPT)
 
-set(upc_link_script ${LLVM_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}/upc.ld)
-add_custom_target(upc-link-script ALL DEPENDS ${upc_link_script})
-add_custom_command(OUTPUT ${upc_link_script}
-   COMMAND ${CMAKE_C_COMPILER} ${CRT_CFLAGS} -nostdlib -Wl,--verbose | ${PERL_EXECUTABLE} ${PROJECT_SOURCE_DIR}/gen-upc-ld-script.pl > ${upc_link_script}
-   VERBATIM)
-add_dependencies(upc-link-script clang)
+foreach(multilib ${LIBUPC_MULTILIB})
+  set_multilib_suffix(${multilib} MULTILIB_LIBDIR_SUFFIX)
+  set(upc_link_script ${LLVM_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}${MULTILIB_LIBDIR_SUFFIX}/upc.ld)
+  add_custom_target(upc-link-script-${multilib} ALL DEPENDS ${upc_link_script})
+  add_custom_command(OUTPUT ${upc_link_script}
+    COMMAND ${CMAKE_C_COMPILER} ${CRT_CFLAGS} -m${multilib} -nostdlib -Wl,--verbose | ${PERL_EXECUTABLE} ${PROJECT_SOURCE_DIR}/gen-upc-ld-script.pl > ${upc_link_script}
+    VERBATIM)
+  add_dependencies(upc-link-script-${multilib} clang)
+endforeach()
 
 endif()
 
@@ -664,8 +697,11 @@ install(FILES include/clang-upc.h include/upc.h include/upc_atomic.h
   include/upc_relaxed.h
   DESTINATION ${header_location})
 
-install(FILES ${objects} ${upc_link_script}
-  DESTINATION lib${LLVM_LIBDIR_SUFFIX})
+foreach(multilib ${LIBUPC_MULTILIB})
+  set_multilib_suffix(${multilib} MULTILIB_LIBDIR_SUFFIX)
+  install(FILES ${objects-${multilib}} ${upc_link_script}
+    DESTINATION lib${LLVM_LIBDIR_SUFFIX}${MULTILIB_LIBDIR_SUFFIX})
+endforeach()
 
 install(FILES ${clang_upc_lib_h}
   DESTINATION ${header_location})
