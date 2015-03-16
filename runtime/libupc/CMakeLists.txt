@@ -262,7 +262,11 @@ add_definitions(
 
 set(DEFAULT_MULTILIB "64")
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-  set(INITIAL_MULTILIB "64")
+  if(LLVM_BUILD_32_BITS)
+    set(INITIAL_MULTILIB "32")
+  else()
+    set(INITIAL_MULTILIB "64")
+  endif()
 else()
   set(INITIAL_MULTILIB "32")
 endif()
@@ -573,20 +577,13 @@ else()
   set(config_dir default)
 endif()
 
-set(CRT_CFLAGS "")
-if( CMAKE_SIZEOF_VOID_P EQUAL 8 AND NOT WIN32 )
-  if(LLVM_BUILD_32_BITS)
-    set(CRT_CFLAGS -m32)
-  endif()
-endif()
-
 macro(add_crt_target name opts)
   set_multilib_suffix(${multilib} MULTILIB_LIBDIR_SUFFIX)
   set(obj ${LLVM_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}${MULTILIB_LIBDIR_SUFFIX}/${name}.o)
   list(APPEND objects-${multilib} ${obj})
   add_custom_target(${name}-${multilib} ALL DEPENDS ${obj})
   add_custom_command(OUTPUT ${obj}
-  COMMAND ${CMAKE_C_COMPILER} ${CRT_CFLAGS} -m${multilib} -c -o ${obj} ${PROJECT_SOURCE_DIR}/upc-crtstuff.c -I${PROJECT_SOURCE_DIR}/config/${config_dir} -I${PROJECT_BINARY_DIR} ${opts}
+  COMMAND ${CMAKE_C_COMPILER} -m${multilib} -c -o ${obj} ${PROJECT_SOURCE_DIR}/upc-crtstuff.c -I${PROJECT_SOURCE_DIR}/config/${config_dir} -I${PROJECT_BINARY_DIR} ${opts}
   MAIN_DEPENDENCY upc-crtstuff.c
   IMPLICIT_DEPENDENCY upc-crtstuff.c
   VERBATIM)
@@ -612,7 +609,7 @@ foreach(multilib ${LIBUPC_MULTILIB})
   set(upc_link_script ${LLVM_BINARY_DIR}/lib${LLVM_LIBDIR_SUFFIX}${MULTILIB_LIBDIR_SUFFIX}/upc.ld)
   add_custom_target(upc-link-script-${multilib} ALL DEPENDS ${upc_link_script})
   add_custom_command(OUTPUT ${upc_link_script}
-    COMMAND ${CMAKE_C_COMPILER} ${CRT_CFLAGS} -m${multilib} -nostdlib -Wl,--verbose | ${PERL_EXECUTABLE} ${PROJECT_SOURCE_DIR}/gen-upc-ld-script.pl > ${upc_link_script}
+    COMMAND ${CMAKE_C_COMPILER} -m${multilib} -nostdlib -Wl,--verbose | ${PERL_EXECUTABLE} ${PROJECT_SOURCE_DIR}/gen-upc-ld-script.pl > ${upc_link_script}
     VERBATIM)
   add_dependencies(upc-link-script-${multilib} clang)
 endforeach()
