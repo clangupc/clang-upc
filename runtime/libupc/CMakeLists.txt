@@ -44,6 +44,8 @@ option(LIBUPC_ENABLE_SHARED "Build libupc as a shared library. (Broken)" OFF)
 
 # Configure libupc
 
+set(MAINTAINER_MODE FALSE CACHE STRING "enable maintainer mode")
+
 set(LIBUPC_RUNTIME_MODEL smp CACHE STRING "specify the runtime implementation model for UPC, where MODEL may be: 'smp' (Symmetric Multiprocessing) or 'portals4' (Infiniband with Portals4 library)")
 string(TOLOWER ${LIBUPC_RUNTIME_MODEL} LIBUPC_RUNTIME_MODEL)
 
@@ -631,6 +633,7 @@ add_custom_command(OUTPUT ${clang_upc_lib_h}
 add_custom_target(clang-upc-lib-h ALL DEPENDS ${clang_upc_lib_h})
 
 if(LIBUPC_RUNTIME_MODEL STREQUAL smp)
+if(MAINTAINER_MODE)
 set(lib_upc_atomic_builtin ${PROJECT_SOURCE_DIR}/smp/upc_atomic_builtin.upc)
 set(lib_upc_atomic_generic ${PROJECT_SOURCE_DIR}/smp/upc_atomic_generic.upc)
 set(lib_upc_atomic_sources ${PROJECT_SOURCE_DIR}/smp/upc_atomic.def
@@ -649,6 +652,7 @@ add_custom_command(OUTPUT ${lib_upc_atomic_generic}
   DEPENDS ${lib_upc_atomic_sources}
   VERBATIM)
 add_custom_target(upc-atomic-generic ALL DEPENDS ${lib_upc_atomic_generic})
+endif()
 
 elseif(LIBUPC_RUNTIME_MODEL STREQUAL portals4)
 set(lib_upc_reduce_cmd ${PROJECT_SOURCE_DIR}/collectives/gen-upc-coll-reduce.pl)
