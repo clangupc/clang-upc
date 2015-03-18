@@ -49,9 +49,10 @@ set(MAINTAINER_MODE FALSE CACHE STRING "enable maintainer mode")
 set(LIBUPC_RUNTIME_MODEL smp CACHE STRING "specify the runtime implementation model for UPC, where MODEL may be: 'smp' (Symmetric Multiprocessing) or 'portals4' (Infiniband with Portals4 library)")
 string(TOLOWER ${LIBUPC_RUNTIME_MODEL} LIBUPC_RUNTIME_MODEL)
 
-set(LIBUPC_ENABLE_LINK_SCRIPT TRUE CACHE STRING "enable UPC's use of a custom linker script; this will define the UPC shared section as a no load section on targets where this feature is supported (requires GNU LD)")
-if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR
-    ${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
+set(LIBUPC_ENABLE_LINK_SCRIPT TRUE CACHE BOOL "enable UPC's use of a custom linker script; this will define the UPC shared section as a no load section on targets where this feature is supported (requires GNU LD)")
+# Check for GNU linker
+execute_process(COMMAND ${CMAKE_C_COMPILER} -Wl,--version OUTPUT_VARIABLE LIBUPC_LD_VERSION ERROR_QUIET)
+if (NOT "${LIBUPC_LD_VERSION}" MATCHES "GNU ld")
   set(LIBUPC_ENABLE_LINK_SCRIPT FALSE)
 endif()
 
