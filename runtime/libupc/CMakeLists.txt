@@ -50,10 +50,12 @@ set(LIBUPC_RUNTIME_MODEL smp CACHE STRING "specify the runtime implementation mo
 string(TOLOWER ${LIBUPC_RUNTIME_MODEL} LIBUPC_RUNTIME_MODEL)
 
 set(LIBUPC_ENABLE_LINK_SCRIPT TRUE CACHE BOOL "enable UPC's use of a custom linker script; this will define the UPC shared section as a no load section on targets where this feature is supported (requires GNU LD)")
-# Check for GNU linker
-execute_process(COMMAND ${CMAKE_C_COMPILER} -Wl,--version OUTPUT_VARIABLE LIBUPC_LD_VERSION ERROR_QUIET)
+set(LIBUPC_LINK_SCRIPT ${LIBUPC_ENABLE_LINK_SCRIPT})
+# Link sctipt option only works with GNU linker (not Gold, or others)
+string(REPLACE " " ";" CMAKE_C_FLAGS_LIST "${CMAKE_C_FLAGS} -Wl,--version")
+execute_process(COMMAND ${CMAKE_C_COMPILER} ${CMAKE_C_FLAGS_LIST} OUTPUT_VARIABLE LIBUPC_LD_VERSION ERROR_QUIET)
 if (NOT "${LIBUPC_LD_VERSION}" MATCHES "GNU ld")
-  set(LIBUPC_ENABLE_LINK_SCRIPT FALSE)
+  set(LIBUPC_LINK_SCRIPT FALSE)
 endif()
 
 # Check for backtrace on systems (freebsd,..) that need an extra library
@@ -234,7 +236,7 @@ HAVE_SYNC_FETCH_AND_ADD_8)
 
 set(CMAKE_REQUIRED_LIBRARIES)
 
-set(HAVE_UPC_LINK_SCRIPT ${LIBUPC_ENABLE_LINK_SCRIPT})
+set(HAVE_UPC_LINK_SCRIPT ${LIBUPC_LINK_SCRIPT})
 
 set(TIME_WITH_SYS_TIME TRUE)
 
@@ -605,7 +607,7 @@ endforeach()
 find_program(PERL_EXECUTABLE perl)
 find_program(AUTOGEN_EXECUTABLE autogen)
 
-if(LIBUPC_ENABLE_LINK_SCRIPT)
+if(LIBUPC_LINK_SCRIPT)
 
 foreach(multilib ${LIBUPC_MULTILIB})
   set_multilib_suffix(${multilib} MULTILIB_LIBDIR_SUFFIX)
