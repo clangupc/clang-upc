@@ -342,7 +342,7 @@ gupcr_process_fail_events (fab_cq_t cq)
       const char *errstr;
       struct fi_cq_err_entry cq_error;
       gupcr_fabric_call_nc (fi_cq_readerr, ret,
-			    (cq, (void *) &cq_error, sizeof (cq_error), 0));
+			    (cq, (void *) &cq_error, 0));
       gupcr_fabric_call_nc (fi_cq_strerror, errstr,
 			    (cq, cq_error.err, cq_error.err_data,
 			     buf, sizeof (buf)));
@@ -425,8 +425,8 @@ gupcr_fabric_init (void)
   hints.caps = FI_RMA |		/* Request RMA capability,  */
     FI_ATOMICS |		/* atomics capability,  */
     FI_DYNAMIC_MR;		/* MR without physical backing,  */
-  hints.ep_type = FI_EP_RDM;	/* Reliable datagram message.  */
-  hints.addr_format = FI_ADDR_UNSPEC;
+  ep_attr.type = FI_EP_RDM;	/* Reliable datagram message.  */
+  hints.addr_format = FI_FORMAT_UNSPEC;
   ep_attr.rx_ctx_cnt = GUPCR_SERVICE_COUNT;
   ep_attr.tx_ctx_cnt = GUPCR_SERVICE_COUNT;
   hints.ep_attr = &ep_attr;
@@ -446,7 +446,7 @@ gupcr_fabric_init (void)
   /* Set endpoint features.  */
   gupcr_max_msg_size = gupcr_fi->ep_attr->max_msg_size;
   gupcr_max_order_size = gupcr_fi->ep_attr->max_order_raw_size;
-  gupcr_max_optim_size = gupcr_fi->ep_attr->inject_size;
+  gupcr_max_optim_size = gupcr_fi->tx_attr->inject_size;
 
   /* Create an endpoint for all UPC contexts.  */
   gupcr_fabric_call (fi_endpoint, (gupcr_fd, gupcr_fi, &gupcr_ep, NULL));
@@ -458,7 +458,7 @@ gupcr_fabric_init (void)
   av_attr.name = "ENDPOINTS";
   av_attr.rx_ctx_bits = GUPCR_SERVICE_BITS;
   gupcr_fabric_call (fi_av_open, (gupcr_fd, &av_attr, &gupcr_av, NULL));
-  gupcr_fabric_call (fi_bind, (&gupcr_ep->fid, &gupcr_av->fid, 0));
+  gupcr_fabric_call (fi_ep_bind, (gupcr_ep, &gupcr_av->fid, 0));
 
   /* Enable endpoint.  */
   gupcr_fabric_call (fi_enable, (gupcr_ep));

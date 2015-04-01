@@ -133,7 +133,7 @@ gupcr_signal_exit (int status)
   /* Send global exit code to all threads.  */
   for (thread = 0; thread < THREADS; thread++)
     {
-      gupcr_fabric_call (fi_writeto,
+      gupcr_fabric_call (fi_write,
 			 (gupcr_shutdown_tx_ep,
 			  GUPCR_LOCAL_INDEX (&gupcr_shutdown_send_status),
 			  sizeof (gupcr_shutdown_send_status),
@@ -179,7 +179,7 @@ gupcr_shutdown_terminate_pthread (void)
   gupcr_signal_disable (SHUTDOWN_SIGNAL);
 
   gupcr_shutdown_send_status = 0;
-  gupcr_fabric_call (fi_writeto,
+  gupcr_fabric_call (fi_write,
 		     (gupcr_shutdown_tx_ep,
 		      GUPCR_LOCAL_INDEX (&gupcr_shutdown_send_status),
 		      sizeof (gupcr_shutdown_send_status),
@@ -264,7 +264,7 @@ gupcr_shutdown_init (void)
   gupcr_log (FC_MISC, "shutdown init called");
 
   /* Create context endpoints for shutdown signalling.  */
-  tx_attr.op_flags = FI_REMOTE_COMPLETE;
+  tx_attr.op_flags = FI_TRANSMIT_COMPLETE;
   gupcr_fabric_call (fi_tx_context,
 		     (gupcr_ep, GUPCR_SERVICE_SHUTDOWN, &tx_attr, &gupcr_shutdown_tx_ep,
 		      NULL));
@@ -277,8 +277,8 @@ gupcr_shutdown_init (void)
   cntr_attr.flags = 0;
   gupcr_fabric_call (fi_cntr_open, (gupcr_fd, &cntr_attr,
 				    &gupcr_shutdown_lct, NULL));
-  gupcr_fabric_call (fi_bind, (&gupcr_shutdown_tx_ep->fid,
-			       &gupcr_shutdown_lct->fid, FI_READ | FI_WRITE));
+  gupcr_fabric_call (fi_ep_bind, (gupcr_shutdown_tx_ep,
+			          &gupcr_shutdown_lct->fid, FI_READ | FI_WRITE));
 
   /* ... and completion queue for remote target transfer errors.  */
   cq_attr.size = 1;
@@ -286,9 +286,9 @@ gupcr_shutdown_init (void)
   cq_attr.wait_obj = FI_WAIT_NONE;
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_shutdown_lcq, NULL));
   /* Use FI_EVENT flag to report errors only.  */
-  gupcr_fabric_call (fi_bind, (&gupcr_shutdown_tx_ep->fid,
-			       &gupcr_shutdown_lcq->fid,
-			       FI_READ | FI_WRITE | FI_EVENT));
+  gupcr_fabric_call (fi_ep_bind, (gupcr_shutdown_tx_ep,
+			          &gupcr_shutdown_lcq->fid,
+			          FI_READ | FI_WRITE | FI_EVENT));
 
   /* NOTE: Create a local memory region before enabling endpoint.  */
   /* ... and memory region for local memory accesses.  */
@@ -299,8 +299,8 @@ gupcr_shutdown_init (void)
   /*       Hmm ... ? We can probably use only one throughout the runtime,  */
   /*       as counters and events are bound to endpoint.  */
 #if 0
-  gupcr_fabric_call (fi_bind, (&gupcr_shutdown_tx_ep->fid,
-			       &gupcr_shutdown_lmr->fid, FI_READ | FI_WRITE));
+  gupcr_fabric_call (fi_ep_bind, (gupcr_shutdown_tx_ep,
+			          &gupcr_shutdown_lmr->fid, FI_READ | FI_WRITE));
 #endif
 
   /* Enable endpoints.  */
@@ -316,24 +316,24 @@ gupcr_shutdown_init (void)
   cntr_attr.flags = 0;
   gupcr_fabric_call (fi_cntr_open, (gupcr_fd, &cntr_attr,
 				    &gupcr_shutdown_ct, NULL));
-  gupcr_fabric_call (fi_bind, (&gupcr_shutdown_mr->fid,
-			       &gupcr_shutdown_ct->fid, FI_REMOTE_WRITE));
+  gupcr_fabric_call (fi_mr_bind, (gupcr_shutdown_mr,
+			          &gupcr_shutdown_ct->fid, FI_REMOTE_WRITE));
   /* ... and completion queue for remote inbound errors.  */
   cq_attr.size = 1;
   cq_attr.format = FI_CQ_FORMAT_MSG;
   cq_attr.wait_obj = FI_WAIT_NONE;
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_shutdown_cq, NULL));
-  gupcr_fabric_call (fi_bind, (&gupcr_shutdown_mr->fid,
-			       &gupcr_shutdown_cq->fid,
-			       FI_REMOTE_WRITE | FI_EVENT));
+  gupcr_fabric_call (fi_mr_bind, (gupcr_shutdown_mr,
+			          &gupcr_shutdown_cq->fid,
+			          FI_REMOTE_WRITE | FI_EVENT));
   /* ... local/remote transaction counts.  */
   gupcr_shutdown_lmr_count = 0;
   gupcr_shutdown_mr_count = 0;
 
   /* ... bind MR to endpoint.  */
-  gupcr_fabric_call (fi_bind, (&gupcr_shutdown_rx_ep->fid,
-			       &gupcr_shutdown_mr->fid,
-			       FI_REMOTE_READ | FI_REMOTE_WRITE));
+  gupcr_fabric_call (fi_ep_bind, (gupcr_shutdown_rx_ep,
+			          &gupcr_shutdown_mr->fid,
+			          FI_REMOTE_READ | FI_REMOTE_WRITE));
 
   /* Start a pthread that listens for remote shutdown requests.  */
   gupcr_syscall (pthread_create,

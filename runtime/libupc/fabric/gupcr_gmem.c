@@ -205,7 +205,7 @@ gupcr_gmem_get (void *dest, int thread, size_t offset, size_t n)
       size_t n_xfer;
       n_xfer = GUPCR_MIN (n_rem, GUPCR_MAX_MSG_SIZE);
       ++gupcr_gmem_gets.num_pending;
-      gupcr_fabric_call (fi_readfrom,
+      gupcr_fabric_call (fi_read,
 			 (gupcr_gmem_tx_ep, loc_addr, n_xfer, NULL,
 			  fi_rx_addr ((fi_addr_t) thread, GUPCR_SERVICE_GMEM,
 				      GUPCR_SERVICE_BITS),
@@ -249,7 +249,7 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
       if (n_xfer <= GUPCR_MAX_OPTIM_SIZE)
 	{
 	  /* Use optimized version of RMA write.  */
-	  gupcr_fabric_call (fi_inject_writeto,
+	  gupcr_fabric_call (fi_inject_write,
 			     (gupcr_gmem_tx_ep, GUPCR_LOCAL_INDEX (src_addr),
 			      n_xfer, fi_rx_addr ((fi_addr_t) thread,
 						  GUPCR_SERVICE_GMEM,
@@ -275,7 +275,7 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 	      local_offset = (size_t) bounce_buf;
 	      gupcr_gmem_put_bb_used += n_xfer;
 	    }
-	  gupcr_fabric_call (fi_writeto,
+	  gupcr_fabric_call (fi_write,
 			     (gupcr_gmem_tx_ep,
 			      GUPCR_LOCAL_INDEX (local_offset), n_xfer, NULL,
 			      fi_rx_addr ((fi_addr_t) thread,
@@ -350,7 +350,7 @@ gupcr_gmem_copy (int dthread, size_t doffset,
       gupcr_gmem_sync_gets ();
       local_offset = (size_t) bounce_buf;
       ++gupcr_gmem_puts.num_pending;
-      gupcr_fabric_call (fi_writeto,
+      gupcr_fabric_call (fi_write,
 			 (gupcr_gmem_tx_ep,
 			  GUPCR_LOCAL_INDEX (local_offset), n_xfer, NULL,
 			  fi_rx_addr ((fi_addr_t) dthread,
@@ -406,7 +406,7 @@ gupcr_gmem_set (int thread, size_t offset, int c, size_t n)
 	}
       local_offset = (size_t) bounce_buf;
       ++gupcr_gmem_puts.num_pending;
-      gupcr_fabric_call (fi_writeto,
+      gupcr_fabric_call (fi_write,
 			 (gupcr_gmem_tx_ep, GUPCR_LOCAL_INDEX (local_offset),
 			  n_xfer, NULL, fi_rx_addr ((fi_addr_t) thread,
 						    GUPCR_SERVICE_GMEM,
@@ -434,7 +434,7 @@ gupcr_gmem_init (void)
   gupcr_gmem_alloc_shared ();
 
   /* Create context endpoints for LOC transfers.  */
-  tx_attr.op_flags = FI_REMOTE_COMPLETE;
+  tx_attr.op_flags = FI_TRANSMIT_COMPLETE;
   /* Create context endpoints for GMEM transfers.  */
   gupcr_fabric_call (fi_tx_context,
 		     (gupcr_ep, GUPCR_SERVICE_GMEM, &tx_attr, &gupcr_gmem_tx_ep,
@@ -456,8 +456,8 @@ gupcr_gmem_init (void)
   cntr_attr.flags = 0;
   gupcr_fabric_call (fi_cntr_open, (gupcr_fd, &cntr_attr,
 				    &gupcr_gmem_gets.ct_handle, NULL));
-  gupcr_fabric_call (fi_bind, (&gupcr_gmem_tx_ep->fid,
-			       &gupcr_gmem_gets.ct_handle->fid, FI_READ));
+  gupcr_fabric_call (fi_ep_bind, (gupcr_gmem_tx_ep,
+			          &gupcr_gmem_gets.ct_handle->fid, FI_READ));
 
   /* ... and completion counter/eq for remote writes.  */
   gupcr_gmem_puts.num_pending = 0;
@@ -466,8 +466,8 @@ gupcr_gmem_init (void)
   cntr_attr.flags = 0;
   gupcr_fabric_call (fi_cntr_open, (gupcr_fd, &cntr_attr,
 				    &gupcr_gmem_puts.ct_handle, NULL));
-  gupcr_fabric_call (fi_bind, (&gupcr_gmem_tx_ep->fid,
-			       &gupcr_gmem_puts.ct_handle->fid, FI_WRITE));
+  gupcr_fabric_call (fi_ep_bind, (gupcr_gmem_tx_ep,
+			          &gupcr_gmem_puts.ct_handle->fid, FI_WRITE));
 
   /* Create completion queue for remote target transfer errors.  There
      is only one completion queue for read and writes and minimum
@@ -477,9 +477,9 @@ gupcr_gmem_init (void)
   cq_attr.wait_obj = FI_WAIT_NONE;
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_gmem_cq, NULL));
   /* Use FI_EVENT flag to report errors only.  */
-  gupcr_fabric_call (fi_bind, (&gupcr_gmem_tx_ep->fid,
-			       &gupcr_gmem_cq->fid,
-			       FI_READ | FI_WRITE | FI_EVENT));
+  gupcr_fabric_call (fi_ep_bind, (gupcr_gmem_tx_ep,
+			          &gupcr_gmem_cq->fid,
+			          FI_READ | FI_WRITE | FI_EVENT));
 
   /* Create a memory region for local memory accesses.  */
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, USER_PROG_MEM_START,
@@ -487,8 +487,8 @@ gupcr_gmem_init (void)
 				 0, 0, 0, &gupcr_gmem_lmr, NULL));
 #if 0
   /* NOTE: No need to bind, it is done implictly.  */
-  gupcr_fabric_call (fi_bind, (&gupcr_gmem_tx_ep->fid,
-			       &gupcr_gmem_lmr->fid, FI_READ | FI_WRITE));
+  gupcr_fabric_call (fi_ep_bind, (gupcr_gmem_tx_ep,
+			          &gupcr_gmem_lmr->fid, FI_READ | FI_WRITE));
 #endif
   gupcr_fabric_call (fi_enable, (gupcr_gmem_tx_ep));
 
@@ -497,9 +497,9 @@ gupcr_gmem_init (void)
 				 FI_REMOTE_READ | FI_REMOTE_WRITE, 0,
 				 0, 0, &gupcr_gmem_mr, NULL));
   gupcr_fabric_call (fi_enable, (gupcr_gmem_rx_ep));
-  gupcr_fabric_call (fi_bind, (&gupcr_gmem_rx_ep->fid,
-			       &gupcr_gmem_mr->fid,
-			       FI_REMOTE_READ | FI_REMOTE_WRITE));
+  gupcr_fabric_call (fi_ep_bind, (gupcr_gmem_rx_ep,
+			          &gupcr_gmem_mr->fid,
+			          FI_REMOTE_READ | FI_REMOTE_WRITE));
   gupcr_log (FC_MEM, "gmem created");
 }
 
