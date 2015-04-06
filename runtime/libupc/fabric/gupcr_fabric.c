@@ -22,6 +22,7 @@
 #include <net/if.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
+#include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 
@@ -56,10 +57,14 @@ static char epname[128];
 static char *epnames;
 
 
-// TODO: Hack for getting network address.  We can get this from the
+// TODO: Configure network interface name and libfabric provider.
+//       Hack for getting network address.  We can get this from the
 //       fi_getinfo (?) but current implementation does not fill out src_addr
 /** Infiniband interface.  */
 const char *ifname = "ib0";
+/** Libfabric provider */
+// Use 'socket' provider for now, as this needs to be configurable. 
+char *prov_name = (char *) "sockets";
 /** Interface IPv4 address */
 in_addr_t net_addr;
 /** IPv4 addresses for all ranks */
@@ -417,13 +422,29 @@ void
 gupcr_fabric_init (void)
 {
   struct fi_info hints = { 0 };
+  struct fi_fabric_attr fi_attr = { 0 };
   av_attr_t av_attr = { 0 };
   ep_attr_t ep_attr = { 0 };
   size_t epnamelen = sizeof (epname);
+  char node[16];
+
+  /* Find the network ID (IPv4 address).  */
+  net_addr = check_ip_address (ifname);
+  if (net_addr == INADDR_ANY)
+    {
+      gupcr_fatal_error ("IPv4 is not available on interface %s", ifname);
+      gupcr_abort ();
+    }
+  if (!inet_ntop(AF_INET, &net_addr, node, sizeof(node)))
+    {
+      gupcr_fatal_error (
+	"Error while converting IPv4 (%x) address into a string", net_addr);
+      gupcr_abort ();
+    }
 
   /* Find fabric provider based on the hints.  */
   hints.caps = FI_RMA |		/* Request RMA capability,  */
-    FI_ATOMICS |		/* atomics capability,  */
+    FI_ATOMICS | 		/* atomics capability,  */
     FI_DYNAMIC_MR;		/* MR without physical backing,  */
   ep_attr.type = FI_EP_RDM;	/* Reliable datagram message.  */
   hints.addr_format = FI_FORMAT_UNSPEC;
@@ -431,11 +452,15 @@ gupcr_fabric_init (void)
   ep_attr.tx_ctx_cnt = GUPCR_SERVICE_COUNT;
   hints.ep_attr = &ep_attr;
 
+  /* Choose provider.  */
+  hints.fabric_attr = &fi_attr;
+  hints.fabric_attr->prov_name = prov_name;
+
 #define __GUPCR_STR__(S) #S
 #define __GUPCR_XSTR__(S) __GUPCR_STR__(S)
   /*  Hard-coded service name for Portals PTE.  */
   gupcr_fabric_call (fi_getinfo,
-		     (FI_VERSION (1, 0), NULL, "16",
+		     (FI_VERSION (1, 0), node, NULL,
 		      FI_SOURCE, &hints, &gupcr_fi));
   gupcr_fabric_call (fi_fabric, (gupcr_fi->fabric_attr, &gupcr_fab, NULL));
   gupcr_fabric_call (fi_domain, (gupcr_fab, gupcr_fi, &gupcr_fd, NULL));
@@ -484,8 +509,15 @@ gupcr_fabric_init (void)
       (FC_FABRIC, "exchanged ep names with %d threads", gupcr_rank_cnt);
   }
   /* Map endpoints.  */
-  gupcr_fabric_call
-    (fi_av_insert, (gupcr_av, epnames, gupcr_rank_cnt, NULL, 0, NULL));
+  {
+    int insert_cnt;
+    gupcr_fabric_call_nc
+      (fi_av_insert, insert_cnt,
+       (gupcr_av, epnames, gupcr_rank_cnt, NULL, 0, NULL));
+    if (insert_cnt != gupcr_rank_cnt)
+      gupcr_fatal_error ("cannot av insert %d entries (reported %d)",
+		       gupcr_rank_cnt, insert_cnt);
+  }
 }
 
 /**
@@ -507,13 +539,6 @@ void
 gupcr_fabric_ni_init (void)
 {
   int status;
-  /* Find the network id.  */
-  net_addr = check_ip_address (ifname);
-  if (net_addr == INADDR_ANY)
-    {
-      gupcr_fatal_error ("IPv4 is not available on interface %s", ifname);
-      gupcr_abort ();
-    }
   /* Allocate space for network addresses.  */
   net_addr_map = calloc (THREADS * sizeof (in_addr_t), 1);
   if (!net_addr_map)
