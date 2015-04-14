@@ -2227,9 +2227,59 @@ if test "$upc_runtime_model" = "fabric"; then
     fi
   ])
 
+  AC_MSG_CHECKING([for libfabric network device])
+  AC_ARG_WITH(fabric-device,
+  [AS_HELP_STRING([--with-fabric-device=DEVICE],
+                  [Specify network device for fabric interface [default ib0]])],
+  [
+    fabric_device="$withval"
+  ],
+  [
+    fabric_device="ib0"
+  ])
+  AC_MSG_RESULT($fabric_device)
+  AC_DEFINE_UNQUOTED(GUPCR_LIBFABRIC_DEVICE, "$fabric_device", [Libfabric device] )
+  AC_SUBST(GUPCR_LIBFABRIC_DEVICE,$fabric_device)
+
+  AC_MSG_CHECKING([for libfabric provider])
+  AC_ARG_WITH(fabric-provider,
+  [AS_HELP_STRING([--with-fabric-provider=PROVIDER],
+                  [Specify libfabric provider [default sockets]])],
+  [
+    fabric_provider="$withval"
+  ],
+  [
+    fabric_provider="sockets"
+  ])
+  AC_MSG_RESULT($fabric_provider)
+  AC_DEFINE_UNQUOTED(GUPCR_LIBFABRIC_PROVIDER, "$fabric_provider", [Libfabric provider] )
+  AC_SUBST(GUPCR_LIBFABRIC_PROVIDER,$fabric_provider)
+
+  AC_MSG_CHECKING([for libfabric shared context usage])
+  AC_ARG_ENABLE(fabric-shared-ctx,
+  [AS_HELP_STRING([--enable-fabric-shared-ctx],
+		  [Enable UPC runtime support for shared
+		   TX/RX context [default=no]])],
+  [
+    case $enableval in
+    yes | no) ;;
+    *)
+      AC_MSG_ERROR([--enable-fabric-shared-ctx accepts only yes or no.])
+    esac
+    enable_fabric_shared_ctx=$enableval
+  ],
+  [
+    enable_fabric_shared_ctx=no
+  ])
+  AC_MSG_RESULT($enable_fabric_shared_ctx)
+  if test "$enable_fabric_shared_ctx" = "yes"; then
+    AC_DEFINE(GUPCR_LIBFABRIC_SHARED_CTX, 1,
+      [Define to 1 if UPC runtime will use shared TX/RX context.])
+  fi
+
 fi #### End: Fabric configuration
 
-if test "$upc_runtime_model" = "portals4" &&
+if test "$upc_runtime_model" = "portals4" ||
    test "$upc_runtime_model" = "fabric"; then
 
   #### Infiniband based runtime library configuration ####
@@ -2437,6 +2487,7 @@ if test "$upc_runtime_model" = "portals4" &&
 
   AC_DEFINE(GUPCR_GLOBAL_EXIT_TIMEOUT, [2],
     [upc_global_exit() timeout in seconds.])
+  AC_SUBST(GUPCR_GLOBAL_EXIT_TIMEOUT, 2)
 
 fi #### End: Infiniband based runtime configuration
 

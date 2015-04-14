@@ -82,6 +82,15 @@
 /* Select upc_global_exit() timeout in seconds. */
 #cmakedefine GUPCR_GLOBAL_EXIT_TIMEOUT 2
 
+/* Select LIBFABRIC device. */
+#cmakedefine GUPCR_LIBFABRIC_DEVICE "@GUPCR_LIBFABRIC_DEVICE@"
+
+/* Select LIBFABRIC provider. */
+#cmakedefine GUPCR_LIBFABRIC_PROVIDER "@GUPCR_LIBFABRIC_PROVIDER@"
+
+/* Select LIBFABRIC shared context support. */
+#cmakedefine GUPCR_LIBFABRIC_SHARED_CTX @GUPCR_LIBFABRIC_SHARED_CTX@
+
 //end gupcr_config_h
 
 /* Define to 1 if you have the `clock_gettime' function. */

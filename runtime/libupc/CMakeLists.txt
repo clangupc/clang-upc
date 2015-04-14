@@ -45,7 +45,7 @@ option(LIBUPC_ENABLE_SHARED "Build libupc as a shared library. (Broken)" OFF)
 # Configure libupc
 
 set(LIBUPC_RUNTIME_MODEL smp CACHE STRING "specify the runtime implementation
-model for UPC, where MODEL may be: 'smp' (Symmetric Multiprocessing), 'portals4' (Infiniband with Portals4 library), or 'fabric' (Infiniband with libfabric library)")
+model for UPC, where MODEL may be: 'smp' (Symmetric Multiprocessing), 'portals4' (Infiniband with Portals4 library), or 'fabric' (Network with Libfabric library)")
 string(TOLOWER ${LIBUPC_RUNTIME_MODEL} LIBUPC_RUNTIME_MODEL)
 
 set(LIBUPC_ENABLE_LINK_SCRIPT TRUE CACHE STRING "enable UPC's use of a custom linker script; this will define the UPC shared section as a no load section on targets where this feature is supported (requires GNU LD)")
@@ -166,6 +166,13 @@ if (LIBUPC_RUNTIME_MODEL STREQUAL fabric)
   else()
     message(fatal_error "Libfabric not installed or wrong LIBUPC_FBRIC(${LIBUPC_FABRIC}) specified")
   endif()
+
+  set(LIBUPC_FABRIC_DEVICE ib0 CACHE STRING "Libfabric networking device")
+  set(GUPCR_LIBFABRIC_DEVICE ${LIBUPC_FABRIC_DEVICE})
+  set(LIBUPC_FABRIC_PROVIDER sockets CACHE STRING "Libfabric provider - sockets, verbs, gni, ...")
+  set(GUPCR_LIBFABRIC_PROVIDER ${LIBUPC_FABRIC_PROVIDER})
+  set(LIBUPC_FABRIC_SHARED_CTX FALSE CACHE BOOLEAN "Libfabric shared context support") 
+  set(GUPCR_LIBFABRIC_SHARED_CTX ${LIBUPC_FABRIC_SHARED_CTX})
 endif()
 
 if (LIBUPC_RUNTIME_MODEL STREQUAL portals4 OR

@@ -56,15 +56,13 @@ fab_av_t gupcr_av;
 static char epname[128];
 static char *epnames;
 
-
-// TODO: Configure network interface name and libfabric provider.
-//       Hack for getting network address.  We can get this from the
-//       fi_getinfo (?) but current implementation does not fill out src_addr
 /** Infiniband interface.  */
-const char *ifname = "ib0";
+static const char *ifname = GUPCR_LIBFABRIC_DEVICE;
 /** Libfabric provider */
-// Use 'socket' provider for now, as this needs to be configurable. 
-char *prov_name = (char *) "sockets";
+static const char *prov_name = GUPCR_LIBFABRIC_PROVIDER;
+/** Libfabric shared context (disabled by default) */
+int gupcr_enable_shared_ctx = 0;
+
 /** Interface IPv4 address */
 in_addr_t net_addr;
 /** IPv4 addresses for all ranks */
@@ -594,14 +592,27 @@ gupcr_fabric_init (void)
 
   /* Choose provider.  */
   hints.fabric_attr = &fi_attr;
-  hints.fabric_attr->prov_name = prov_name;
+  hints.fabric_attr->prov_name = (char *) prov_name;
 
 #define __GUPCR_STR__(S) #S
 #define __GUPCR_XSTR__(S) __GUPCR_STR__(S)
-  /*  Hard-coded service name for Portals PTE.  */
   gupcr_fabric_call (fi_getinfo,
 		     (FI_VERSION (1, 0), node, NULL,
 		      FI_SOURCE, &hints, &gupcr_fi));
+#if GUPCR_LIBFABRIC_SHARED_CTX
+  /* Check for shared context support.  In order to save TX/RX resources
+     endpoints can share TX/RX contexts.  */
+  {
+    int status;
+    fab_info_t ret_info;
+    ep_attr.tx_ctx_cnt = FI_SHARED_CONTEXT;
+    gupcr_fabric_call_nc (fi_getinfo, status, 
+		     (FI_VERSION (1, 0), node, NULL,
+		      FI_SOURCE, &hints, &ret_info));
+    if (!status)
+      gupcr_enable_shared_ctx = 1;
+  }
+#endif
   gupcr_fabric_call (fi_fabric, (gupcr_fi->fabric_attr, &gupcr_fab, NULL));
   gupcr_fabric_call (fi_domain, (gupcr_fab, gupcr_fi, &gupcr_fd, NULL));
 

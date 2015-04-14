@@ -807,6 +807,9 @@ LIBUPC_ENABLE_AFFINITY
 LIBUPC_ENABLE_NUMA
 LIBUPC_PORTALS4
 LIBUPC_FABRIC
+GUPCR_LIBFABRIC_DEVICE
+GUPCR_LIBFABRIC_PROVIDER
+GUPCR_GLOBAL_EXIT_TIMEOUT
 LIBOBJS
 LTLIBOBJS'
 ac_subst_files=''
@@ -1483,6 +1486,9 @@ Optional Features:
   --enable-upc-numa       enable UPC runtime NUMA support [default='yes']
   --enable-upc-gum-debug  enable UPC's source level debugging with GDB and GUM
                           support (requires UPC aware GDB)
+  --enable-fabric-shared-ctx
+                          Enable UPC runtime support for shared TX/RX context
+                          [default=no]
   --enable-upc-runtime-triggered-ops
                           Enable UPC runtime support for triggered operations
                           [default=yes]
@@ -1544,6 +1550,11 @@ Optional Packages:
                           used by the UPC runtime [default=16]
   --with-fabric=PATH      Specify prefix directory for installed libfabric
                           package
+  --with-fabric-device=DEVICE
+                          Specify network device for fabric interface
+                          [default], [ib0]
+  --with-fabric-provider=PROVIDER
+                          Specify libfabric provider [default], [sockets]
   --with-upc-runtime-bounce-buffer-size=SIZE
                           Specify the size (in bytes) of the bounce buffer
                           that is used by the UPC runtime to buffer network
@@ -10559,7 +10570,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 10562 "configure"
+#line 10573 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -23644,9 +23655,87 @@ echo "$as_me: error: Libfabric not found - use --with-fabric to specify one." >&
 fi
 
 
+  { echo "$as_me:$LINENO: checking for libfabric network device" >&5
+echo $ECHO_N "checking for libfabric network device... $ECHO_C" >&6; }
+
+# Check whether --with-fabric-device was given.
+if test "${with_fabric_device+set}" = set; then
+  withval=$with_fabric_device;
+    fabric_device="$withval"
+
+else
+
+    fabric_device="ib0"
+
+fi
+
+  { echo "$as_me:$LINENO: result: $fabric_device" >&5
+echo "${ECHO_T}$fabric_device" >&6; }
+
+cat >>confdefs.h <<_ACEOF
+#define GUPCR_LIBFABRIC_DEVICE "$fabric_device"
+_ACEOF
+
+  GUPCR_LIBFABRIC_DEVICE=$fabric_device
+
+
+  { echo "$as_me:$LINENO: checking for libfabric provider" >&5
+echo $ECHO_N "checking for libfabric provider... $ECHO_C" >&6; }
+
+# Check whether --with-fabric-provider was given.
+if test "${with_fabric_provider+set}" = set; then
+  withval=$with_fabric_provider;
+    fabric_provider="$withval"
+
+else
+
+    fabric_provider="sockets"
+
+fi
+
+  { echo "$as_me:$LINENO: result: $fabric_provider" >&5
+echo "${ECHO_T}$fabric_provider" >&6; }
+
+cat >>confdefs.h <<_ACEOF
+#define GUPCR_LIBFABRIC_PROVIDER "$fabric_provider"
+_ACEOF
+
+  GUPCR_LIBFABRIC_PROVIDER=$fabric_provider
+
+
+  { echo "$as_me:$LINENO: checking for libfabric shared context usage" >&5
+echo $ECHO_N "checking for libfabric shared context usage... $ECHO_C" >&6; }
+  # Check whether --enable-fabric-shared-ctx was given.
+if test "${enable_fabric_shared_ctx+set}" = set; then
+  enableval=$enable_fabric_shared_ctx;
+    case $enableval in
+    yes | no) ;;
+    *)
+      { { echo "$as_me:$LINENO: error: --enable-fabric-shared-ctx accepts only yes or no." >&5
+echo "$as_me: error: --enable-fabric-shared-ctx accepts only yes or no." >&2;}
+   { (exit 1); exit 1; }; }
+    esac
+    enable_fabric_shared_ctx=$enableval
+
+else
+
+    enable_fabric_shared_ctx=no
+
+fi
+
+  { echo "$as_me:$LINENO: result: $enable_fabric_shared_ctx" >&5
+echo "${ECHO_T}$enable_fabric_shared_ctx" >&6; }
+  if test "$enable_fabric_shared_ctx" = "yes"; then
+
+cat >>confdefs.h <<\_ACEOF
+#define GUPCR_LIBFABRIC_SHARED_CTX 1
+_ACEOF
+
+  fi
+
 fi #### End: Fabric configuration
 
-if test "$upc_runtime_model" = "portals4" &&
+if test "$upc_runtime_model" = "portals4" ||
    test "$upc_runtime_model" = "fabric"; then
 
   #### Infiniband based runtime library configuration ####
@@ -24210,6 +24299,8 @@ _ACEOF
 cat >>confdefs.h <<\_ACEOF
 #define GUPCR_GLOBAL_EXIT_TIMEOUT 2
 _ACEOF
+
+  GUPCR_GLOBAL_EXIT_TIMEOUT=2
 
 
 fi #### End: Infiniband based runtime configuration
@@ -25208,11 +25299,14 @@ LIBUPC_ENABLE_AFFINITY!$LIBUPC_ENABLE_AFFINITY$ac_delim
 LIBUPC_ENABLE_NUMA!$LIBUPC_ENABLE_NUMA$ac_delim
 LIBUPC_PORTALS4!$LIBUPC_PORTALS4$ac_delim
 LIBUPC_FABRIC!$LIBUPC_FABRIC$ac_delim
+GUPCR_LIBFABRIC_DEVICE!$GUPCR_LIBFABRIC_DEVICE$ac_delim
+GUPCR_LIBFABRIC_PROVIDER!$GUPCR_LIBFABRIC_PROVIDER$ac_delim
+GUPCR_GLOBAL_EXIT_TIMEOUT!$GUPCR_GLOBAL_EXIT_TIMEOUT$ac_delim
 LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 16; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 19; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
