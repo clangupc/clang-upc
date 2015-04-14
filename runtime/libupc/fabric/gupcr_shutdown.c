@@ -260,6 +260,7 @@ gupcr_shutdown_init (void)
   cntr_attr_t cntr_attr = { 0 };
   cq_attr_t cq_attr = { 0 };
   tx_attr_t tx_attr = { 0 };
+  rx_attr_t rx_attr = { 0 };
 
   gupcr_log (FC_MISC, "shutdown init called");
 
@@ -269,7 +270,7 @@ gupcr_shutdown_init (void)
 		     (gupcr_ep, GUPCR_SERVICE_SHUTDOWN, &tx_attr, &gupcr_shutdown_tx_ep,
 		      NULL));
   gupcr_fabric_call (fi_rx_context,
-		     (gupcr_ep, GUPCR_SERVICE_SHUTDOWN, NULL, &gupcr_shutdown_rx_ep,
+		     (gupcr_ep, GUPCR_SERVICE_SHUTDOWN, &rx_attr, &gupcr_shutdown_rx_ep,
 		      NULL));
 
   /* ... and completion counter/eq for remote read/write.  */

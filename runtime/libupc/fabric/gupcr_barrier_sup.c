@@ -314,6 +314,7 @@ gupcr_barrier_sup_init (void)
 {
   cntr_attr_t cntr_attr = { 0 };
   cq_attr_t cq_attr = { 0 };
+  rx_attr_t rx_attr = { 0 };
   tx_attr_t tx_attr = { 0 };
   tx_attr.op_flags = FI_TRANSMIT_COMPLETE;
 
@@ -365,7 +366,7 @@ gupcr_barrier_sup_init (void)
 	/* Create target side of the endpoint.  */ \
 	gupcr_##bar##_rx_count = 0; \
 	gupcr_fabric_call (fi_rx_context, \
-			   (gupcr_ep, ep_service, NULL, \
+			   (gupcr_ep, ep_service, &rx_attr, \
 			    &gupcr_##bar##_rx_ep, NULL)); \
 	/* Create target memory region.  Map the whole memory too.  */ \
 	gupcr_fabric_call (fi_mr_reg, (gupcr_fd, USER_PROG_MEM_START, \

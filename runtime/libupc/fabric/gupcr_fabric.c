@@ -112,10 +112,150 @@ const char *
 gupcr_strfaberror (int errnum)
 {
   static char gupcr_strfaberror_buf[64];
-  switch (errnum)
+  switch (-errnum)
     {
-    case 0:
-      return "fabric operation successful";
+    case FI_SUCCESS:
+      return "Sucess";
+      break;
+    case FI_ENOENT:
+      return "No such file or directory";
+      break;
+    case FI_EIO:
+      return "IO error";
+      break;
+    case FI_E2BIG:
+      return "Argument list too long";
+      break;
+    case FI_EBADF:
+      return "Bad file number";
+      break;
+    case FI_EAGAIN:
+      return "Try again";
+      break;
+    case FI_ENOMEM:
+      return "Out of memory";
+      break;
+    case FI_EACCES:
+      return "Permission denied";
+      break;
+    case FI_EBUSY:
+      return "Device or resource busy";
+      break;
+    case FI_ENODEV:
+      return "No such device";
+      break;
+    case FI_EINVAL:
+      return "Invalid argument";
+      break;
+    case FI_EMFILE:
+      return "Too many open files";
+      break;
+    case FI_ENOSPC:
+      return "No space left on device";
+      break;
+    case FI_ENOSYS:
+      return "Function not implemented";
+      break;
+    case FI_ENOMSG:
+      return "No message of desired type";
+      break;
+    case FI_ENODATA:
+      return "No data available";
+      break;
+    case FI_EMSGSIZE:
+      return "Message too long";
+      break;
+    case FI_ENOPROTOOPT:
+      return "Protocol not available";
+      break;
+    case FI_EOPNOTSUPP:
+      return "Operation not supported on transport endpoint";
+      break;
+    case FI_EADDRINUSE:
+      return "Address already in use";
+      break;
+    case FI_EADDRNOTAVAIL:
+      return "Cannot assign requested address";
+      break;
+    case FI_ENETDOWN:
+      return "Network is down";
+      break;
+    case FI_ENETUNREACH:
+      return "Network is unreachable";
+      break;
+    case FI_ECONNABORTED:
+      return "DSoftware caused connection abort";
+      break;
+    case FI_ECONNRESET:
+      return "Connection reset by peer";
+      break;
+    case FI_EISCONN:
+      return "Transport endpoint is already connected";
+      break;
+    case FI_ENOTCONN:
+      return "Transport endpoint is not connected";
+      break;
+    case FI_ESHUTDOWN:
+      return "Cannot send after transport endpoint shutdown";
+      break;
+    case FI_ETIMEDOUT:
+      return "Connection timed out";
+      break;
+    case FI_ECONNREFUSED:
+      return "Connection refused";
+      break;
+    case FI_EHOSTUNREACH:
+      return "No route to host";
+      break;
+    case FI_EALREADY:
+      return "Operation already in progress";
+      break;
+    case FI_EINPROGRESS:
+      return "Operation now in progress";
+      break;
+    case FI_EREMOTEIO:
+      return "Remote IO error/";
+      break;
+    case FI_ECANCELED:
+      return "Operation Canceled";
+      break;
+    case FI_EKEYREJECTED:
+      return "Key was rejected by service";
+      break;
+    case FI_EOTHER:
+      return "Unspecified error";
+      break;
+    case FI_ETOOSMALL:
+      return "Provided buffer is too small";
+      break;
+    case FI_EOPBADSTATE:
+      return "Operation not permitted in current state";
+      break;
+    case FI_EAVAIL:
+      return "Error available";
+      break;
+    case FI_EBADFLAGS	:
+      return "Flags not supported";
+      break;
+    case FI_ENOEQ:
+      return "Missing or unavailable event queue";
+      break;
+    case FI_EDOMAIN:
+      return "Invalid resource domain";
+      break;
+    case FI_ENOCQ:
+      return "Missing or unavailable completion queue";
+      break;
+    case FI_ECRC:
+      return "CRC error";
+      break;
+    case FI_ETRUNC:
+      return "Truncation error";
+      break;
+    case FI_ENOKEY:
+      return "Required key not available";
+      break;
+    
     default:
       break;
     }
