@@ -641,7 +641,11 @@ gupcr_fabric_init (void)
      each threads' endpoint indexed by the thread number.  */
   av_attr.type = FI_AV_TABLE;
   av_attr.count = gupcr_rank_cnt;
-  av_attr.name = "ENDPOINTS";
+  /* TODO: Naming AV allows for AV to be shared among threads on the same
+     node. 
+     av_attr.name = "ENDPOINTS";
+  */
+  av_attr.name = NULL;
   av_attr.rx_ctx_bits = GUPCR_SERVICE_BITS;
   gupcr_fabric_call (fi_av_open, (gupcr_fd, &av_attr, &gupcr_av, NULL));
   gupcr_fabric_call (fi_ep_bind, (gupcr_ep, &gupcr_av->fid, 0));
