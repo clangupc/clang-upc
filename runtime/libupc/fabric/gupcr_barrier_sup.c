@@ -327,7 +327,7 @@ gupcr_barrier_sup_init (void)
 	/* Create local memory region.  */ \
 	gupcr_fabric_call (fi_mr_reg, (gupcr_fd, USER_PROG_MEM_START, \
 				       USER_PROG_MEM_SIZE, \
-				       FI_READ | FI_WRITE, 0, 0, 0, \
+				       FI_READ | FI_WRITE, 0, 0, FI_MR_OFFSET, \
 				       &gupcr_##bar##_tx_mr,\
 				       NULL)); \
 	/* NOTE: No need to bind, implicitly done.  */ \
@@ -372,7 +372,7 @@ gupcr_barrier_sup_init (void)
 	gupcr_fabric_call (fi_mr_reg, (gupcr_fd, USER_PROG_MEM_START, \
 				       USER_PROG_MEM_SIZE, \
 				       FI_REMOTE_READ | FI_REMOTE_WRITE, \
-				       0, 0, 0, &gupcr_##bar##_rx_mr,\
+				       0, 0, FI_MR_OFFSET, &gupcr_##bar##_rx_mr,\
 				       NULL)); \
 	/* Create remote endpoint counter/queue.  */ \
 	cntr_attr.events = FI_CNTR_EVENTS_COMP; \

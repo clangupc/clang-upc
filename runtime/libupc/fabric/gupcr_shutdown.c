@@ -186,8 +186,8 @@ gupcr_shutdown_terminate_pthread (void)
 		      NULL, fi_rx_addr ((fi_addr_t) MYTHREAD,
 					GUPCR_SERVICE_SHUTDOWN,
 					GUPCR_SERVICE_BITS),
-		      (uint64_t) GUPCR_LOCAL_INDEX (&gupcr_shutdown_send_status), 0,
-		      NULL));
+		      (uint64_t) GUPCR_LOCAL_INDEX (&gupcr_shutdown_send_status),
+		      0, NULL));
   gupcr_shutdown_lmr_count += 1;
   pthread_join (gupcr_shutdown_pthread_id, NULL);
 }
@@ -267,11 +267,11 @@ gupcr_shutdown_init (void)
   /* Create context endpoints for shutdown signalling.  */
   tx_attr.op_flags = FI_TRANSMIT_COMPLETE;
   gupcr_fabric_call (fi_tx_context,
-		     (gupcr_ep, GUPCR_SERVICE_SHUTDOWN, &tx_attr, &gupcr_shutdown_tx_ep,
-		      NULL));
+		     (gupcr_ep, GUPCR_SERVICE_SHUTDOWN, &tx_attr,
+		      &gupcr_shutdown_tx_ep, NULL));
   gupcr_fabric_call (fi_rx_context,
-		     (gupcr_ep, GUPCR_SERVICE_SHUTDOWN, &rx_attr, &gupcr_shutdown_rx_ep,
-		      NULL));
+		     (gupcr_ep, GUPCR_SERVICE_SHUTDOWN, &rx_attr,
+		      &gupcr_shutdown_rx_ep, NULL));
 
   /* ... and completion counter/eq for remote read/write.  */
   cntr_attr.events = FI_CNTR_EVENTS_COMP;
@@ -279,13 +279,15 @@ gupcr_shutdown_init (void)
   gupcr_fabric_call (fi_cntr_open, (gupcr_fd, &cntr_attr,
 				    &gupcr_shutdown_lct, NULL));
   gupcr_fabric_call (fi_ep_bind, (gupcr_shutdown_tx_ep,
-			          &gupcr_shutdown_lct->fid, FI_READ | FI_WRITE));
+			          &gupcr_shutdown_lct->fid,
+				  FI_READ | FI_WRITE));
 
   /* ... and completion queue for remote target transfer errors.  */
   cq_attr.size = 1;
   cq_attr.format = FI_CQ_FORMAT_MSG;
   cq_attr.wait_obj = FI_WAIT_NONE;
-  gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_shutdown_lcq, NULL));
+  gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_shutdown_lcq,
+				  NULL));
   /* Use FI_EVENT flag to report errors only.  */
   gupcr_fabric_call (fi_ep_bind, (gupcr_shutdown_tx_ep,
 			          &gupcr_shutdown_lcq->fid,
@@ -294,14 +296,15 @@ gupcr_shutdown_init (void)
   /* NOTE: Create a local memory region before enabling endpoint.  */
   /* ... and memory region for local memory accesses.  */
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, USER_PROG_MEM_START,
-				 USER_PROG_MEM_SIZE, FI_READ | FI_WRITE,
-				 0, 0, 0, &gupcr_shutdown_lmr, NULL));
+				 USER_PROG_MEM_SIZE, FI_READ | FI_WRITE, 0, 0,
+				 FI_MR_OFFSET, &gupcr_shutdown_lmr, NULL));
   /* NOTE: There is no need to bind local memory region to endpoint.  */
   /*       Hmm ... ? We can probably use only one throughout the runtime,  */
   /*       as counters and events are bound to endpoint.  */
 #if 0
   gupcr_fabric_call (fi_ep_bind, (gupcr_shutdown_tx_ep,
-			          &gupcr_shutdown_lmr->fid, FI_READ | FI_WRITE));
+			          &gupcr_shutdown_lmr->fid,
+				  FI_READ | FI_WRITE));
 #endif
 
   /* Enable endpoints.  */
@@ -311,7 +314,7 @@ gupcr_shutdown_init (void)
   /* ... and memory region for remote inbound accesses.  */
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, gupcr_gmem_base, gupcr_gmem_size,
 				 FI_REMOTE_READ | FI_REMOTE_WRITE, 0,
-				 0, 0, &gupcr_shutdown_mr, NULL));
+				 0, FI_MR_OFFSET, &gupcr_shutdown_mr, NULL));
   /* ... and counter for remote inbound writes.  */
   cntr_attr.events = FI_CNTR_EVENTS_COMP;
   cntr_attr.flags = 0;
@@ -323,7 +326,8 @@ gupcr_shutdown_init (void)
   cq_attr.size = 1;
   cq_attr.format = FI_CQ_FORMAT_MSG;
   cq_attr.wait_obj = FI_WAIT_NONE;
-  gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_shutdown_cq, NULL));
+  gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr,
+				  &gupcr_shutdown_cq, NULL));
   gupcr_fabric_call (fi_mr_bind, (gupcr_shutdown_mr,
 			          &gupcr_shutdown_cq->fid,
 			          FI_REMOTE_WRITE | FI_EVENT));

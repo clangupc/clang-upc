@@ -599,6 +599,14 @@ gupcr_fabric_init (void)
   gupcr_fabric_call (fi_getinfo,
 		     (FI_VERSION (1, 0), node, NULL,
 		      FI_SOURCE, &hints, &gupcr_fi));
+  if (gupcr_fi->ep_attr->rx_ctx_cnt < GUPCR_SERVICE_COUNT)
+    gupcr_fatal_error ("cannot provide requested number of rx scalable "
+		       "contexts: req %d, prov %d", GUPCR_SERVICE_COUNT,
+		       (int) gupcr_fi->ep_attr->rx_ctx_cnt);
+  if (gupcr_fi->ep_attr->tx_ctx_cnt < GUPCR_SERVICE_COUNT)
+    gupcr_fatal_error ("cannot provide requested number of tx scalable "
+		       "contexts: req %d, prov %d", GUPCR_SERVICE_COUNT,
+		       (int) gupcr_fi->ep_attr->tx_ctx_cnt);
 #if GUPCR_LIBFABRIC_SHARED_CTX
   /* Check for shared context support.  In order to save TX/RX resources
      endpoints can share TX/RX contexts.  */
@@ -609,10 +617,12 @@ gupcr_fabric_init (void)
     gupcr_fabric_call_nc (fi_getinfo, status, 
 		     (FI_VERSION (1, 0), node, NULL,
 		      FI_SOURCE, &hints, &ret_info));
-    if (!status)
+    if (!status && (ret_info->ep_attr->tx_ctx_cnt == FI_SHARED_CONTEXT))
       gupcr_enable_shared_ctx = 1;
   }
 #endif
+  gupcr_fi->ep_attr->rx_ctx_cnt = GUPCR_SERVICE_COUNT;
+  gupcr_fi->ep_attr->tx_ctx_cnt = GUPCR_SERVICE_COUNT;
   gupcr_fabric_call (fi_fabric, (gupcr_fi->fabric_attr, &gupcr_fab, NULL));
   gupcr_fabric_call (fi_domain, (gupcr_fab, gupcr_fi, &gupcr_fd, NULL));
 
@@ -625,7 +635,7 @@ gupcr_fabric_init (void)
   gupcr_max_optim_size = gupcr_fi->tx_attr->inject_size;
 
   /* Create an endpoint for all UPC contexts.  */
-  gupcr_fabric_call (fi_endpoint, (gupcr_fd, gupcr_fi, &gupcr_ep, NULL));
+  gupcr_fabric_call (fi_scalable_ep, (gupcr_fd, gupcr_fi, &gupcr_ep, NULL));
 
   /* Other threads' endpoints are mapped via address vector table with
      each threads' endpoint indexed by the thread number.  */
@@ -677,8 +687,8 @@ gupcr_fabric_init (void)
 void
 gupcr_fabric_fini (void)
 {
-  gupcr_fabric_call (fi_close, (&gupcr_av->fid));
   gupcr_fabric_call (fi_close, (&gupcr_ep->fid));
+  gupcr_fabric_call (fi_close, (&gupcr_av->fid));
   free (epnames);
   gupcr_fabric_call (fi_close, (&gupcr_fab->fid));
 }
