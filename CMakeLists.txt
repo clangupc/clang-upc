@@ -323,12 +323,14 @@ if( LIBUPC_JOB_LAUNCHER STREQUAL "slurm" )
 endif()
 
 # UPC link script
-set(LIBUPC_ENABLE_LINK_SCRIPT TRUE CACHE STRING "enable UPC's use of a custom linker script; this will define the UPC shared section as a no load section on targets where this feature is supported (requires GNU LD)")
-if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin" OR
-    ${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
-  set(LIBUPC_ENABLE_LINK_SCRIPT FALSE)
-endif()
+set(LIBUPC_ENABLE_LINK_SCRIPT TRUE CACHE BOOL "enable UPC's use of a custom linker script; this will define the UPC shared section as a no load section on targets where this feature is supported (requires GNU LD)")
 set(LIBUPC_LINK_SCRIPT ${LIBUPC_ENABLE_LINK_SCRIPT})
+# Link sctipt option only works with GNU linker (not Gold, or others)
+string(REPLACE " " ";" CMAKE_C_FLAGS_LIST "${CMAKE_C_FLAGS} -Wl,--version")
+execute_process(COMMAND ${CMAKE_C_COMPILER} ${CMAKE_C_FLAGS_LIST} OUTPUT_VARIABLE LIBUPC_LD_VERSION ERROR_QUIET)
+if (NOT "${LIBUPC_LD_VERSION}" MATCHES "GNU ld")
+  set(LIBUPC_LINK_SCRIPT FALSE)
+endif()
 
 # Check for backtrace on systems (freebsd,..) that need an extra library
 set(LIBUPC_ENABLE_BACKTRACE TRUE CACHE STRING "enable UPC backtrace; enable stack frame backtrace report when UPC run-time fatal errors occur or by user request (via signal)")

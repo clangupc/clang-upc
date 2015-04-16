@@ -38,6 +38,14 @@ using namespace clang::driver::toolchains;
 using namespace clang;
 using namespace llvm::opt;
 
+static const char * getUPCLibDir(const llvm::Triple &Triple) {
+  if (Triple.getArch() == llvm::Triple::x86_64 &&
+      Triple.getEnvironment() == llvm::Triple::GNUX32)
+    return "/x32";
+
+  return Triple.isArch32Bit() ? "/32" : "";
+}
+
 MachO::MachO(const Driver &D, const llvm::Triple &Triple,
                        const ArgList &Args)
   : ToolChain(D, Triple, Args) {
@@ -63,7 +71,7 @@ Darwin::Darwin(const Driver & D, const llvm::Triple & Triple,
   llvm::raw_string_ostream(MacosxVersionMin)
     << Major << '.' << Minor << '.' << Micro;
 
-  getFilePaths().push_back(getDriver().Dir + "/../lib");
+  getFilePaths().push_back(getDriver().Dir + "/../lib" + getUPCLibDir(Triple));
 
   // FIXME: DarwinVersion is only used to find GCC's libexec directory.
   // It should be removed when we stop supporting that.
@@ -2541,7 +2549,7 @@ FreeBSD::FreeBSD(const Driver &D, const llvm::Triple& Triple, const ArgList &Arg
   else
     getFilePaths().push_back(getDriver().SysRoot + "/usr/lib");
 
-  getFilePaths().push_back(getDriver().Dir + "/../lib");
+  getFilePaths().push_back(getDriver().Dir + "/../lib" + getUPCLibDir(Triple));
 }
 
 ToolChain::CXXStdlibType
@@ -2659,7 +2667,7 @@ NetBSD::NetBSD(const Driver &D, const llvm::Triple& Triple, const ArgList &Args)
     getFilePaths().push_back("=/usr/lib");
   }
 
-  getFilePaths().push_back(getDriver().Dir + "/../lib");
+  getFilePaths().push_back(getDriver().Dir + "/../lib" + getUPCLibDir(Triple));
 }
 
 Tool *NetBSD::buildAssembler() const {
@@ -3195,6 +3203,8 @@ Linux::Linux(const Driver &D, const llvm::Triple &Triple, const ArgList &Args)
       addPathIfExists(LibPath, Paths);
   }
 
+  addPathIfExists(getDriver().Dir + "/../lib" + getUPCLibDir(Triple), Paths);
+
   // Similar to the logic for GCC above, if we are currently running Clang
   // inside of the requested system root, add its parent library path to those
   // searched.
@@ -3205,8 +3215,6 @@ Linux::Linux(const Driver &D, const llvm::Triple &Triple, const ArgList &Args)
 
   addPathIfExists(SysRoot + "/lib", Paths);
   addPathIfExists(SysRoot + "/usr/lib", Paths);
-
-  addPathIfExists(getDriver().Dir + "/../lib", Paths);
 }
 
 bool Linux::HasNativeLLVMSupport() const {
