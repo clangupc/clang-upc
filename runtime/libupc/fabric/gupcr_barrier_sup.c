@@ -147,7 +147,7 @@ gupcr_barrier_tr_put (enum barrier_dir dir, void *src,
   fab_ep_t ep = dir == BARRIER_UP ? gupcr_bup_tx_ep : gupcr_bdown_tx_ep;
   int bar_serv = dir == BARRIER_UP ?
 		GUPCR_SERVICE_BARRIER_UP : GUPCR_SERVICE_BARRIER_DOWN;
-  gupcr_assert (ctx < GUPCR_MAX_TRIG_CTX);
+  gupcr_assert (ctx < GUPCR_BAR_MAX_TRIG_CTX);
   gupcr_debug (FC_BARRIER, "%lx -> %d:%lx (%ld)", (unsigned long)src,
 	       thread, (unsigned long) dst, (unsigned long) count);
   trig_ctx[ctx].event_type = FI_TRIGGER_THRESHOLD;
@@ -227,7 +227,7 @@ gupcr_barrier_tr_atomic (int *src, int thread, int *dst, size_t trig, int ctx)
   struct fi_msg_atomic msg_atomic = {0};
   struct fi_ioc msg = {0};
   struct fi_rma_ioc endpt = {0};
-  gupcr_assert (ctx < GUPCR_MAX_TRIG_CTX);
+  gupcr_assert (ctx < GUPCR_BAR_MAX_TRIG_CTX);
   gupcr_debug (FC_BARRIER, "%lx -> %d:%lx (%ld)", (unsigned long)src,
 	       thread, (unsigned long) dst, sizeof (int));
   trig_ctx[ctx].event_type = FI_TRIGGER_THRESHOLD;
