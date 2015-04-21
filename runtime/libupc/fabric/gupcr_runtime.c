@@ -54,9 +54,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <rdma/fabric.h>
-#ifdef GUPCR_JOB_LAUNCHER_SLURM
-#include <slurm/pmi.h>
-#endif
+#include <pmi.h>
 
 /** Process rank */
 static int rank = -1;

@@ -44,11 +44,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <portals4.h>
-#ifdef GUPCR_JOB_LAUNCHER_SLURM
-#include <slurm/pmi.h>
-#else
-#include <portals4/pmi.h>
-#endif
+#include <pmi.h>
 
 struct map_t
 {

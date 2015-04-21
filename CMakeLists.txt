@@ -315,12 +315,7 @@ endif()
 
 include(CheckIncludeFiles)
 set(LIBUPC_JOB_LAUNCHER slurm CACHE STRING "select UPC job launcher (default=slurm).")
-if( LIBUPC_JOB_LAUNCHER STREQUAL "slurm" )
-  CHECK_INCLUDE_FILES("slurm/slurm.h" LIBUPC_JOB_LAUNCHER_SLURM)
-  if( NOT LIBUPC_JOB_LAUNCHER_SLURM )
-    message(fatal_error "UPC job launcher (${LIBUPC_JOB_LAUNCHER}) not available")
-  endif()
-endif()
+set(LIBUPC_JOB_PMI_LIBRARY_DIR /usr/lib64 CACHE PATH "select PMI library (default=/usr/lib64).")
 
 # UPC link script
 set(LIBUPC_ENABLE_LINK_SCRIPT TRUE CACHE BOOL "enable UPC's use of a custom linker script; this will define the UPC shared section as a no load section on targets where this feature is supported (requires GNU LD)")

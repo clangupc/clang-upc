@@ -212,15 +212,6 @@ if (LIBUPC_RUNTIME_MODEL STREQUAL portals4 OR
 	"specify the maximum number of outstanding remote put requests (default=256)")
   set(GUPCR_MAX_OUTSTANDING_PUTS ${LIBUPC_MAX_OUTSTANDING_PUTS})
 
-  set(LIBUPC_JOB_LAUNCHER slurm CACHE STRING "select UPC Portals4 job launcher (default=slurm).")
-  if (LIBUPC_JOB_LAUNCHER STREQUAL "slurm")
-    set(GUPCR_JOB_LAUNCHER_SLURM 1)
-  elseif (LIBUPC_JOB_LAUNCHER STREQUAL "yod")
-    set(GUPCR_JOB_LAUNCHER_YOD 1)
-  else()
-    message(fatal_error "Unrecognized job launcher (${LIBUPC_JOB_LAUNCHER}). Use slurm or yod.")
-  endif()
-
   set(LIBUPC_ENABLE_TRIGGERED_OPS TRUE CACHE STRING
 	"enable UPC runtime support for libfabric triggered operations.")
   set(GUPCR_USE_LIBFABRIC_TRIGGERED_OPS ${LIBUPC_ENABLE_TRIGGERED_OPS})
@@ -229,11 +220,18 @@ if (LIBUPC_RUNTIME_MODEL STREQUAL portals4 OR
 	"specify the maximum number of outstanding remote put requests (default=256)")
   set(GUPCR_MAX_OUTSTANDING_PUTS ${LIBUPC_MAX_OUTSTANDING_PUTS})
 
+  # Check for job launcher
   set(LIBUPC_JOB_LAUNCHER slurm CACHE STRING "select UPC job launcher (default=slurm).")
   if (LIBUPC_JOB_LAUNCHER STREQUAL "slurm")
     set(GUPCR_JOB_LAUNCHER_SLURM 1)
+  endif()
+
+  # Check for PMI.  Default to SLURM on x86_64 linux.
+  set(LIBUPC_JOB_PMI_INCLUDE_DIR /usr/include/slurm CACHE PATH "select PMI include (default=/usr/include/slurm).")
+  if(EXISTS ${LIBUPC_JOB_PMI_INCLUDE}/pmi.h)
+    set(LIBUPC_PMI_FLAGS "-I${LIBUPC_JOB_PMI_INCLUDE}")
   else()
-    message(fatal_error "Unrecognized job launcher (${LIBUPC_JOB_LAUNCHER}). Use slurm.")
+    message(fatal_error "pmi.h not found or wrong LIBUPC_JOB_PMI_INCLUDE(${LIBUPC_JOB_PMI_INCLUDE}) specified")
   endif()
 
   set(LIBUPC_GLOBAL_EXIT_TIMEOUT 2 CACHE STRING "Select upc_global_exit() timeout in seconds (default=2).")
@@ -657,7 +655,7 @@ foreach(config ${CONFIGURATIONS})
   set(flags "${flags} -m${multilib}")
 
   # Add special include directories (if any)
-  set(flags "${flags} ${LIBUPC_RUNTIME_FLAGS}")
+  set(flags "${flags} ${LIBUPC_RUNTIME_FLAGS} ${LIBUPC_PMI_FLAGS}")
 
   # Build in the target library
   set(lib_defs ${lib_defs};IN_TARGET_LIBS=1)
