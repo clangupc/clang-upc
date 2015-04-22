@@ -59,6 +59,9 @@
 /* SLURM job launcher support */
 #undef LIBUPC_JOB_LAUNCHER_SLURM
 
+/* PMI job manager support */
+#undef LIBUPC_JOB_PMI_LIBRARY_DIR
+
 /* Define if we have libxml2 */
 #undef CLANG_HAVE_LIBXML
 

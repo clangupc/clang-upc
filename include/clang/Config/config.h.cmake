@@ -56,6 +56,9 @@
 /* SLURM job launcher support */                                                    
 #cmakedefine LIBUPC_JOB_LAUNCHER_SLURM ${LIBUPC_JOB_LAUNCHER_SLURM}
 
+/* PMI job manager support */                                                    
+#cmakedefine LIBUPC_JOB_PMI_LIBRARY_DIR "${LIBUPC_JOB_PMI_LIBRARY_DIR}"
+
 /* Define if we have libxml2 */
 #cmakedefine CLANG_HAVE_LIBXML ${CLANG_HAVE_LIBXML}
 

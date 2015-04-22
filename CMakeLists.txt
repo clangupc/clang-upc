@@ -315,6 +315,7 @@ endif()
 
 include(CheckIncludeFiles)
 set(LIBUPC_JOB_LAUNCHER slurm CACHE STRING "select UPC job launcher (default=slurm).")
+# PMI library.  Defaults to SLURM on x86_64 linux.
 set(LIBUPC_JOB_PMI_LIBRARY_DIR /usr/lib64 CACHE PATH "select PMI library (default=/usr/lib64).")
 
 # UPC link script

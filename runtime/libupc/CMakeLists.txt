@@ -228,10 +228,10 @@ if (LIBUPC_RUNTIME_MODEL STREQUAL portals4 OR
 
   # Check for PMI.  Default to SLURM on x86_64 linux.
   set(LIBUPC_JOB_PMI_INCLUDE_DIR /usr/include/slurm CACHE PATH "select PMI include (default=/usr/include/slurm).")
-  if(EXISTS ${LIBUPC_JOB_PMI_INCLUDE}/pmi.h)
-    set(LIBUPC_PMI_FLAGS "-I${LIBUPC_JOB_PMI_INCLUDE}")
+  if(EXISTS ${LIBUPC_JOB_PMI_INCLUDE_DIR}/pmi.h)
+    set(LIBUPC_PMI_FLAGS "-I${LIBUPC_JOB_PMI_INCLUDE_DIR}")
   else()
-    message(fatal_error "pmi.h not found or wrong LIBUPC_JOB_PMI_INCLUDE(${LIBUPC_JOB_PMI_INCLUDE}) specified")
+    message(fatal_error "pmi.h not found or wrong LIBUPC_JOB_PMI_INCLUDE_DIR(${LIBUPC_JOB_PMI_INCLUDE_DIR}) specified")
   endif()
 
   set(LIBUPC_GLOBAL_EXIT_TIMEOUT 2 CACHE STRING "Select upc_global_exit() timeout in seconds (default=2).")
