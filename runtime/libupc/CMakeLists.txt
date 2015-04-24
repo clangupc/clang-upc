@@ -111,8 +111,17 @@ string(REGEX REPLACE [mM] "*1024K" tmp ${tmp})
 string(REGEX REPLACE [kK] "*1024" tmp ${tmp})
 math(EXPR GUPCR_BOUNCE_BUFFER_SIZE ${tmp})
 
-set(LIBUPC_GLOBAL_EXIT_TIMEOUT 2 CACHE STRING "upc_global_exit() timeout in seconds.")
+set(LIBUPC_MAX_LOCKS 1024 CACHE STRING "The maximum number of locks that can be held by a single UPC thread")
+set(GUPCR_MAX_LOCKS ${LIBUPC_MAX_LOCKS})
+
+set(LIBUPC_MEMORY_PAGE_SIZE 4096 CACHE STRING "Select target memory page size (default=4096).")
+set(GUPCR_MEMORY_PAGE_SIZE ${LIBUPC_MEMORY_PAGE_SIZE})
+
+set(LIBUPC_GLOBAL_EXIT_TIMEOUT 2 CACHE STRING "Select upc_global_exit() timeout in seconds (default=2).")
 set(GUPCR_GLOBAL_EXIT_TIMEOUT ${LIBUPC_GLOBAL_EXIT_TIMEOUT})
+
+set(LIBUPC_TREE_FANOUT 4 CACHE STRING "The maximum number of children in each sub-tree used to implement UPC collectives operations (e. g. upc_barrier)")
+set(GUPCR_TREE_FANOUT ${LIBUPC_TREE_FANOUT})
 
 set(LIBUPC_ENABLE_RUNTIME_CHECKS FALSE CACHE BOOL "enable internal UPC runtime checks that validate arguments, and check for inconsistent runtime state.")
 set(GUPCR_HAVE_CHECKS ${LIBUPC_ENABLE_RUNTIME_CHECKS})
@@ -128,9 +137,6 @@ set(GUPCR_HAVE_STATS ${LIBUPC_ENABLE_RUNTIME_STATS})
 
 set(LIBUPC_ENABLE_RUNTIME_TRACE FALSE CACHE BOOL "enable internal UPC runtime trace collection support; a runtime trace is a time stamped log that records various significant internal events; this trace is written to a per-process log file.")
 set(GUPCR_HAVE_TRACE ${LIBUPC_ENABLE_RUNTIME_TRACE})
-
-set(LIBUPC_MAX_LOCKS 1024 CACHE STRING "The maximum number of locks that can be held by a single UPC thread")
-set(GUPCR_MAX_LOCKS ${LIBUPC_MAX_LOCKS})
 
 include(CheckFunctionExists)
 include(CheckLibraryExists)
@@ -201,15 +207,6 @@ if (LIBUPC_RUNTIME_MODEL STREQUAL portals4)
     message(fatal_error "Unrecognized job launcher (${LIBUPC_JOB_LAUNCHER}). Use slurm or yod.")
   endif()
 endif()
-
-set(LIBUPC_MEMORY_PAGE_SIZE 4096 CACHE STRING "Select target memory page size (default=4096).")
-set(GUPCR_MEMORY_PAGE_SIZE ${LIBUPC_MEMORY_PAGE_SIZE})
-
-set(LIBUPC_GLOBAL_EXIT_TIMEOUT 2 CACHE STRING "Select upc_global_exit() timeout in seconds (default=2).")
-set(GUPCR_GLOBAL_EXIT_TIMEOUT ${LIBUPC_GLOBAL_EXIT_TIMEOUT})
-
-set(LIBUPC_TREE_FANOUT 4 CACHE STRING "The maximum number of children in each sub-tree used to implement UPC collectives operations (e. g. upc_barrier)")
-set(GUPCR_TREE_FANOUT ${LIBUPC_TREE_FANOUT})
 
 set(CMAKE_REQUIRED_LIBRARIES rt)
 check_function_exists(clock_gettime HAVE_CLOCK_GETTIME)
