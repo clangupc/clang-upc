@@ -318,19 +318,19 @@ gupcr_barrier_sup_init (void)
   tx_attr_t tx_attr = { 0 };
   tx_attr.op_flags = FI_TRANSMIT_COMPLETE;
 
-#define CREATE_ENDPOINTS(bar,ep_service) \
+#define CREATE_ENDPOINTS(bar,ep_service,mr_key) \
 	gupcr_##bar##_tx_put_count = 0; \
 	gupcr_##bar##_tx_get_count = 0; \
 	gupcr_fabric_call (fi_tx_context, \
 			   (gupcr_ep, ep_service, &tx_attr, \
 			    &gupcr_##bar##_tx_ep, NULL)); \
-	/* Create local memory region.  */ \
-	gupcr_fabric_call (fi_mr_reg, (gupcr_fd, USER_PROG_MEM_START, \
-				       USER_PROG_MEM_SIZE, \
-				       FI_READ | FI_WRITE, 0, 0, FI_MR_OFFSET, \
-				       &gupcr_##bar##_tx_mr,\
-				       NULL)); \
-	/* NOTE: No need to bind, implicitly done.  */ \
+//	/* Create local memory region.  */ \
+//	gupcr_fabric_call (fi_mr_reg, (gupcr_fd, USER_PROG_MEM_START, \
+//				       USER_PROG_MEM_SIZE, \
+//				       FI_READ | FI_WRITE, 0, 0, 0, \
+//				       &gupcr_##bar##_tx_mr,\
+//				       NULL)); \
+//	/* NOTE: No need to bind, implicitly done.  */ \
 	/* Create local endpoint counter/queue.  */ \
 	cntr_attr.events = FI_CNTR_EVENTS_COMP; \
 	cntr_attr.flags = 0; \
@@ -360,9 +360,9 @@ gupcr_barrier_sup_init (void)
 				       FI_READ)); \
 	/* Enable endpoint.  */ \
 	gupcr_fabric_call (fi_enable, (gupcr_##bar##_tx_ep)); \
-	gupcr_fabric_call (fi_ep_bind, (gupcr_##bar##_tx_ep, \
-				       &gupcr_##bar##_tx_mr->fid, \
-				       FI_WRITE | FI_READ)); \
+//	gupcr_fabric_call (fi_ep_bind, (gupcr_##bar##_tx_ep, \
+//				       &gupcr_##bar##_tx_mr->fid, \
+//				       FI_WRITE | FI_READ)); \
 	/* Create target side of the endpoint.  */ \
 	gupcr_##bar##_rx_count = 0; \
 	gupcr_fabric_call (fi_rx_context, \
@@ -372,7 +372,7 @@ gupcr_barrier_sup_init (void)
 	gupcr_fabric_call (fi_mr_reg, (gupcr_fd, USER_PROG_MEM_START, \
 				       USER_PROG_MEM_SIZE, \
 				       FI_REMOTE_READ | FI_REMOTE_WRITE, \
-				       0, 0, FI_MR_OFFSET, &gupcr_##bar##_rx_mr,\
+				       0, mr_key, 0, &gupcr_##bar##_rx_mr,\
 				       NULL)); \
 	/* Create remote endpoint counter/queue.  */ \
 	cntr_attr.events = FI_CNTR_EVENTS_COMP; \
@@ -396,8 +396,8 @@ gupcr_barrier_sup_init (void)
 				       &gupcr_##bar##_rx_mr->fid, \
 				       FI_REMOTE_WRITE | FI_REMOTE_READ)); \
 
-  CREATE_ENDPOINTS (bup, GUPCR_SERVICE_BARRIER_UP);
-  CREATE_ENDPOINTS (bdown, GUPCR_SERVICE_BARRIER_DOWN);
+  CREATE_ENDPOINTS (bup, GUPCR_SERVICE_BARRIER_UP, GUPCR_MR_BARRIER_UP);
+  CREATE_ENDPOINTS (bdown, GUPCR_SERVICE_BARRIER_DOWN, GUPCR_MR_BARRIER_DOWN);
 }
 
 /**

@@ -140,8 +140,8 @@ gupcr_signal_exit (int status)
 			  NULL, fi_rx_addr ((fi_addr_t) thread,
 					    GUPCR_SERVICE_SHUTDOWN,
 					    GUPCR_SERVICE_BITS),
-			  (uint64_t) GUPCR_LOCAL_INDEX (&gupcr_shutdown_send_status), 0,
-			  NULL));
+			  (uint64_t) GUPCR_LOCAL_INDEX (&gupcr_shutdown_send_status),
+			  GUPCR_MR_SHUTDOWN, NULL));
     }
   /* It is NOT ok to call finalize routines as there might
      be outstanding transactions.  */
@@ -187,7 +187,7 @@ gupcr_shutdown_terminate_pthread (void)
 					GUPCR_SERVICE_SHUTDOWN,
 					GUPCR_SERVICE_BITS),
 		      (uint64_t) GUPCR_LOCAL_INDEX (&gupcr_shutdown_send_status),
-		      0, NULL));
+		      GUPCR_MR_SHUTDOWN, NULL));
   gupcr_shutdown_lmr_count += 1;
   pthread_join (gupcr_shutdown_pthread_id, NULL);
 }
@@ -293,15 +293,15 @@ gupcr_shutdown_init (void)
 			          &gupcr_shutdown_lcq->fid,
 			          FI_READ | FI_WRITE | FI_EVENT));
 
+#if LOCAL_MR_NEEDED
   /* NOTE: Create a local memory region before enabling endpoint.  */
   /* ... and memory region for local memory accesses.  */
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, USER_PROG_MEM_START,
 				 USER_PROG_MEM_SIZE, FI_READ | FI_WRITE, 0, 0,
-				 FI_MR_OFFSET, &gupcr_shutdown_lmr, NULL));
+				 0, &gupcr_shutdown_lmr, NULL));
   /* NOTE: There is no need to bind local memory region to endpoint.  */
   /*       Hmm ... ? We can probably use only one throughout the runtime,  */
   /*       as counters and events are bound to endpoint.  */
-#if 0
   gupcr_fabric_call (fi_ep_bind, (gupcr_shutdown_tx_ep,
 			          &gupcr_shutdown_lmr->fid,
 				  FI_READ | FI_WRITE));
@@ -314,7 +314,7 @@ gupcr_shutdown_init (void)
   /* ... and memory region for remote inbound accesses.  */
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, gupcr_gmem_base, gupcr_gmem_size,
 				 FI_REMOTE_READ | FI_REMOTE_WRITE, 0,
-				 0, FI_MR_OFFSET, &gupcr_shutdown_mr, NULL));
+				 GUPCR_MR_SHUTDOWN, 0, &gupcr_shutdown_mr, NULL));
   /* ... and counter for remote inbound writes.  */
   cntr_attr.events = FI_CNTR_EVENTS_COMP;
   cntr_attr.flags = 0;

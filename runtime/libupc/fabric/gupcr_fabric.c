@@ -561,6 +561,7 @@ gupcr_fabric_init (void)
 {
   struct fi_info hints = { 0 };
   struct fi_fabric_attr fi_attr = { 0 };
+  struct fi_domain_attr fi_domain_attr = { 0 };
   av_attr_t av_attr = { 0 };
   ep_attr_t ep_attr = { 0 };
   size_t epnamelen = sizeof (epname);
@@ -582,8 +583,7 @@ gupcr_fabric_init (void)
 
   /* Find fabric provider based on the hints.  */
   hints.caps = FI_RMA |		/* Request RMA capability,  */
-    FI_ATOMICS | 		/* atomics capability,  */
-    FI_DYNAMIC_MR;		/* MR without physical backing,  */
+    FI_ATOMICS; 		/* atomics capability,  */
   ep_attr.type = FI_EP_RDM;	/* Reliable datagram message.  */
   hints.addr_format = FI_FORMAT_UNSPEC;
   ep_attr.rx_ctx_cnt = GUPCR_SERVICE_COUNT;
@@ -593,6 +593,10 @@ gupcr_fabric_init (void)
   /* Choose provider.  */
   hints.fabric_attr = &fi_attr;
   hints.fabric_attr->prov_name = (char *) prov_name;
+
+  /* Set domain requirements.  */
+  fi_domain_attr.mr_mode = FI_MR_SCALABLE;
+  hints.domain_attr = &fi_domain_attr;
 
 #define __GUPCR_STR__(S) #S
 #define __GUPCR_XSTR__(S) __GUPCR_STR__(S)

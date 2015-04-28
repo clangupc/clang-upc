@@ -278,15 +278,15 @@ gupcr_lock_init (void)
   gupcr_fabric_call (fi_ep_bind, (gupcr_lock_tx_ep, &gupcr_lock_lcq->fid,
 				  FI_READ | FI_WRITE | FI_EVENT));
 
+#if LOCAL_MR_NEEDED
   /* NOTE: Create a local memory region before enabling endpoint.  */
   /* ... and memory region for local memory accesses.  */
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, USER_PROG_MEM_START,
 				 USER_PROG_MEM_SIZE, FI_READ | FI_WRITE,
-				 0, 0, FI_MR_OFFSET, &gupcr_lock_lmr, NULL));
+				 0, 0, 0, &gupcr_lock_lmr, NULL));
   /* NOTE: There is no need to bind local memory region to endpoint.  */
   /*       Hmm ... ? We can probably use only one throughout the runtime,  */
   /*       as counters and events are bound to endpoint.  */
-#if 0
   gupcr_fabric_call (fi_ep_bind, (gupcr_lock_tx_ep, &gupcr_lock_lmr->fid,
 				  FI_READ | FI_WRITE));
 #endif
@@ -298,7 +298,7 @@ gupcr_lock_init (void)
   /* ... and memory region for remote inbound accesses.  */
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, gupcr_gmem_base, gupcr_gmem_size,
 				 FI_REMOTE_READ | FI_REMOTE_WRITE, 0,
-				 0, FI_MR_OFFSET, &gupcr_lock_mr, NULL));
+				 GUPCR_MR_LOCK, 0, &gupcr_lock_mr, NULL));
   /* ... and counter for remote inbound writes.  */
   cntr_attr.events = FI_CNTR_EVENTS_COMP;
   cntr_attr.flags = 0;

@@ -482,11 +482,11 @@ gupcr_gmem_init (void)
 			          &gupcr_gmem_cq->fid,
 			          FI_READ | FI_WRITE | FI_EVENT));
 
+#if LOCAL_MR_NEEDED
   /* Create a memory region for local memory accesses.  */
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, USER_PROG_MEM_START,
 				 USER_PROG_MEM_SIZE, FI_READ | FI_WRITE,
-				 0, 0, FI_MR_OFFSET, &gupcr_gmem_lmr, NULL));
-#if 0
+				 0, 0, 0, &gupcr_gmem_lmr, NULL));
   /* NOTE: No need to bind, it is done implictly.  */
   gupcr_fabric_call (fi_ep_bind, (gupcr_gmem_tx_ep,
 			          &gupcr_gmem_lmr->fid, FI_READ | FI_WRITE));
@@ -496,7 +496,7 @@ gupcr_gmem_init (void)
   /* Create a memory region for remote inbound accesses.  */
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, gupcr_gmem_base, gupcr_gmem_size,
 				 FI_REMOTE_READ | FI_REMOTE_WRITE, 0,
-				 0, FI_MR_OFFSET, &gupcr_gmem_mr, NULL));
+				 GUPCR_MR_GMEM, 0, &gupcr_gmem_mr, NULL));
   gupcr_fabric_call (fi_enable, (gupcr_gmem_rx_ep));
   gupcr_fabric_call (fi_ep_bind, (gupcr_gmem_rx_ep,
 			          &gupcr_gmem_mr->fid,

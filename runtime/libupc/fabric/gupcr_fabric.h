@@ -54,6 +54,15 @@
 #define	GUPCR_SERVICE_BITS		8
 /** @} */
 
+/* GUPCR Memory Regions keys */
+#define	GUPCR_MR_GMEM		1
+#define	GUPCR_MR_BARRIER_UP	2
+#define	GUPCR_MR_BARRIER_DOWN	3
+#define	GUPCR_MR_LOCK		4
+#define	GUPCR_MR_SHUTDOWN	5
+#define	GUPCR_MR_COLL		6
+#define	GUPCR_MR_NB		7
+
 //begin lib_fabric
 
 typedef struct fi_info *fab_info_t;
