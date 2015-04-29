@@ -73,8 +73,10 @@ fab_ep_t gupcr_gmem_tx_ep;
 fab_cq_t gupcr_gmem_cq;
 /** Remote access memory region  */
 fab_mr_t gupcr_gmem_mr;
+#if MR_LOCAL_NEEDED
 /** Local memory access memory region  */
 fab_mr_t gupcr_gmem_lmr;
+#endif
 
 /**
  * Allocate memory for this thread's shared space contribution.
@@ -123,7 +125,7 @@ gupcr_gmem_sync_gets (void)
 			     GUPCR_TRANSFER_TIMEOUT));
       if (status != 0)
 	{
-	  gupcr_process_fail_events (gupcr_gmem_cq);
+	  gupcr_process_fail_events (status, "sync gets", gupcr_gmem_cq);
 	  gupcr_abort ();
 	}
       gupcr_gmem_gets.num_pending = 0;
@@ -157,7 +159,7 @@ gupcr_gmem_sync_puts (void)
 			     GUPCR_TRANSFER_TIMEOUT));
       if (status != 0)
 	{
-	  gupcr_process_fail_events (gupcr_gmem_cq);
+	  gupcr_process_fail_events (status, "sync puts", gupcr_gmem_cq);
 	  gupcr_abort ();
 	}
       gupcr_gmem_puts.num_pending = 0;
@@ -209,7 +211,7 @@ gupcr_gmem_get (void *dest, int thread, size_t offset, size_t n)
 			 (gupcr_gmem_tx_ep, loc_addr, n_xfer, NULL,
 			  fi_rx_addr ((fi_addr_t) thread, GUPCR_SERVICE_GMEM,
 				      GUPCR_SERVICE_BITS),
-			  dest_offset, 0, NULL));
+			  dest_offset, GUPCR_MR_GMEM, NULL));
       n_rem -= n_xfer;
       loc_addr += n_xfer;
       dest_offset += n_xfer;
@@ -254,7 +256,7 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 			      n_xfer, fi_rx_addr ((fi_addr_t) thread,
 						  GUPCR_SERVICE_GMEM,
 						  GUPCR_SERVICE_BITS), offset,
-			      0));
+			      GUPCR_MR_GMEM));
 	}
       else
 	{
@@ -280,8 +282,8 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 			      GUPCR_LOCAL_INDEX (local_offset), n_xfer, NULL,
 			      fi_rx_addr ((fi_addr_t) thread,
 					  GUPCR_SERVICE_GMEM,
-					  GUPCR_SERVICE_BITS), offset, 0,
-			      NULL));
+					  GUPCR_SERVICE_BITS), offset,
+			      GUPCR_MR_GMEM, NULL));
 	}
       n_rem -= n_xfer;
       src_addr += n_xfer;
@@ -296,7 +298,7 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 				 GUPCR_TRANSFER_TIMEOUT));
 	  if (status != 0)
 	    {
-	      gupcr_process_fail_events (gupcr_gmem_cq);
+	      gupcr_process_fail_events (status, "gmem put", gupcr_gmem_cq);
 	      gupcr_abort ();
 	    }
 	  gupcr_gmem_puts.num_pending -= wait_cnt -
@@ -355,8 +357,8 @@ gupcr_gmem_copy (int dthread, size_t doffset,
 			  GUPCR_LOCAL_INDEX (local_offset), n_xfer, NULL,
 			  fi_rx_addr ((fi_addr_t) dthread,
 				      GUPCR_SERVICE_GMEM,
-				      GUPCR_SERVICE_BITS), dest_addr, 0,
-			  NULL));
+				      GUPCR_SERVICE_BITS), dest_addr,
+			  GUPCR_MR_GMEM, NULL));
       n_rem -= n_xfer;
       src_addr += n_xfer;
       dest_addr += n_xfer;
@@ -411,7 +413,7 @@ gupcr_gmem_set (int thread, size_t offset, int c, size_t n)
 			  n_xfer, NULL, fi_rx_addr ((fi_addr_t) thread,
 						    GUPCR_SERVICE_GMEM,
 						    GUPCR_SERVICE_BITS),
-			  dest_addr, 0, NULL));
+			  dest_addr, GUPCR_MR_GMEM, NULL));
       n_rem -= n_xfer;
       dest_addr += n_xfer;
     }
@@ -517,7 +519,9 @@ gupcr_gmem_fini (void)
   gupcr_fabric_call (fi_close, (&gupcr_gmem_gets.ct_handle->fid));
   gupcr_fabric_call (fi_close, (&gupcr_gmem_cq->fid));
   gupcr_fabric_call (fi_close, (&gupcr_gmem_mr->fid));
+#if LOCAL_MR_NEEDED
   gupcr_fabric_call (fi_close, (&gupcr_gmem_lmr->fid));
+#endif
   /* NOTE: Do not check for errors. Fails occasionally.  */
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_gmem_tx_ep->fid));
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_gmem_rx_ep->fid));

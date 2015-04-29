@@ -107,8 +107,10 @@ fab_cq_t gupcr_shutdown_cq;
 fab_cq_t gupcr_shutdown_lcq;
 /** Remote access memory region  */
 fab_mr_t gupcr_shutdown_mr;
+#if LOCAL_MR_NEEDED
 /** Local memory access memory region  */
 fab_mr_t gupcr_shutdown_lmr;
+#endif
 
 /**
  * Send a remote shutdown request to all threads.
@@ -369,7 +371,9 @@ gupcr_shutdown_fini (void)
   gupcr_fabric_call (fi_close, (&gupcr_shutdown_lct->fid));
   gupcr_fabric_call (fi_close, (&gupcr_shutdown_cq->fid));
   gupcr_fabric_call (fi_close, (&gupcr_shutdown_mr->fid));
+#if MR_LOCAL_NEEDED
   gupcr_fabric_call (fi_close, (&gupcr_shutdown_lmr->fid));
+#endif
   /* NOTE: Do not check for errors.  Fails occasionally.  */
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_shutdown_rx_ep->fid));
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_shutdown_tx_ep->fid));

@@ -145,10 +145,10 @@ extern size_t gupcr_max_optim_size;
     if (status)								\
       {									\
         if (status == FI_ETIMEDOUT)					\
-	  gupcr_fatal_error (msg);					\
+	  gupcr_fatal_error ("TIMEOUT: " msg);				\
         else								\
 	  {								\
-	    gupcr_process_fail_events (queue);				\
+	    gupcr_process_fail_events (status, msg, queue);		\
 	    gupcr_abort ();						\
 	  }								\
       }									\
@@ -181,7 +181,7 @@ extern const char *gupcr_strfaberror (int);
 extern const char *gupcr_streqtype (uint64_t);
 extern const char *gupcr_strop (enum fi_op);
 extern const char *gupcr_strdatatype (enum fi_datatype);
-extern void gupcr_process_fail_events (fab_cq_t);
+extern void gupcr_process_fail_events (int, const char *, fab_cq_t);
 extern enum fi_datatype gupcr_get_atomic_datatype (int);
 extern size_t gupcr_get_atomic_size (enum fi_datatype);
 extern int gupcr_get_rank (void);

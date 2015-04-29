@@ -462,7 +462,6 @@ gupcr_get_atomic_size (enum fi_datatype type)
 }
 
 /**
- * @fn gupcr_process_fail_events (struct fid_eq eq)
  * Show information on failed events.
  *
  * This procedure prints the contents of the event queue.  As
@@ -470,10 +469,12 @@ gupcr_get_atomic_size (enum fi_datatype type)
  * only failure events.  This procedure is called only if any of the
  * counting events reported a failure.
  *
+ * @param [in] status Function return code
+ * @param [in] msg Caller message
  * @param [in] eq Completion Queue ID
  */
 void
-gupcr_process_fail_events (fab_cq_t cq)
+gupcr_process_fail_events (int status, const char *msg, fab_cq_t cq)
 {
   int ret;
   struct fi_cq_msg_entry cq_entry;
@@ -489,10 +490,11 @@ gupcr_process_fail_events (fab_cq_t cq)
       gupcr_fabric_call_nc (fi_cq_strerror, errstr,
 			    (cq, cq_error.err, cq_error.err_data,
 			     buf, sizeof (buf)));
-      gupcr_error ("%s", buf);
+      gupcr_error ("err code: %d, msg: %s, error string: %s",
+		   status, msg, buf);
     }
   else
-    gupcr_fatal_error ("ctr reported an error, but cq has none");
+    gupcr_fatal_error ("error %d was reported, but cq has none", status);
 }
 
 /**
