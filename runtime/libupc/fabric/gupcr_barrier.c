@@ -263,7 +263,6 @@ __upc_wait (int barrier_id)
 		   gupcr_barrier_id, barrier_id);
     }
 
-  gupcr_runtime_barrier ();
   if (THREADS == 1)
     {
       gupcr_barrier_active = 0;

@@ -494,7 +494,8 @@ gupcr_process_fail_events (int status, const char *msg, fab_cq_t cq)
 		   status, msg, buf);
     }
   else
-    gupcr_fatal_error ("error %d was reported, but cq has none", status);
+    gupcr_fatal_error ("err code: %d, msg: %s, error string: none",
+		       status, msg);
 }
 
 /**
