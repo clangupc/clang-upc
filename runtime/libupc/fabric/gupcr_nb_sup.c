@@ -153,7 +153,7 @@ gupcr_nbcb_find (unsigned long id)
 }
 
 /**
- * Non-blocking implicit handle GET operation
+ * Non-blocking GET operation
  *
  * @param[in] sthread Source thread
  * @param[in] soffset Source offset
@@ -188,7 +188,9 @@ gupcr_nb_get (size_t sthread, size_t soffset, char *dst_ptr,
       size_t n_xfer;
       n_xfer = GUPCR_MIN (n_rem, GUPCR_MAX_MSG_SIZE);
       // TODO - execute get
-      if (!handle)
+      if (handle)
+	gupcr_nb_outstanding += 1;
+      else
         gupcr_nbi_md_count += 1;
       n_rem -= n_xfer;
       local_offset += n_xfer;
@@ -241,7 +243,9 @@ gupcr_nb_put (size_t dthread, size_t doffset, const void *src_ptr,
       size_t n_xfer;
       n_xfer = GUPCR_MIN (n_rem, GUPCR_MAX_MSG_SIZE);
       // TOD - execute put
-      if (!handle)
+      if (handle)
+	gupcr_nb_outstanding += 1;
+      else
         gupcr_nbi_md_count += 1;
       n_rem -= n_xfer;
       local_offset += n_xfer;
