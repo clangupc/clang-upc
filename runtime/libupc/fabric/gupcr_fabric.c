@@ -490,12 +490,12 @@ gupcr_process_fail_events (int status, const char *msg, fab_cq_t cq)
       gupcr_fabric_call_nc (fi_cq_strerror, errstr,
 			    (cq, cq_error.err, cq_error.err_data,
 			     buf, sizeof (buf)));
-      gupcr_error ("err code: %d, msg: %s, error string: %s",
-		   status, msg, buf);
+      gupcr_error ("err code: %s, msg: %s, error string: %s",
+		   gupcr_strfaberror (status), msg, buf);
     }
   else
-    gupcr_fatal_error ("err code: %d, msg: %s, error string: none",
-		       status, msg);
+    gupcr_fatal_error ("err code: %s, msg: %s, error string: none",
+		       gupcr_strfaberror (status), msg);
 }
 
 /**
