@@ -142,17 +142,23 @@ extern size_t gupcr_max_optim_size;
 
 /** Check for timeout error code */
 #define GUPCR_TIMEOUT_CHECK(status, msg, queue) 			\
-    if (status)								\
+    {									\
+      int errcode = -(int)status;					\
+      if (errcode)							\
       {									\
-        if (status == FI_ETIMEDOUT)					\
-	  gupcr_fatal_error ("TIMEOUT: " msg);				\
-        else								\
+        switch (errcode)						\
 	  {								\
-	    gupcr_process_fail_events (status, msg, queue);		\
-	    gupcr_abort ();						\
+	    case FI_ETIMEDOUT:						\
+	      gupcr_fatal_error ("[%d] TIMEOUT: %s", gupcr_get_rank(),	\
+				  msg);					\
+	      break;							\
+	    default:							\
+	      gupcr_process_fail_events (errcode, msg, queue);		\
+	      gupcr_abort ();						\
 	  }								\
       }									\
-    
+    }
+
 /**
  * @addtogroup GLOBAL GUPCR Global Variables
  * @{
