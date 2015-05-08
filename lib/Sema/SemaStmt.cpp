@@ -64,12 +64,17 @@ StmtResult Sema::ActOnNullStmt(SourceLocation SemiLoc,
 }
 
 StmtResult Sema::ActOnPragmaUPC(SourceLocation PragmaLoc, PragmaUPCKind Kind) {
-  bool IsStrict = (Kind == PUPCK_Strict);
-  if (getCurFunction()->CompoundScopes.empty())
-    UPCIsStrict = IsStrict;
-  else
-    getCurCompoundScope().UPCIsStrict = IsStrict;
-  return new (Context) UPCPragmaStmt(PragmaLoc, IsStrict);
+  if (Kind == PUPCK_Strict || Kind == PUPCK_Relaxed) {
+    bool IsStrict = (Kind == PUPCK_Strict);
+    if (getCurFunction()->CompoundScopes.empty())
+      UPCIsStrict = IsStrict;
+    else
+      getCurCompoundScope().UPCIsStrict = IsStrict;
+    return new (Context) UPCPragmaStmt(PragmaLoc, IsStrict);
+  }
+  // These are ignored for now.
+  assert(Kind == PUPCK_C_Code || Kind == PUPCK_UPC_Code);
+  return StmtEmpty();
 }
 
 Decl * Sema::ActOnPragmaPUPC(SourceLocation PragmaLoc, PragmaPUPCKind Kind) {
