@@ -267,7 +267,7 @@ gupcr_shutdown_init (void)
   gupcr_log (FC_MISC, "shutdown init called");
 
   /* Create context endpoints for shutdown signalling.  */
-  tx_attr.op_flags = FI_TRANSMIT_COMPLETE;
+  tx_attr.op_flags = FI_DELIVERY_COMPLETE;
   gupcr_fabric_call (fi_tx_context,
 		     (gupcr_ep, GUPCR_SERVICE_SHUTDOWN, &tx_attr,
 		      &gupcr_shutdown_tx_ep, NULL));
@@ -290,10 +290,11 @@ gupcr_shutdown_init (void)
   cq_attr.wait_obj = FI_WAIT_NONE;
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_shutdown_lcq,
 				  NULL));
-  /* Use FI_EVENT flag to report errors only.  */
+  /* Use FI_SELECTIVE_COMPLETION flag to report errors only.  */
   gupcr_fabric_call (fi_ep_bind, (gupcr_shutdown_tx_ep,
 			          &gupcr_shutdown_lcq->fid,
-			          FI_READ | FI_WRITE | FI_EVENT));
+			          FI_WRITE | FI_READ |
+				  FI_SELECTIVE_COMPLETION));
 
 #if LOCAL_MR_NEEDED
   /* NOTE: Create a local memory region before enabling endpoint.  */

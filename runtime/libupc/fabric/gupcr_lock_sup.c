@@ -253,7 +253,7 @@ gupcr_lock_init (void)
   gupcr_log (FC_LOCK, "lock init called");
 
   /* Create context endpoints for LOC transfers.  */
-  tx_attr.op_flags = FI_TRANSMIT_COMPLETE;
+  tx_attr.op_flags = FI_DELIVERY_COMPLETE;
   gupcr_fabric_call (fi_tx_context,
 		     (gupcr_ep, GUPCR_SERVICE_LOCK, &tx_attr, &gupcr_lock_tx_ep,
 		      NULL));
@@ -276,9 +276,10 @@ gupcr_lock_init (void)
   cq_attr.format = FI_CQ_FORMAT_MSG;
   cq_attr.wait_obj = FI_WAIT_NONE;
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_lock_lcq, NULL));
-  /* Use FI_EVENT flag to report errors only.  */
+  /* Use FI_SELECTIVE_COMPLETION flag to report errors only.  */
   gupcr_fabric_call (fi_ep_bind, (gupcr_lock_tx_ep, &gupcr_lock_lcq->fid,
-				  FI_READ | FI_WRITE | FI_EVENT));
+				  FI_WRITE | FI_READ |
+				  FI_SELECTIVE_COMPLETION));
 
 #if LOCAL_MR_NEEDED
   /* NOTE: Create a local memory region before enabling endpoint.  */

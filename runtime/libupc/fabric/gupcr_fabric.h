@@ -128,7 +128,7 @@ extern size_t gupcr_max_optim_size;
 	  gupcr_fatal_error ("UPC runtime fabric call "			\
 	                     "`%s' on thread %d failed: %s\n", 		\
 			     __STRING(fabric_func), gupcr_get_rank (),	\
-	                     gupcr_strfaberror (pstatus));		\
+	                     gupcr_strfaberror (-pstatus));		\
       }									\
     while (0)
 

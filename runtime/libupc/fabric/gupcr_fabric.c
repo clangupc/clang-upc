@@ -494,8 +494,8 @@ gupcr_process_fail_events (int status, const char *msg, fab_cq_t cq)
 		   gupcr_strfaberror (status), msg, buf);
     }
   else
-    gupcr_fatal_error ("[%d] err code: %s, msg: %s, error string: none",
-		       gupcr_rank, gupcr_strfaberror (status), msg);
+    gupcr_fatal_error ("err code: %s, msg: %s, error string: none",
+		       gupcr_strfaberror (status), msg);
 }
 
 /**

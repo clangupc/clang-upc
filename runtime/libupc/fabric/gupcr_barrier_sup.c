@@ -324,7 +324,7 @@ gupcr_barrier_sup_init (void)
   cq_attr_t cq_attr = { 0 };
   rx_attr_t rx_attr = { 0 };
   tx_attr_t tx_attr = { 0 };
-  tx_attr.op_flags = FI_TRANSMIT_COMPLETE;
+  tx_attr.op_flags = FI_DELIVERY_COMPLETE;
 
 #define CREATE_ENDPOINTS(bar,ep_service,mr_key) \
 	gupcr_##bar##_tx_put_count = 0; \
@@ -352,13 +352,13 @@ gupcr_barrier_sup_init (void)
 				       FI_WRITE)); \
 	gupcr_fabric_call (fi_ep_bind, (gupcr_##bar##_tx_ep, \
 				       &gupcr_##bar##_tx_put_cq->fid, \
-				       FI_WRITE)); \
+				       FI_WRITE | FI_SELECTIVE_COMPLETION)); \
 	gupcr_fabric_call (fi_ep_bind, (gupcr_##bar##_tx_ep, \
 				       &gupcr_##bar##_tx_get_ct->fid, \
 				       FI_READ)); \
 	gupcr_fabric_call (fi_ep_bind, (gupcr_##bar##_tx_ep, \
 				       &gupcr_##bar##_tx_get_cq->fid, \
-				       FI_READ)); \
+				       FI_READ | FI_SELECTIVE_COMPLETION)); \
 	/* Enable endpoint.  */ \
 	gupcr_fabric_call (fi_enable, (gupcr_##bar##_tx_ep)); \
 	/* Create target side of the endpoint.  */ \
