@@ -25,11 +25,11 @@
  */
 
 /** Atomic local access MR handle */
-static struct fid_mr gupcr_atomic_mr;
+/* static struct fid_mr gupcr_atomic_mr; */
 /** Atomic local access MR counting events handle */
-static struct fid_cntr gupcr_atomic_mr_ct;
+/* static struct fid_cntr gupcr_atomic_mr_ct; */
 /** Atomic local access MR event queue handle */
-static struct fid_eq gupcr_atomic_mr_eq;
+/* static struct fid_eq gupcr_atomic_mr_eq; */
 /** Atomic number of received ACKs on local MR */
 static size_t gupcr_atomic_mr_count;
 

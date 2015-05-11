@@ -27,7 +27,7 @@
  */
 
 /** Start of the explicit non-blocking MD */
-static char *gupcr_nb_md_start;
+/* static char *gupcr_nb_mr_start; */
 
 /** Implicit non-blocking number of received ACKs on local mr */
 static size_t gupcr_nbi_md_count;
