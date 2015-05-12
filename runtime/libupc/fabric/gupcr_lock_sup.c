@@ -88,7 +88,7 @@ gupcr_lock_swap (size_t dest_thread,
 		      NULL, fi_rx_addr ((fi_addr_t) dest_thread,
 						   GUPCR_SERVICE_LOCK,
 						   GUPCR_SERVICE_BITS),
-		      dest_offset, 0, gupcr_get_atomic_datatype (size),
+		      dest_offset, GUPCR_MR_LOCK, gupcr_get_atomic_datatype (size),
 		      FI_ATOMIC_WRITE, NULL));
 
   gupcr_lock_lmr_count += 1;
@@ -117,6 +117,7 @@ gupcr_lock_swap (size_t dest_thread,
  *
  * @retval Return TRUE if the operation was successful.
  */
+
 int
 gupcr_lock_cswap (size_t dest_thread,
 		  size_t dest_offset, void *cmp, void *val, size_t size)
@@ -132,7 +133,7 @@ gupcr_lock_cswap (size_t dest_thread,
 		      NULL, fi_rx_addr ((fi_addr_t) dest_thread,
 						   GUPCR_SERVICE_LOCK,
 						   GUPCR_SERVICE_BITS),
-		      dest_offset, 0, gupcr_get_atomic_datatype (size),
+		      dest_offset, GUPCR_MR_LOCK, gupcr_get_atomic_datatype (size),
 		      FI_CSWAP, NULL));
 
   gupcr_lock_lmr_count += 1;
@@ -169,7 +170,7 @@ gupcr_lock_put (size_t dest_thread, size_t dest_addr, void *val, size_t size)
 			 (gupcr_lock_tx_ep, GUPCR_LOCAL_INDEX (val), size,
 			  fi_rx_addr ((fi_addr_t) dest_thread,
 				      GUPCR_SERVICE_LOCK, GUPCR_SERVICE_BITS),
-			  dest_addr, 0));
+			  dest_addr, GUPCR_MR_LOCK));
     }
   else
     {
@@ -294,9 +295,8 @@ gupcr_lock_init (void)
 				  FI_READ | FI_WRITE));
 #endif
 
-  /* Enable endpoints.  */
+  /* Enable TX endpoint.  */
   gupcr_fabric_call (fi_enable, (gupcr_lock_tx_ep));
-  gupcr_fabric_call (fi_enable, (gupcr_lock_rx_ep));
 
   /* ... and memory region for remote inbound accesses.  */
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, gupcr_gmem_base, gupcr_gmem_size,
@@ -315,8 +315,9 @@ gupcr_lock_init (void)
   cq_attr.wait_obj = FI_WAIT_NONE;
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_lock_cq, NULL));
   gupcr_fabric_call (fi_mr_bind, (gupcr_lock_mr, &gupcr_lock_cq->fid,
-			          FI_REMOTE_WRITE | FI_EVENT));
-  /* ... bind MR to endpoint.  */
+			          FI_REMOTE_WRITE | FI_SELECTIVE_COMPLETION));
+  /* Enable RX endpoint and bind MR.  */
+  gupcr_fabric_call (fi_enable, (gupcr_lock_rx_ep));
   gupcr_fabric_call (fi_ep_bind, (gupcr_lock_rx_ep, &gupcr_lock_mr->fid,
 			          FI_REMOTE_READ | FI_REMOTE_WRITE));
   gupcr_log (FC_LOCK, "lock init completed");
