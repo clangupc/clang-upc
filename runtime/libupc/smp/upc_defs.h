@@ -23,6 +23,14 @@
 #error GUPCR_THREADS_MAX exceeds the size of the packed sptr threads field.
 #endif
 
+//begin lib_omp_check
+#if GUPCR_HAVE_CHECKS
+extern void __upc_omp_check (void);
+#define GUPCR_OMP_CHECK() __upc_omp_check()
+#else
+#define GUPCR_OMP_CHECK()
+#endif
+//end lib_omp_check
 
 /* UPC thread-specific information */
 typedef struct upc_thread_info_struct

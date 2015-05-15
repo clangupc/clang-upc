@@ -28,6 +28,7 @@
 #include <string.h>
 #include <libgen.h>
 #include <unistd.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <time.h>
 #if TIME_WITH_SYS_TIME
