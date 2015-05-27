@@ -1076,7 +1076,6 @@ void OMPClause::printPretty(raw_ostream &OS, PrinterHelper *Helper,
 //===----------------------------------------------------------------------===//
 
 void StmtPrinter::VisitOMPExecutableDirective(OMPExecutableDirective *Node) {
-  PrintLineDirective(Node);
   ArrayRef<OMPClause *> Clauses = Node->clauses();
   for (ArrayRef<OMPClause *>::iterator I = Clauses.begin(), E = Clauses.end();
        I != E; ++I)
