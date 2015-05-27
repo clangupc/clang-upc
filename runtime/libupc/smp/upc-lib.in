@@ -158,6 +158,8 @@ extern unsigned long const __upc_global_base;
 //include lib_pts_defs
 /* Runtime procedures */
 //include lib_runtime_api
+/* OMP check */
+//include lib_omp_check
 
 #if defined(__UPC_INLINE_LIB__) || defined(IN_TARGET_LIBS)
 
@@ -165,6 +167,7 @@ extern unsigned long const __upc_global_base;
 
 //include gupcr_config_h
 //include lib_min_max
+//include lib_omp_check
 //include lib_config_vm
 //include lib_vm_api
 //include lib_config_heap

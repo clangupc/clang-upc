@@ -206,6 +206,7 @@ __upc_notify (int barrier_id)
 {
   int notify_cnt;
   int notify_thread;
+  GUPCR_OMP_CHECK();
   if (__upc_barrier_active)
     __upc_fatal ("Two successive upc_notify statements executed "
 		 "without an intervening upc_wait");
@@ -257,6 +258,7 @@ __upc_wait (int barrier_id)
 {
   int wait_cnt, i;
 
+  GUPCR_OMP_CHECK();
   if (!__upc_barrier_active)
     __upc_fatal ("upc_wait statement executed without a "
 		 "preceding upc_notify");

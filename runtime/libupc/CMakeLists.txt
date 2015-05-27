@@ -323,6 +323,7 @@ if(LIBUPC_RUNTIME_MODEL STREQUAL smp)
     smp/upc_gasp.c
     smp/upc_gum.c
     smp/upc_libg.c
+    smp/upc_llvm_access.c
     smp/upc_lock.upc
     smp/upc_main.c
     smp/upc_mem.c
@@ -367,6 +368,8 @@ endif()
     ${PROJECT_SOURCE_DIR}/smp/upc_access.h
     ${PROJECT_SOURCE_DIR}/smp/upc_config.h
     ${PROJECT_SOURCE_DIR}/smp/upc_defs.h
+    ${PROJECT_SOURCE_DIR}/smp/upc_llvm_access.c
+    ${PROJECT_SOURCE_DIR}/smp/upc_llvm_access.h
     ${PROJECT_SOURCE_DIR}/smp/upc_mem.h
     ${PROJECT_SOURCE_DIR}/smp/upc_pts.h
     ${PROJECT_SOURCE_DIR}/smp/upc_sup.h

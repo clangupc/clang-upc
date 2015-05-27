@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -verify -fopenmp=libiomp5 %s
+// RUN: %clang_cc1 -triple x86_64-apple-macos10.7.0 -verify -fopenmp -ferror-limit 100 %s
 
 int foo();
 
@@ -14,19 +14,19 @@ int main() {
   #pragma omp for
   for (int i = 0; i < 10; ++i) {
     foo();
-    #pragma omp master // expected-error {{region cannot be closely nested inside 'for' region}}
+    #pragma omp master // expected-error {{region cannot be closely nested inside a worksharing region}}
     foo();
   }
   #pragma omp sections
   {
     foo();
-    #pragma omp master // expected-error {{region cannot be closely nested inside 'sections' region}}
+    #pragma omp master // expected-error {{region cannot be closely nested inside a worksharing region}}
     foo();
   }
   #pragma omp single
   for (int i = 0; i < 10; ++i) {
     foo();
-    #pragma omp master // expected-error {{region cannot be closely nested inside 'single' region}}
+    #pragma omp master // expected-error {{region cannot be closely nested inside a worksharing region}}
     foo();
   }
   #pragma omp master
@@ -37,8 +37,10 @@ int main() {
   }
   #pragma omp for ordered
   for (int i = 0; i < 10; ++i)
-  #pragma omp master // expected-error {{region cannot be closely nested inside 'for' region}}
+  #pragma omp ordered
   {
+    foo();
+    #pragma omp master // expected-error {{region cannot be closely nested inside an ordered region}}
     foo();
   }
 

@@ -47,6 +47,9 @@ int gupcr_finalize_ok = 0;
    nested upc_forall statements.  */
 int __upc_forall_depth;
 
+/** UPC thread's pthread ID */
+pthread_t __upc_pthread_id;
+
 /** The filename of the location where a runtime
    error was detected.  This is set by the various
    debug-enabled ('g') UPC runtime library routines.  */
@@ -200,6 +203,16 @@ gupcr_per_thread_init (void)
 }
 
 /** @} */
+
+/**
+ *  Check for UPC runtime calls from OMP threads.
+ */
+void
+__upc_omp_check (void)
+{
+  if (__upc_pthread_id != pthread_self ())
+    gupcr_fatal_error ("UPC runtime calls are allowed only from the UPC threads");;
+}
 
 /**
  * UPC program exit.

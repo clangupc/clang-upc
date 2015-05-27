@@ -16,6 +16,8 @@
 #include "CodeGenModule.h"
 #include "TargetInfo.h"
 #include "clang/AST/StmtVisitor.h"
+#include "clang/Basic/CapturedStmt.h"
+#include "clang/Sema/SemaDiagnostic.h"
 #include "clang/Basic/PrettyStackTrace.h"
 #include "clang/Basic/TargetInfo.h"
 #include "clang/Sema/LoopHint.h"
@@ -25,6 +27,8 @@
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/IR/Intrinsics.h"
+#include "llvm/IR/TypeBuilder.h"
+#include "llvm/IR/CallSite.h"
 using namespace clang;
 using namespace CodeGen;
 
@@ -143,6 +147,137 @@ void CodeGenFunction::EmitStmt(const Stmt *S) {
     EmitCapturedStmt(*CS, CS->getCapturedRegionKind());
     }
     break;
+    // "One-call" OMP Directives
+    case Stmt::OMPBarrierDirectiveClass:
+      EmitOMPBarrierDirective(cast<OMPBarrierDirective>(*S));
+      break;
+    case Stmt::OMPTaskyieldDirectiveClass:
+      EmitOMPTaskyieldDirective(cast<OMPTaskyieldDirective>(*S));
+      break;
+    case Stmt::OMPTaskwaitDirectiveClass:
+      EmitOMPTaskwaitDirective(cast<OMPTaskwaitDirective>(*S));
+      break;
+    case Stmt::OMPFlushDirectiveClass:
+      EmitOMPFlushDirective(cast<OMPFlushDirective>(*S));
+      break;
+    // Atomic OMP Directive -- pattern match and emit one call
+    case Stmt::OMPAtomicDirectiveClass:
+      EmitOMPAtomicDirective(cast<OMPAtomicDirective>(*S));
+      break;
+    // "Two-calls" OMP Directives
+    case Stmt::OMPMasterDirectiveClass:
+      EmitOMPMasterDirective(cast<OMPMasterDirective>(*S));
+      break;
+    case Stmt::OMPSingleDirectiveClass:
+      EmitOMPSingleDirective(cast<OMPSingleDirective>(*S));
+      break;
+    case Stmt::OMPCriticalDirectiveClass:
+      EmitOMPCriticalDirective(cast<OMPCriticalDirective>(*S));
+      break;
+    case Stmt::OMPOrderedDirectiveClass:
+      EmitOMPOrderedDirective(cast<OMPOrderedDirective>(*S));
+      break;
+    // A more advanced stuff
+    case Stmt::OMPParallelDirectiveClass:
+      EmitOMPParallelDirective(cast<OMPParallelDirective>(*S));
+      break;
+    case Stmt::OMPParallelForDirectiveClass:
+      EmitOMPParallelForDirective(cast<OMPParallelForDirective>(*S));
+      break;
+    case Stmt::OMPSimdDirectiveClass:
+      EmitOMPSimdDirective(cast<OMPSimdDirective>(*S));
+      break;
+    case Stmt::OMPForSimdDirectiveClass:
+      EmitOMPForSimdDirective(cast<OMPForSimdDirective>(*S));
+      break;
+    case Stmt::OMPParallelForSimdDirectiveClass:
+      EmitOMPParallelForSimdDirective(cast<OMPParallelForSimdDirective>(*S));
+      break;
+    case Stmt::OMPDistributeSimdDirectiveClass:
+      EmitOMPDistributeSimdDirective(cast<OMPDistributeSimdDirective>(*S));
+      break;
+    case Stmt::OMPDistributeParallelForDirectiveClass:
+      EmitOMPDistributeParallelForDirective(
+          cast<OMPDistributeParallelForDirective>(*S));
+      break;
+    case Stmt::OMPDistributeParallelForSimdDirectiveClass:
+      EmitOMPDistributeParallelForSimdDirective(
+          cast<OMPDistributeParallelForSimdDirective>(*S));
+      break;
+    case Stmt::OMPTeamsDistributeParallelForDirectiveClass:
+      EmitOMPTeamsDistributeParallelForDirective(
+          cast<OMPTeamsDistributeParallelForDirective>(*S));
+      break;
+    case Stmt::OMPTeamsDistributeParallelForSimdDirectiveClass:
+      EmitOMPTeamsDistributeParallelForSimdDirective(
+          cast<OMPTeamsDistributeParallelForSimdDirective>(*S));
+      break;
+    case Stmt::OMPTargetTeamsDistributeParallelForDirectiveClass:
+      EmitOMPTargetTeamsDistributeParallelForDirective(
+          cast<OMPTargetTeamsDistributeParallelForDirective>(*S));
+      break;
+    case Stmt::OMPTargetTeamsDistributeParallelForSimdDirectiveClass:
+      EmitOMPTargetTeamsDistributeParallelForSimdDirective(
+          cast<OMPTargetTeamsDistributeParallelForSimdDirective>(*S));
+      break;
+    case Stmt::OMPTaskDirectiveClass:
+      EmitOMPTaskDirective(cast<OMPTaskDirective>(*S));
+      break;
+    case Stmt::OMPForDirectiveClass:
+      EmitOMPForDirective(cast<OMPForDirective>(*S));
+      break;
+    case Stmt::OMPSectionsDirectiveClass:
+      EmitOMPSectionsDirective(cast<OMPSectionsDirective>(*S));
+      break;
+    case Stmt::OMPParallelSectionsDirectiveClass:
+      EmitOMPParallelSectionsDirective(cast<OMPParallelSectionsDirective>(*S));
+      break;
+    case Stmt::OMPSectionDirectiveClass:
+      EmitOMPSectionDirective(cast<OMPSectionDirective>(*S));
+      break;
+    case Stmt::OMPTaskgroupDirectiveClass:
+      EmitOMPTaskgroupDirective(cast<OMPTaskgroupDirective>(*S));
+      break;
+    case Stmt::OMPTeamsDirectiveClass:
+      EmitOMPTeamsDirective(cast<OMPTeamsDirective>(*S));
+      break;
+    case Stmt::OMPDistributeDirectiveClass:
+      EmitOMPDistributeDirective(cast<OMPDistributeDirective>(*S));
+      break;
+    case Stmt::OMPCancelDirectiveClass:
+      EmitOMPCancelDirective(cast<OMPCancelDirective>(*S));
+      break;
+    case Stmt::OMPCancellationPointDirectiveClass:
+      EmitOMPCancellationPointDirective(
+          cast<OMPCancellationPointDirective>(*S));
+      break;
+    case Stmt::OMPTargetDirectiveClass:
+      EmitOMPTargetDirective(cast<OMPTargetDirective>(*S));
+      break;
+  case Stmt::OMPTargetDataDirectiveClass:
+    EmitOMPTargetDataDirective(cast<OMPTargetDataDirective>(*S));
+    break;
+  case Stmt::OMPTargetUpdateDirectiveClass:
+    EmitOMPTargetUpdateDirective(cast<OMPTargetUpdateDirective>(*S));
+    break;
+  case Stmt::OMPTargetTeamsDirectiveClass:
+    EmitOMPTargetTeamsDirective(cast<OMPTargetTeamsDirective>(*S));
+    break;
+  case Stmt::OMPTeamsDistributeDirectiveClass:
+    EmitOMPTeamsDistributeDirective(cast<OMPTeamsDistributeDirective>(*S));
+    break;
+  case Stmt::OMPTeamsDistributeSimdDirectiveClass:
+    EmitOMPTeamsDistributeSimdDirective(
+        cast<OMPTeamsDistributeSimdDirective>(*S));
+    break;
+  case Stmt::OMPTargetTeamsDistributeDirectiveClass:
+    EmitOMPTargetTeamsDistributeDirective(
+        cast<OMPTargetTeamsDistributeDirective>(*S));
+    break;
+  case Stmt::OMPTargetTeamsDistributeSimdDirectiveClass:
+    EmitOMPTargetTeamsDistributeSimdDirective(
+        cast<OMPTargetTeamsDistributeSimdDirective>(*S));
+    break;
   case Stmt::ObjCAtTryStmtClass:
     EmitObjCAtTryStmt(cast<ObjCAtTryStmt>(*S));
     break;
@@ -177,50 +312,6 @@ void CodeGenFunction::EmitStmt(const Stmt *S) {
   case Stmt::SEHLeaveStmtClass:
     EmitSEHLeaveStmt(cast<SEHLeaveStmt>(*S));
     break;
-  case Stmt::OMPParallelDirectiveClass:
-    EmitOMPParallelDirective(cast<OMPParallelDirective>(*S));
-    break;
-  case Stmt::OMPSimdDirectiveClass:
-    EmitOMPSimdDirective(cast<OMPSimdDirective>(*S));
-    break;
-  case Stmt::OMPForDirectiveClass:
-    EmitOMPForDirective(cast<OMPForDirective>(*S));
-    break;
-  case Stmt::OMPSectionsDirectiveClass:
-    EmitOMPSectionsDirective(cast<OMPSectionsDirective>(*S));
-    break;
-  case Stmt::OMPSectionDirectiveClass:
-    EmitOMPSectionDirective(cast<OMPSectionDirective>(*S));
-    break;
-  case Stmt::OMPSingleDirectiveClass:
-    EmitOMPSingleDirective(cast<OMPSingleDirective>(*S));
-    break;
-  case Stmt::OMPMasterDirectiveClass:
-    EmitOMPMasterDirective(cast<OMPMasterDirective>(*S));
-    break;
-  case Stmt::OMPCriticalDirectiveClass:
-    EmitOMPCriticalDirective(cast<OMPCriticalDirective>(*S));
-    break;
-  case Stmt::OMPParallelForDirectiveClass:
-    EmitOMPParallelForDirective(cast<OMPParallelForDirective>(*S));
-    break;
-  case Stmt::OMPParallelSectionsDirectiveClass:
-    EmitOMPParallelSectionsDirective(cast<OMPParallelSectionsDirective>(*S));
-    break;
-  case Stmt::OMPTaskDirectiveClass:
-    EmitOMPTaskDirective(cast<OMPTaskDirective>(*S));
-    break;
-  case Stmt::OMPTaskyieldDirectiveClass:
-    EmitOMPTaskyieldDirective(cast<OMPTaskyieldDirective>(*S));
-    break;
-  case Stmt::OMPBarrierDirectiveClass:
-    EmitOMPBarrierDirective(cast<OMPBarrierDirective>(*S));
-    break;
-  case Stmt::OMPTaskwaitDirectiveClass:
-    EmitOMPTaskwaitDirective(cast<OMPTaskwaitDirective>(*S));
-    break;
-  case Stmt::OMPFlushDirectiveClass:
-    EmitOMPFlushDirective(cast<OMPFlushDirective>(*S));
 
   case Stmt::UPCNotifyStmtClass:
     EmitUPCNotifyStmt(cast<UPCNotifyStmt>(*S));
@@ -674,8 +765,7 @@ void CodeGenFunction::EmitWhileStmt(const WhileStmt &S,
   // the continue target.
   JumpDest LoopHeader = getJumpDestInCurrentScope("while.cond");
   EmitBlock(LoopHeader.getBlock());
-
-  LoopStack.push(LoopHeader.getBlock());
+  LoopStack.Push(LoopHeader.getBlock());
 
   // Create an exit block for when the condition fails, which will
   // also become the break target.
@@ -744,7 +834,7 @@ void CodeGenFunction::EmitWhileStmt(const WhileStmt &S,
   // Branch to the loop header again.
   EmitBranch(LoopHeader.getBlock());
 
-  LoopStack.pop();
+  LoopStack.Pop();
 
   // Emit the exit block.
   EmitBlock(LoopExit.getBlock(), true);
@@ -767,8 +857,7 @@ void CodeGenFunction::EmitDoStmt(const DoStmt &S,
 
   // Emit the body of the loop.
   llvm::BasicBlock *LoopBody = createBasicBlock("do.body");
-
-  LoopStack.push(LoopBody);
+  LoopStack.Push(LoopBody);
 
   EmitBlockWithFallThrough(LoopBody, Cnt);
   {
@@ -805,7 +894,7 @@ void CodeGenFunction::EmitDoStmt(const DoStmt &S,
     EmitCondBrHints(LoopBody->getContext(), CondBr, DoAttrs);
   }
 
-  LoopStack.pop();
+  LoopStack.Pop();
 
   // Emit the exit block.
   EmitBlock(LoopExit.getBlock());
@@ -838,8 +927,7 @@ void CodeGenFunction::EmitForStmt(const ForStmt &S,
   JumpDest Continue = getJumpDestInCurrentScope("for.cond");
   llvm::BasicBlock *CondBlock = Continue.getBlock();
   EmitBlock(CondBlock);
-
-  LoopStack.push(CondBlock);
+  LoopStack.Push(CondBlock);
 
   // If the for loop doesn't have an increment we can just use the
   // condition as the continue block.  Otherwise we'll need to create
@@ -915,7 +1003,7 @@ void CodeGenFunction::EmitForStmt(const ForStmt &S,
   if (DI)
     DI->EmitLexicalBlockEnd(Builder, S.getSourceRange().getEnd());
 
-  LoopStack.pop();
+  LoopStack.Pop();
 
   // Emit the fall-through block.
   EmitBlock(LoopExit.getBlock(), true);
@@ -944,7 +1032,7 @@ CodeGenFunction::EmitCXXForRangeStmt(const CXXForRangeStmt &S,
   llvm::BasicBlock *CondBlock = createBasicBlock("for.cond");
   EmitBlock(CondBlock);
 
-  LoopStack.push(CondBlock);
+  LoopStack.Push(CondBlock);
 
   // If there are any cleanups between here and the loop-exit scope,
   // create a block to stage a loop exit along.
@@ -998,7 +1086,7 @@ CodeGenFunction::EmitCXXForRangeStmt(const CXXForRangeStmt &S,
   if (DI)
     DI->EmitLexicalBlockEnd(Builder, S.getSourceRange().getEnd());
 
-  LoopStack.pop();
+  LoopStack.Pop();
 
   // Emit the fall-through block.
   EmitBlock(LoopExit.getBlock(), true);
@@ -2084,20 +2172,24 @@ void CodeGenFunction::EmitAsmStmt(const AsmStmt &S) {
   }
 }
 
-static LValue InitCapturedStruct(CodeGenFunction &CGF, const CapturedStmt &S) {
+LValue CodeGenFunction::InitCapturedStruct(const CapturedStmt &S) {
   const RecordDecl *RD = S.getCapturedRecordDecl();
-  QualType RecordTy = CGF.getContext().getRecordType(RD);
+  QualType RecordTy = getContext().getRecordType(RD);
 
   // Initialize the captured struct.
-  LValue SlotLV = CGF.MakeNaturalAlignAddrLValue(
-                    CGF.CreateMemTemp(RecordTy, "agg.captured"), RecordTy);
+  LValue SlotLV = MakeNaturalAlignAddrLValue(
+                    CreateMemTemp(RecordTy, "agg.captured"), RecordTy);
 
   RecordDecl::field_iterator CurField = RD->field_begin();
+  CapturedStmt::const_capture_iterator C = S.capture_begin();
   for (CapturedStmt::capture_init_iterator I = S.capture_init_begin(),
                                            E = S.capture_init_end();
-       I != E; ++I, ++CurField) {
-    LValue LV = CGF.EmitLValueForFieldInitialization(SlotLV, *CurField);
-    CGF.EmitInitializerForField(*CurField, LV, *I, ArrayRef<VarDecl *>());
+       I != E; ++I, ++C, ++CurField) {
+    if ((*CurField)->getType()->isVariablyModifiedType()) {
+      EmitVariablyModifiedType((*CurField)->getType());
+    }
+    LValue LV = EmitLValueForFieldInitialization(SlotLV, *CurField);
+    EmitInitializerForField(*CurField, LV, *I, ArrayRef<VarDecl *>());
   }
 
   return SlotLV;
@@ -2123,7 +2215,7 @@ static void InitVLACaptures(CodeGenFunction &CGF, const CapturedStmt &S) {
 /// captured variables into the captured struct, and call the outlined function.
 llvm::Function *
 CodeGenFunction::EmitCapturedStmt(const CapturedStmt &S, CapturedRegionKind K) {
-  LValue CapStruct = InitCapturedStruct(*this, S);
+  LValue CapStruct = InitCapturedStruct(S);
 
   // Emit the CapturedDecl
   CodeGenFunction CGF(CGM, true);
@@ -2139,13 +2231,15 @@ CodeGenFunction::EmitCapturedStmt(const CapturedStmt &S, CapturedRegionKind K) {
 
 llvm::Value *
 CodeGenFunction::GenerateCapturedStmtArgument(const CapturedStmt &S) {
-  LValue CapStruct = InitCapturedStruct(*this, S);
+  LValue CapStruct = InitCapturedStruct(S);
   return CapStruct.getAddress();
 }
 
 /// Creates the outlined function for a CapturedStmt.
 llvm::Function *
 CodeGenFunction::GenerateCapturedStmtFunction(const CapturedStmt &S) {
+  CGM.OpenMPSupport.startOpenMPRegion(true);
+
   assert(CapturedStmtInfo &&
     "CapturedStmtInfo should be set when generating the captured function");
   const CapturedDecl *CD = S.getCapturedDecl();
@@ -2191,11 +2285,359 @@ CodeGenFunction::GenerateCapturedStmtFunction(const CapturedStmt &S) {
     CXXThisValue = EmitLoadOfLValue(ThisLValue, Loc).getScalarVal();
   }
 
+  for (RecordDecl::field_iterator I = RD->field_begin(),
+                                  E = RD->field_end();
+       I != E; ++I) {
+    if ((*I)->getType()->isVariablyModifiedType()) {
+      EmitVariablyModifiedType((*I)->getType());
+    }
+  }
+
   PGO.assignRegionCounters(CD, F);
   CapturedStmtInfo->EmitBody(*this, CD->getBody());
   FinishFunction(CD->getBodyRBrace());
   PGO.emitInstrumentationData();
   PGO.destroyRegionCounters();
 
+  CGM.OpenMPSupport.endOpenMPRegion();
+
   return F;
+}
+
+void CodeGenFunction::EmitSIMDForHelperCall(llvm::Function *BodyFunc,
+                                            LValue CapStruct,
+                                            llvm::Value *LoopIndex,
+                                            bool IsLastIter) {
+  // Emit call to the helper function.
+  SmallVector<llvm::Value *, 3> HelperArgs;
+  HelperArgs.push_back(CapStruct.getAddress());
+  HelperArgs.push_back(Builder.CreateLoad(LoopIndex));
+
+  llvm::Value *LastIter = 0;
+  if (IsLastIter)
+    LastIter = llvm::ConstantInt::getTrue(BodyFunc->getContext());
+  else
+    LastIter = llvm::ConstantInt::getFalse(BodyFunc->getContext());
+  HelperArgs.push_back(LastIter);
+
+  disableExceptions();
+  EmitCallOrInvoke(BodyFunc, HelperArgs);
+  enableExceptions();
+}
+
+llvm::Function *CodeGenFunction::EmitSimdFunction(CGPragmaSimdWrapper &W) {
+  const CapturedStmt &CS = *W.getAssociatedStmt();
+
+  CGSIMDForStmtInfo CSInfo(W, LoopStack.GetCurLoopID(),
+                              LoopStack.GetCurLoopParallel());
+  CodeGenFunction CGF(CGM, true);
+  CGF.CapturedStmtInfo = &CSInfo;
+
+  CGF.disableExceptions();
+  llvm::Function *BodyFunction = CGF.GenerateCapturedStmtFunction(CS);
+  CGF.enableExceptions();
+
+  // Always inline this function back to the call site.
+  BodyFunction->addFnAttr(llvm::Attribute::AlwaysInline);
+  return BodyFunction;
+}
+
+void CodeGenFunction::EmitPragmaSimd(CodeGenFunction::CGPragmaSimdWrapper &W) {
+  if (W.isOmp()) {
+    // Start a region for loop index and loops' counters
+    // (there will be another one region inside __simd_helper routine).
+    CGM.OpenMPSupport.startOpenMPRegion(false);
+    CGM.OpenMPSupport.setNoWait(false);
+    CGM.OpenMPSupport.setMergeable(true);
+    CGM.OpenMPSupport.setOrdered(false);
+  }
+  RunCleanupsScope SIMDForScope(*this);
+  RegionCounter Cnt =
+      getPGORegionCounter(W.getAssociatedStmt()->getCapturedStmt());
+
+  // Emit 'safelen' clause and decide if we want to separate last iteration.
+  bool SeparateLastIter = W.emitSafelen(this);
+
+  // Update debug info.
+  CGDebugInfo *DI = getDebugInfo();
+  if (DI)
+    DI->EmitLexicalBlockStart(Builder, W.getForLoc());
+
+  // Emit the for-loop.
+  llvm::Value *LoopIndex = 0;
+  llvm::Value *LoopCount = 0;
+
+  // Emit the loop control variable and cache its initial value and the
+  // stride value.
+  // Also emit loop index and loop count, depending on stmt.
+
+  W.emitInit(*this, LoopIndex, LoopCount);
+
+  // Only run the SIMD loop if the loop condition is true
+  llvm::BasicBlock *ContBlock = createBasicBlock("if.end");
+  llvm::BasicBlock *ThenBlock = createBasicBlock("if.then");
+
+  // The following condition is zero trip test to skip last iteration if
+  // the loopcount is zero.
+  // In the 'omp simd' we may have more than one loop counter due to
+  // 'collapse', so we check loopcount instead of loop counter.
+  if (!W.isOmp()) {
+    EmitBranchOnBoolExpr(W.getCond(), ThenBlock, ContBlock, Cnt.getCount());
+    EmitBlock(ThenBlock);
+  }
+  else {
+    llvm::Value *BoolCondVal = Builder.CreateICmpSLT(
+      llvm::ConstantInt::get(LoopCount->getType(), 0), LoopCount);
+    Builder.CreateCondBr(BoolCondVal, ThenBlock, ContBlock);
+    EmitBlock(ThenBlock);
+  }
+
+  // Initialize the captured struct.
+  LValue CapStruct = InitCapturedStruct(*W.getAssociatedStmt());
+
+  {
+    JumpDest LoopExit = getJumpDestInCurrentScope("for.end");
+    RunCleanupsScope ForScope(*this);
+
+    Builder.CreateStore(llvm::ConstantInt::get(LoopCount->getType(), 0),
+                        LoopIndex);
+
+    if (SeparateLastIter)
+      // Lastprivate or linear variable present, remove last iteration.
+      LoopCount = Builder.CreateSub(
+          LoopCount, llvm::ConstantInt::get(LoopCount->getType(), 1));
+
+    // Start the loop with a block that tests the condition.
+    // If there's an increment, the continue scope will be overwritten
+    // later.
+    JumpDest Continue = getJumpDestInCurrentScope("for.cond");
+    llvm::BasicBlock *CondBlock = Continue.getBlock();
+    LoopStack.Push(CondBlock);
+
+    EmitBlock(CondBlock);
+
+    llvm::Value *BoolCondVal = 0;
+    {
+      // If the for statement has a condition scope, emit the local variable
+      // declaration.
+      llvm::BasicBlock *ExitBlock = LoopExit.getBlock();
+
+      // If there are any cleanups between here and the loop-exit scope,
+      // create a block to stage a loop exit along.
+      if (ForScope.requiresCleanups())
+        ExitBlock = createBasicBlock("for.cond.cleanup");
+
+      // As long as the condition is true, iterate the loop.
+      llvm::BasicBlock *ForBody = createBasicBlock("for.body");
+
+      // Use LoopCount and LoopIndex for iteration.
+      BoolCondVal = Builder.CreateICmpULT(Builder.CreateLoad(LoopIndex),
+                                          LoopCount);
+
+      // C99 6.8.5p2/p4: The first substatement is executed if the expression
+      // compares unequal to 0.  The condition must be a scalar type.
+      Builder.CreateCondBr(BoolCondVal, ForBody, ExitBlock);
+
+      if (ExitBlock != LoopExit.getBlock()) {
+        EmitBlock(ExitBlock);
+        EmitBranchThroughCleanup(LoopExit);
+      }
+
+      EmitBlock(ForBody);
+    }
+
+    Continue = getJumpDestInCurrentScope("for.inc");
+
+    // Store the blocks to use for break and continue.
+    BreakContinueStack.push_back(BreakContinue(LoopExit, Continue));
+
+    W.emitIncrement(*this, LoopIndex);
+
+    // Emit the call to the loop body.
+    llvm::Function *BodyFunction = EmitSimdFunction(W);
+    EmitSIMDForHelperCall(BodyFunction, CapStruct, LoopIndex, false);
+
+    // Emit the increment block.
+    EmitBlock(Continue.getBlock());
+
+    {
+      llvm::Value *NewLoopIndex =
+        Builder.CreateAdd(Builder.CreateLoad(LoopIndex),
+                          llvm::ConstantInt::get(LoopCount->getType(), 1));
+      Builder.CreateStore(NewLoopIndex, LoopIndex);
+    }
+
+    BreakContinueStack.pop_back();
+
+    EmitBranch(CondBlock);
+
+    ForScope.ForceCleanup();
+
+    if (DI)
+      DI->EmitLexicalBlockEnd(Builder, W.getSourceRange().getEnd());
+
+    LoopStack.Pop();
+
+    // Emit the fall-through block.
+    EmitBlock(LoopExit.getBlock(), true);
+
+    // Increment again, for last iteration.
+    W.emitIncrement(*this, LoopIndex);
+
+    if (SeparateLastIter) {
+      // This helper call makes updates to linear or lastprivate variables.
+      // In the case of openmp, only for lastprivate ones.
+      EmitSIMDForHelperCall(BodyFunction, CapStruct, LoopIndex, true);
+    }
+
+    W.emitLinearFinal(*this);
+  }
+
+  EmitBlock(ContBlock, true);
+
+  if (W.isOmp())
+    CGM.OpenMPSupport.endOpenMPRegion();
+}
+void CodeGenFunction::EmitSIMDForHelperBody(const Stmt *S) {
+  assert(CapturedStmtInfo && "Should be only called inside a CapturedStmt");
+  CGSIMDForStmtInfo *Info = cast<CGSIMDForStmtInfo>(CapturedStmtInfo);
+
+  // Mark the loop body as an extended region of this SIMD loop.
+  LoopStack.Push(Info->getLoopID(), Info->getLoopParallel());
+  {
+    RunCleanupsScope Scope(*this);
+
+    // Emit all SIMD local variables and update the codegen info.
+    Info->walkLocalVariablesToEmit(this);
+
+    // Emit the SIMD for loop body.
+    {
+      RunCleanupsScope BodyScope(*this);
+      // It is not allowed to have return or break in a SIMD loop body.
+      // Continue statements are allowed and updates to the data
+      // privatization variables will be emitted in a unified continue block.
+      JumpDest LoopContinue = getJumpDestInCurrentScope("for.continue");
+      BreakContinueStack.push_back(BreakContinue(JumpDest(), LoopContinue));
+
+      EmitStmt(S);
+
+      EmitBlock(LoopContinue.getBlock());
+
+      // If an update is required, emit those update expressions to be run on
+      // the last iteration of the loop.
+      //
+      // if (IsLastIter) {
+      //   [[ Update Expressions ]]
+      // }
+      //
+      // IsLastIter will only be true if this is a second output of the helper
+      // body, after the intial for-loop.
+      // Since IsLastIter is constant, it will be optimized out, and the if
+      // statement will not be a part of the SIMD For loop, thus allowing
+      // vectorization.
+
+      // Note that the final values of linear variables are to be calculated
+      // outside of __simd_helper function (together with loop indices).
+      if (Info->isOmp()) {
+        const OMPExecutableDirective *SimdOmp = cast<OMPExecutableDirective>(
+                                                        Info->getStmt());
+        const CapturedDecl *CD = cast<CapturedStmt>(
+            SimdOmp->getAssociatedStmt())->getCapturedDecl();
+        llvm::Value *IsLastIter = LocalDeclMap.lookup(CD->getParam(2));
+        // Save the 'last-iteration' flag for 'lastprivate'.
+        CGM.OpenMPSupport.setLastIterVar(IsLastIter);
+
+        // Emit destructors/required copyings for private/lastprivate.
+        for (ArrayRef<OMPClause *>::iterator I = SimdOmp->clauses().begin(),
+            E = SimdOmp->clauses().end(); I != E; ++I) {
+          assert(*I);
+          if (isa<OMPPrivateClause>(*I) || isa<OMPLastPrivateClause>(*I)) {
+            EmitPostOMPClause(*(*I), *SimdOmp);
+          }
+        }
+        // Emit closure of lastprivate clauses.
+        for (ArrayRef<OMPClause *>::iterator I = SimdOmp->clauses().begin(),
+            E = SimdOmp->clauses().end(); I != E; ++I) {
+          assert(*I);
+          if (isa<OMPLastPrivateClause>(*I)) {
+            EmitCloseOMPClause(*(*I), *SimdOmp);
+          }
+        }
+        // Clean up the OpenMP local vars stack
+        CGM.OpenMPSupport.endOpenMPRegion();
+      }
+      BreakContinueStack.pop_back();
+    }
+  }
+
+  // Leave the loop body.
+  LoopStack.Pop();
+}
+
+void CodeGenFunction::InitOpenMPFunction(llvm::Value *Context,
+                                         const CapturedStmt &S) {
+  CapturedStmtInfo =
+      new CGOpenMPCapturedStmtInfo(Context, S, CGM, S.getCapturedRegionKind());
+
+  const RecordDecl *RD = S.getCapturedRecordDecl();
+
+  QualType TagType = getContext().getTagDeclType(RD);
+  LValue Base = MakeNaturalAlignAddrLValue(Context, TagType);
+  RecordDecl::field_iterator CurField = RD->field_begin();
+  CapturedStmt::const_capture_iterator C = S.capture_begin();
+  for (CapturedStmt::capture_init_iterator I = S.capture_init_begin(),
+                                           E = S.capture_init_end();
+       I != E; ++I, ++C, ++CurField) {
+    QualType QTy = (*CurField)->getType();
+    if (QTy->isVariablyModifiedType()) {
+      EmitVariablyModifiedType(QTy);
+    }
+    if (C->capturesVariable()) {
+      const VarDecl *VD = C->getCapturedVar();
+      LValue LV = EmitLValueForField(Base, CapturedStmtInfo->lookup(VD));
+      CapturedStmtInfo->addCachedVar(VD, LV.getAddress());
+    }
+  }
+
+  // If 'this' is captured, load it into CXXThisValue.
+  if (CapturedStmtInfo->isCXXThisExprCaptured()) {
+    FieldDecl *FD = CapturedStmtInfo->getThisFieldDecl();
+    LValue LV = MakeNaturalAlignAddrLValue(CapturedStmtInfo->getContextValue(),
+                                           getContext().getTagDeclType(RD));
+    LValue ThisLValue = EmitLValueForField(LV, FD);
+    CXXThisValue = EmitLoadOfLValue(ThisLValue, FD->getLocStart()).getScalarVal();
+  }
+}
+
+void CodeGenFunction::InitOpenMPTargetFunction(const CapturedStmt &S) {
+  CapturedStmtInfo =
+      new CGOpenMPCapturedStmtInfo(0, S, CGM, S.getCapturedRegionKind());
+
+  const RecordDecl *RD = S.getCapturedRecordDecl();
+
+  llvm::Function::arg_iterator Arg = this->CurFn->arg_begin();
+  RecordDecl::field_iterator CurField = RD->field_begin();
+  CapturedStmt::const_capture_iterator C = S.capture_begin();
+  for (CapturedStmt::capture_init_iterator I = S.capture_init_begin(),
+                                           E = S.capture_init_end();
+       I != E; ++I, ++C, ++CurField, ++Arg) {
+
+    QualType QTy = (*CurField)->getType();
+    if (QTy->isVariablyModifiedType()) {
+      EmitVariablyModifiedType(QTy);
+    }
+    if (C->capturesVariable()) {
+      const VarDecl *VD = C->getCapturedVar();
+      CapturedStmtInfo->addCachedVar(VD, Arg);
+    }
+  }
+
+  // If 'this' is captured, load it into CXXThisValue.
+  if (CapturedStmtInfo->isCXXThisExprCaptured()) {
+    FieldDecl *FD = CapturedStmtInfo->getThisFieldDecl();
+    LValue LV = MakeNaturalAlignAddrLValue(CapturedStmtInfo->getContextValue(),
+                                           getContext().getTagDeclType(RD));
+    LValue ThisLValue = EmitLValueForField(LV, FD);
+    CXXThisValue = EmitLoadOfLValue(ThisLValue, FD->getLocStart()).getScalarVal();
+  }
 }

@@ -33,6 +33,8 @@ add_clang_library(clangCodeGen
   CGDecl.cpp
   CGDeclCXX.cpp
   CGDeclUPC.cpp
+  CGDeclOpenMP.cpp
+  CGElementalFunction.cpp
   CGException.cpp
   CGExpr.cpp
   CGExprAgg.cpp

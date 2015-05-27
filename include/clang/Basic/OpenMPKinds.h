@@ -21,45 +21,86 @@ namespace clang {
 
 /// \brief OpenMP directives.
 enum OpenMPDirectiveKind {
+  OMPD_unknown = 0,
 #define OPENMP_DIRECTIVE(Name) \
   OMPD_##Name,
 #define OPENMP_DIRECTIVE_EXT(Name, Str) \
   OMPD_##Name,
 #include "clang/Basic/OpenMPKinds.def"
-  OMPD_unknown
+  NUM_OPENMP_DIRECTIVES
 };
 
 /// \brief OpenMP clauses.
 enum OpenMPClauseKind {
+  OMPC_unknown = 0,
 #define OPENMP_CLAUSE(Name, Class) \
   OMPC_##Name,
 #include "clang/Basic/OpenMPKinds.def"
   OMPC_threadprivate,
-  OMPC_unknown
+  NUM_OPENMP_CLAUSES
 };
 
 /// \brief OpenMP attributes for 'default' clause.
 enum OpenMPDefaultClauseKind {
+  OMPC_DEFAULT_unknown = 0,
 #define OPENMP_DEFAULT_KIND(Name) \
   OMPC_DEFAULT_##Name,
 #include "clang/Basic/OpenMPKinds.def"
-  OMPC_DEFAULT_unknown
+  NUM_OPENMP_DEFAULT_KINDS
 };
 
 /// \brief OpenMP attributes for 'proc_bind' clause.
 enum OpenMPProcBindClauseKind {
+  OMPC_PROC_BIND_unknown = 0,
 #define OPENMP_PROC_BIND_KIND(Name) \
   OMPC_PROC_BIND_##Name,
 #include "clang/Basic/OpenMPKinds.def"
-  OMPC_PROC_BIND_unknown
+  NUM_OPENMP_PROC_BIND_KINDS
+};
+
+/// \brief OpenMP operators for 'reduction' clause.
+enum OpenMPReductionClauseOperator {
+  OMPC_REDUCTION_unknown = 0,
+#define OPENMP_REDUCTION_OPERATOR(Name, Symbol) \
+  OMPC_REDUCTION_##Name,
+#include "clang/Basic/OpenMPKinds.def"
+  NUM_OPENMP_REDUCTION_OPERATORS
+};
+
+/// \brief OpenMP dependence types for 'depend' clause.
+enum OpenMPDependClauseType {
+  OMPC_DEPEND_unknown = 0,
+#define OPENMP_DEPENDENCE_TYPE(Name, Type) \
+  OMPC_DEPEND_##Name,
+#include "clang/Basic/OpenMPKinds.def"
+  NUM_OPENMP_DEPENDENCE_TYPE
+};
+
+/// \brief OpenMP mapping kind for 'map' clause.
+enum OpenMPMapClauseKind {
+  OMPC_MAP_unknown = 0,
+#define OPENMP_MAP_KIND(Name, Kind) \
+  OMPC_MAP_##Name,
+#include "clang/Basic/OpenMPKinds.def"
+  NUM_OPENMP_MAP_KIND
 };
 
 /// \brief OpenMP attributes for 'schedule' clause.
 enum OpenMPScheduleClauseKind {
+  OMPC_SCHEDULE_unknown = 0,
 #define OPENMP_SCHEDULE_KIND(Name) \
   OMPC_SCHEDULE_##Name,
 #include "clang/Basic/OpenMPKinds.def"
-  OMPC_SCHEDULE_unknown
+  NUM_OPENMP_SCHEDULE_KINDS
+};
+
+/// \brief OpenMP attributes for 'dist_schedule' clause.
+enum OpenMPDistScheduleClauseKind {
+  OMPC_DIST_SCHEDULE_unknown = 0,
+#define OPENMP_DIST_SCHEDULE_KIND(Name) \
+  OMPC_DIST_SCHEDULE_##Name,
+#include "clang/Basic/OpenMPKinds.def"
+  NUM_OPENMP_DIST_SCHEDULE_KINDS
 };
 
 OpenMPDirectiveKind getOpenMPDirectiveKind(llvm::StringRef Str);
@@ -74,44 +115,6 @@ const char *getOpenMPSimpleClauseTypeName(OpenMPClauseKind Kind, unsigned Type);
 bool isAllowedClauseForDirective(OpenMPDirectiveKind DKind,
                                  OpenMPClauseKind CKind);
 
-/// \brief Checks if the specified directive is a directive with an associated
-/// loop construct.
-/// \param DKind Specified directive.
-/// \return true - the directive is a loop-associated directive like 'omp simd'
-/// or 'omp for' directive, otherwise - false.
-bool isOpenMPLoopDirective(OpenMPDirectiveKind DKind);
-
-/// \brief Checks if the specified directive is a worksharing directive.
-/// \param DKind Specified directive.
-/// \return true - the directive is a worksharing directive like 'omp for',
-/// otherwise - false.
-bool isOpenMPWorksharingDirective(OpenMPDirectiveKind DKind);
-
-/// \brief Checks if the specified directive is a parallel-kind directive.
-/// \param DKind Specified directive.
-/// \return true - the directive is a parallel-like directive like 'omp
-/// parallel', otherwise - false.
-bool isOpenMPParallelDirective(OpenMPDirectiveKind DKind);
-
-/// \brief Checks if the specified directive is a simd directive.
-/// \param DKind Specified directive.
-/// \return true - the directive is a simd directive like 'omp simd',
-/// otherwise - false.
-bool isOpenMPSimdDirective(OpenMPDirectiveKind DKind);
-
-/// \brief Checks if the specified clause is one of private clauses like
-/// 'private', 'firstprivate', 'reduction' etc..
-/// \param Kind Clause kind.
-/// \return true - the clause is a private clause, otherwise - false.
-bool isOpenMPPrivate(OpenMPClauseKind Kind);
-
-/// \brief Checks if the specified clause is one of threadprivate clauses like
-/// 'threadprivate', 'copyin' or 'copyprivate'.
-/// \param Kind Clause kind.
-/// \return true - the clause is a threadprivate clause, otherwise - false.
-bool isOpenMPThreadPrivate(OpenMPClauseKind Kind);
-
 }
 
 #endif
-

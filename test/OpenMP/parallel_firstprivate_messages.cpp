@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -verify -fopenmp=libiomp5 -ferror-limit 100 %s
+// RUN: %clang_cc1 -verify -fopenmp -ferror-limit 100 %s
 
 void foo() {
 }
@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
   S5 g(5); // expected-note {{'g' defined here}}
   int i;
   int &j = i; // expected-note {{'j' defined here}}
-  #pragma omp parallel firstprivate // expected-error {{expected '(' after 'firstprivate'}}
+  #pragma omp parallel firstprivate // expected-error {{expected '(' after 'firstprivate'}} expected-error {{expected expression}}
   #pragma omp parallel firstprivate ( // expected-error {{expected expression}} expected-error {{expected ')'}} expected-note {{to match this '('}}
   #pragma omp parallel firstprivate () // expected-error {{expected expression}}
   #pragma omp parallel firstprivate (argc // expected-error {{expected ')'}} expected-note {{to match this '('}}

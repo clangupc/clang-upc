@@ -121,6 +121,7 @@ void upc_all_reduceC
   signed char local_result = 0;
   signed char *l_src;
 
+  GUPCR_OMP_CHECK();
   if (!upc_coll_init_flag)
     upc_coll_init ();
 
@@ -558,6 +559,7 @@ void upc_all_reduceUC
   unsigned char local_result = 0;
   unsigned char *l_src;
 
+  GUPCR_OMP_CHECK();
   if (!upc_coll_init_flag)
     upc_coll_init ();
 
@@ -995,6 +997,7 @@ void upc_all_reduceS
   signed short local_result = 0;
   signed short *l_src;
 
+  GUPCR_OMP_CHECK();
   if (!upc_coll_init_flag)
     upc_coll_init ();
 
@@ -1432,6 +1435,7 @@ void upc_all_reduceUS
   unsigned short local_result = 0;
   unsigned short *l_src;
 
+  GUPCR_OMP_CHECK();
   if (!upc_coll_init_flag)
     upc_coll_init ();
 
@@ -1869,6 +1873,7 @@ void upc_all_reduceI
   signed int local_result = 0;
   signed int *l_src;
 
+  GUPCR_OMP_CHECK();
   if (!upc_coll_init_flag)
     upc_coll_init ();
 
@@ -2306,6 +2311,7 @@ void upc_all_reduceUI
   unsigned int local_result = 0;
   unsigned int *l_src;
 
+  GUPCR_OMP_CHECK();
   if (!upc_coll_init_flag)
     upc_coll_init ();
 
@@ -2743,6 +2749,7 @@ void upc_all_reduceL
   signed long local_result = 0;
   signed long *l_src;
 
+  GUPCR_OMP_CHECK();
   if (!upc_coll_init_flag)
     upc_coll_init ();
 
@@ -3180,6 +3187,7 @@ void upc_all_reduceUL
   unsigned long local_result = 0;
   unsigned long *l_src;
 
+  GUPCR_OMP_CHECK();
   if (!upc_coll_init_flag)
     upc_coll_init ();
 
@@ -3641,6 +3649,7 @@ void upc_all_reduceF
   float local_result = 0;
   float *l_src;
 
+  GUPCR_OMP_CHECK();
   if (!upc_coll_init_flag)
     upc_coll_init ();
 
@@ -4093,6 +4102,7 @@ void upc_all_reduceD
   double local_result = 0;
   double *l_src;
 
+  GUPCR_OMP_CHECK();
   if (!upc_coll_init_flag)
     upc_coll_init ();
 
@@ -4545,6 +4555,7 @@ void upc_all_reduceLD
   long double local_result = 0;
   long double *l_src;
 
+  GUPCR_OMP_CHECK();
   if (!upc_coll_init_flag)
     upc_coll_init ();
 

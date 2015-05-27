@@ -11002,6 +11002,7 @@ Sema::CreateOverloadedBinOp(SourceLocation OpLoc,
               SourceLocation(), Args[1]);
           if (Arg1.isInvalid())
             return ExprError();
+
           Args[0] = LHS = Arg0.getAs<Expr>();
           Args[1] = RHS = Arg1.getAs<Expr>();
         }

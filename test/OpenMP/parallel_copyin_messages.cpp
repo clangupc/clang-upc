@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -verify -fopenmp=libiomp5 -ferror-limit 100 -o - %s
+// RUN: %clang_cc1 -triple x86_64-apple-macos10.7.0 -verify -fopenmp -ferror-limit 100 %s
 
 void foo() {
 }
@@ -34,12 +34,6 @@ class S5 { // expected-note {{'S5' declared here}}
 public:
   S5(int v):a(v) { }
 };
-template <class T>
-class ST {
-public:
-  static T s;
-};
-
 
 S2 k;
 S3 h;
@@ -49,7 +43,7 @@ S5 m(4); // expected-note {{'m' defined here}}
 
 int main(int argc, char **argv) {
   int i;
-  #pragma omp parallel copyin // expected-error {{expected '(' after 'copyin'}}
+  #pragma omp parallel copyin // expected-error {{expected '(' after 'copyin'}} expected-error {{expected expression}}
   #pragma omp parallel copyin ( // expected-error {{expected expression}} expected-error {{expected ')'}} expected-note {{to match this '('}}
   #pragma omp parallel copyin () // expected-error {{expected expression}}
   #pragma omp parallel copyin (k // expected-error {{expected ')'}} expected-note {{to match this '('}}
@@ -60,7 +54,6 @@ int main(int argc, char **argv) {
   #pragma omp parallel copyin (argv[1]) // expected-error {{expected variable name}}
   #pragma omp parallel copyin(i) // expected-error {{copyin variable must be threadprivate}}
   #pragma omp parallel copyin(m) // expected-error {{copyin variable must have an accessible, unambiguous copy assignment operator}}
-  #pragma omp parallel copyin(ST<int>::s) // expected-error {{copyin variable must be threadprivate}}
   foo();
 
   return 0;

@@ -20,6 +20,7 @@
 #include "clang/Driver/Tool.h"
 #include "clang/Driver/ToolChain.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringSet.h"
@@ -36,6 +37,7 @@
 #include "llvm/Support/PrettyStackTrace.h"
 #include "llvm/Support/Process.h"
 #include "llvm/Support/Program.h"
+#include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/raw_ostream.h"
 #include <map>
 #include <memory>
@@ -76,6 +78,8 @@ Driver::~Driver() {
   delete Opts;
 
   llvm::DeleteContainerSeconds(ToolChains);
+  llvm::DeleteContainerSeconds(OpenMPTargetToolChains);
+  clearResultInfo();
 }
 
 void Driver::ParseDriverMode(ArrayRef<const char *> Args) {
@@ -131,9 +135,11 @@ InputArgList *Driver::ParseArgStrings(ArrayRef<const char *> ArgList) {
       continue;
     }
 
-    // Warn about -mcpu= without an argument.
-    if (A->getOption().matches(options::OPT_mcpu_EQ) &&
-        A->containsValue("")) {
+    // Warn about -mcpu= and -omptargets= without an argument.
+    if ( (A->getOption().matches(options::OPT_mcpu_EQ)
+         && A->containsValue(""))
+         || (A->getOption().matches(options::OPT_omptargets_EQ)
+         && !A->getNumValues()) ) {
       Diag(clang::diag::warn_drv_empty_joined_argument) <<
         A->getAsString(*Args);
     }
@@ -147,6 +153,47 @@ InputArgList *Driver::ParseArgStrings(ArrayRef<const char *> ArgList) {
   return Args;
 }
 
+void Driver::registerResultInfo(const ToolChain *TC, const Action *A,
+                                InputInfo Res) const{
+  assert( TC && A && "Invalid Toolchain or Action!!!");
+
+  InputInfo *R;
+  ResultInfoMap[A][TC] = R = new InputInfo();
+  *R = Res;
+}
+InputInfo *Driver::getResultInfo(const ToolChain *TC, const Action *A) const{
+
+  // If no results were ever registered for the requested action, return NULL
+  ResultInfoMapTy::const_iterator ResultsPerAction = ResultInfoMap.find(A);
+  if (ResultsPerAction == ResultInfoMap.end())
+    return nullptr;
+
+  const ResultInfoMapPerActionTy &MapPerAction = ResultsPerAction->second;
+  ResultInfoMapPerActionTy::const_iterator Result = MapPerAction.find(TC);
+
+  assert(!MapPerAction.empty() &&
+         "Action registered before without toolchain??");
+
+  // If we found results for the requested toolchain just return it
+  if ( Result != MapPerAction.end())
+    return Result->second;
+
+  // If we didn't find results for the requested toolchain but it is used for
+  // offloading, we can use whatever toolchain was registered
+  // before as long as it is not an offloading toolchain as well.
+  if (TC->isOpenMPTargetToolchain())
+    for (const auto &R : MapPerAction)
+      if (!R.first->isOpenMPTargetToolchain())
+        return R.second;
+
+  // In all other cases return null
+  return nullptr;
+}
+void Driver::clearResultInfo() const{
+  for( auto &M : ResultInfoMap)
+    llvm::DeleteContainerSeconds(M.second);
+  ResultInfoMap.clear();
+}
 // Determine which compilation mode we are in. We look for options which
 // affect the phase, starting with the earliest phases, and record which
 // option we used to determine the final phase.
@@ -806,7 +853,7 @@ static unsigned PrintActions1(const Compilation &C, Action *A,
   if (InputAction *IA = dyn_cast<InputAction>(A)) {
     os << "\"" << IA->getInputArg().getValue() << "\"";
   } else if (BindArchAction *BIA = dyn_cast<BindArchAction>(A)) {
-    os << '"' << BIA->getArchName() << '"'
+    os << '"' << ((BIA->getArchName())?BIA->getArchName():"default") << '"'
        << ", {" << PrintActions1(C, *BIA->begin(), Ids) << "}";
   } else {
     os << "{";
@@ -1179,9 +1226,40 @@ void Driver::BuildActions(const ToolChain &TC, DerivedArgList &Args,
     }
   }
 
-  // Construct the actions to perform.
-  ActionList LinkerInputs;
+  // Determine how many compile phases need to be spawned in case we are using
+  // openmp with target regions. This is done based on the omptarget arguments.
+  // All registered targets are considered by default.
+  llvm::SmallSetVector<const char*,4> OpenMPTargets;
 
+  if (Args.hasArg(options::OPT_fopenmp)){
+
+    // check if there is any openmp target we care generating code to
+    Arg *Tgts = Args.getLastArg(options::OPT_omptargets_EQ);
+
+    // If omptargets was specified use only the required targets
+    if ( Tgts && Tgts->getNumValues() ){
+      for (unsigned v=0; v<Tgts->getNumValues(); ++v){
+        std::string error;
+        const char *val = Tgts->getValue(v);
+
+        llvm::Triple TT(val);
+
+        //If the specified target is invalid, emit error
+        if (TT.getArch() == llvm::Triple::UnknownArch)
+          Diag(clang::diag::err_drv_invalid_omp_target) << val;
+        else
+          OpenMPTargets.insert(val);
+      }
+    }
+  }
+
+  // We need an array of actions to trace the actions for the main target
+  // and each available omp target detected before
+  std::unique_ptr<Action> *ActionsForTarget =
+      new std::unique_ptr<Action>[1+OpenMPTargets.size()];
+  ActionList *LinkerInputsForTarget = new ActionList[1+OpenMPTargets.size()];
+
+  // Construct the actions to perform.
   llvm::SmallVector<phases::ID, phases::MaxNumberOfPhases> PL;
   for (unsigned i = 0, e = Inputs.size(); i != e; ++i) {
     types::ID InputType = Inputs[i].first;
@@ -1226,7 +1304,17 @@ void Driver::BuildActions(const ToolChain &TC, DerivedArgList &Args,
     }
 
     // Build the pipeline for this file.
-    std::unique_ptr<Action> Current(new InputAction(*InputArg, InputType));
+
+    // Initialize with the current input
+    ActionsForTarget[0].reset(new InputAction(*InputArg, InputType));
+
+    // The number of targets we should take into account.
+    // Before the compile phase there is only one and from
+    // the compile phase on we will have N+1 targets
+    // where N is all the available omp targets
+    unsigned PreviousTotalTargets = 1;
+    unsigned TotalTargets = 1;
+
     for (SmallVectorImpl<phases::ID>::iterator
            i = PL.begin(), e = PL.end(); i != e; ++i) {
       phases::ID Phase = *i;
@@ -1235,33 +1323,120 @@ void Driver::BuildActions(const ToolChain &TC, DerivedArgList &Args,
       if (Phase > FinalPhase)
         break;
 
-      // Queue linker inputs.
-      if (Phase == phases::Link) {
-        assert((i + 1) == e && "linking must be final compilation step.");
-        LinkerInputs.push_back(Current.release());
-        break;
+      bool NothingElseToDo = false;
+
+      // keep track of the number of targets in the previous phase
+      PreviousTotalTargets = TotalTargets;
+
+      // if it is past the preprocess phase, the total targets also contain the
+      // omp targets
+      if ( Phase > phases::Preprocess )
+        TotalTargets = 1+OpenMPTargets.size();
+
+      for (unsigned tgt=TotalTargets; tgt>0; --tgt){
+
+        // Get the right input action
+        Action *CurrentInput = 0;
+
+        // If we are coming from a single to multiple targets, we need to use
+        // the input file in all actions before removing it
+
+        if ( PreviousTotalTargets < TotalTargets && tgt>1 )
+          CurrentInput = ActionsForTarget[0].get();
+        else
+          CurrentInput = ActionsForTarget[tgt-1].release();
+
+        assert( CurrentInput && "Expecting an input to be defined");
+
+        // Queue linker inputs.
+        if (Phase == phases::Link) {
+          assert((i + 1) == e && "linking must be final compilation step.");
+          LinkerInputsForTarget[tgt-1].push_back(CurrentInput);
+          NothingElseToDo = true;
+          continue;
+        }
+
+        // Some types skip the assembler phase (e.g., llvm-bc), but we can't
+        // encode this in the steps because the intermediate type depends on
+        // arguments. Just special case here.
+        if (Phase == phases::Assemble &&
+            CurrentInput->getType() != types::TY_PP_Asm){
+          // Just store the current input to be used directly in the next phase
+          ActionsForTarget[tgt-1].reset(CurrentInput);
+          continue;
+        }
+
+        // Build the phase action
+        ActionsForTarget[tgt-1].reset(
+            ConstructPhaseAction(Args, Phase, CurrentInput));
+
+        if (ActionsForTarget[tgt-1]->getType() == types::TY_Nothing)
+          NothingElseToDo = true;
+
+        // If we are coming from a single to multiple target phase, set the
+        // input ownership flag to false
+        ActionsForTarget[tgt-1]->setOwnsInputs(
+            !(PreviousTotalTargets < TotalTargets));
+
+        // If we we are processing a target action, we need to bind it to the
+        // target it refers to
+        if ( tgt > 1 ){
+          ActionsForTarget[tgt-1]->setOffloadingDevice(OpenMPTargets[tgt-2]);
+          ActionsForTarget[tgt-1].reset(
+              new BindTargetAction(ActionsForTarget[tgt-1].release(),
+                                   OpenMPTargets[tgt-2]));
+        }
+
       }
 
-      // Some types skip the assembler phase (e.g., llvm-bc), but we can't
-      // encode this in the steps because the intermediate type depends on
-      // arguments. Just special case here.
-      if (Phase == phases::Assemble && Current->getType() != types::TY_PP_Asm)
-        continue;
-
-      // Otherwise construct the appropriate action.
-      Current.reset(ConstructPhaseAction(Args, Phase, Current.release()));
-      if (Current->getType() == types::TY_Nothing)
+      if (NothingElseToDo)
         break;
     }
 
     // If we ended with something, add to the output list.
-    if (Current)
-      Actions.push_back(Current.release());
+    for (unsigned tgt=TotalTargets; tgt>0; --tgt){
+      if (ActionsForTarget[tgt-1])
+        Actions.push_back(ActionsForTarget[tgt-1].release());
+    }
+
+  }
+
+  // release the Actions-For-Target array
+  delete[] ActionsForTarget;
+
+  // Create link action for each target if any
+  for (unsigned tgt = OpenMPTargets.size(); tgt > 0; --tgt){
+
+    if (LinkerInputsForTarget[tgt].empty())
+      continue;
+
+    std::unique_ptr<Action> TgtLinkAction;
+    // Link target action: produces a shared library
+    TgtLinkAction.reset(
+        new LinkJobAction(LinkerInputsForTarget[tgt], types::TY_SObject));
+    TgtLinkAction.get()->setOffloadingDevice(OpenMPTargets[tgt-1]);
+
+    // if the target link phase takes an input that is not binded to it, it
+    // means it does not own it, as it may be used by other targets and host too
+    for (const auto &II : LinkerInputsForTarget[tgt]){
+      if ( !isa<BindTargetAction>(II) )
+        TgtLinkAction.get()->setOwnsInputs(false);
+    }
+
+    // Bind action to target
+    TgtLinkAction.reset(
+        new BindTargetAction(TgtLinkAction.release(), OpenMPTargets[tgt-1]));
+    // Include the resulting object as part of the host linking
+    LinkerInputsForTarget[0].push_back(TgtLinkAction.release());
   }
 
   // Add a link action if necessary.
-  if (!LinkerInputs.empty())
-    Actions.push_back(new LinkJobAction(LinkerInputs, types::TY_Image));
+  if (!LinkerInputsForTarget[0].empty())
+    Actions.push_back(
+        new LinkJobAction(LinkerInputsForTarget[0], types::TY_Image));
+
+  // Release the linking input arrays
+  delete[] LinkerInputsForTarget;
 
   // If we are linking, claim any options which are obviously only used for
   // compilation.
@@ -1378,6 +1553,9 @@ void Driver::BuildJobs(Compilation &C) const {
     }
   }
 
+  // Make sure the results map is cleared before starting to create jobs.
+  clearResultInfo();
+
   for (ActionList::const_iterator it = C.getActions().begin(),
          ie = C.getActions().end(); it != ie; ++it) {
     Action *A = *it;
@@ -1484,13 +1662,18 @@ static const Tool *SelectToolForJob(Compilation &C, const ToolChain *TC,
 
   // See if we should use an integrated preprocessor. We do so when we have
   // exactly one input, since this is the only use case we care about
-  // (irrelevant since we don't support combine yet).
+  // (irrelevant since we don't support combine yet). If we have OpenMP
+  // offloading targets, we do not use the integrated preprocessor too as the
+  // input file needs to be preprocessed by the host and the result used by both
+  // host and targets.
   if (Inputs->size() == 1 && isa<PreprocessJobAction>(*Inputs->begin()) &&
       !C.getArgs().hasArg(options::OPT_no_integrated_cpp) &&
       !C.getArgs().hasArg(options::OPT_traditional_cpp) &&
       !C.getArgs().hasArg(options::OPT_save_temps) &&
       !C.getArgs().hasArg(options::OPT_rewrite_objc) &&
-      ToolForJob->hasIntegratedCPP())
+      !(C.getArgs().hasArg(options::OPT_fopenmp) &&
+        C.getArgs().hasArg(options::OPT_omptargets_EQ)) &&
+      ToolForJob->hasIntegratedCPP() )
     Inputs = &(*Inputs)[0]->getInputs();
 
   return ToolForJob;
@@ -1506,6 +1689,13 @@ void Driver::BuildJobsForAction(Compilation &C,
                                 InputInfo &Result) const {
   llvm::PrettyStackTraceString CrashInfo("Building compilation jobs");
 
+  // If we already have compatible result information for this action we do not
+  // need to compute it again.
+  if (const InputInfo *PrevInfo = getResultInfo(TC,A)){
+    Result = *PrevInfo;
+    return;
+  }
+
   if (const InputAction *IA = dyn_cast<InputAction>(A)) {
     // FIXME: It would be nice to not claim this here; maybe the old scheme of
     // just using Args was better?
@@ -1513,9 +1703,11 @@ void Driver::BuildJobsForAction(Compilation &C,
     Input.claim();
     if (Input.getOption().matches(options::OPT_INPUT)) {
       const char *Name = Input.getValue();
-      Result = InputInfo(Name, A->getType(), Name);
+      Result = InputInfo(Name, A, Name);
     } else
-      Result = InputInfo(&Input, A->getType(), "");
+      Result = InputInfo(&Input, A, "");
+
+    registerResultInfo(TC,A,Result);
     return;
   }
 
@@ -1530,6 +1722,31 @@ void Driver::BuildJobsForAction(Compilation &C,
 
     BuildJobsForAction(C, *BAA->begin(), TC, BAA->getArchName(),
                        AtTopLevel, MultipleArchs, LinkingOutput, Result);
+
+    registerResultInfo(TC,A,Result);
+    return;
+  }
+
+  if (const BindTargetAction *BTA = dyn_cast<BindTargetAction>(A)) {
+    const ToolChain *TC;
+    const char *OpenMPTargetName = BTA->getTargetName();
+
+    assert( OpenMPTargetName && "Need to have a name for the target!" );
+
+    TC = &getToolChain(C.getArgs(), "", OpenMPTargetName);
+
+    // If the toolchain does not have isOpenMPTargetToolchain set it means
+    // there was some problem creating the toolchain
+    if ( !TC->isOpenMPTargetToolchain() ){
+      Diag(clang::diag::err_drv_omp_target_toolchain_not_available)
+          << OpenMPTargetName;
+      return;
+    }
+
+    BuildJobsForAction(C, *BTA->begin(), TC, BTA->getTargetName(),
+                       AtTopLevel, false, LinkingOutput, Result);
+
+    registerResultInfo(TC,A,Result);
     return;
   }
 
@@ -1544,6 +1761,7 @@ void Driver::BuildJobsForAction(Compilation &C,
   InputInfoList InputInfos;
   for (ActionList::const_iterator it = Inputs->begin(), ie = Inputs->end();
        it != ie; ++it) {
+
     // Treat dsymutil and verify sub-jobs as being at the top-level too, they
     // shouldn't get temporary output names.
     // FIXME: Clean this up.
@@ -1567,11 +1785,13 @@ void Driver::BuildJobsForAction(Compilation &C,
 
   // Determine the place to write output to, if any.
   if (JA->getType() == types::TY_Nothing)
-    Result = InputInfo(A->getType(), BaseInput);
+    Result = InputInfo(A, BaseInput);
   else
     Result = InputInfo(GetNamedOutputPath(C, *JA, BaseInput, BoundArch,
                                           AtTopLevel, MultipleArchs),
-                       A->getType(), BaseInput);
+                       A, BaseInput);
+
+  registerResultInfo(TC,A,Result);
 
   if (CCCPrintBindings && !CCGenDiagnostics) {
     llvm::errs() << "# \"" << T->getToolChain().getTripleString() << '"'
@@ -1583,8 +1803,20 @@ void Driver::BuildJobsForAction(Compilation &C,
     }
     llvm::errs() << "], output: " << Result.getAsString() << "\n";
   } else {
-    T->ConstructJob(C, *JA, Result, InputInfos,
-                    C.getArgsForToolChain(TC, BoundArch), LinkingOutput);
+
+    bool isSuccess;
+
+    // Get the derived args for the target
+    const DerivedArgList &DArgs =
+     C.getArgsForToolChain(TC, BoundArch, JA->getOffloadingDevice(), isSuccess);
+
+    // If we were unable to successfully get the arguments we cannot create the
+    // job. This will happen if using an OpenMP target toolchain that is not
+    // prepared to translate arguments to OpenMP.
+    if (!isSuccess)
+      return;
+
+    T->ConstructJob(C, *JA, Result, InputInfos,  DArgs, LinkingOutput);
   }
 }
 
@@ -1721,6 +1953,13 @@ const char *Driver::GetNamedOutputPath(Compilation &C,
       Suffixed += "-";
       Suffixed.append(BoundArch);
     }
+
+    // Append OpenMP target suffix to output file
+    if ( JA.getOffloadingDevice() ){
+      Suffixed += ".tgt-";
+      Suffixed.append(BoundArch);
+    }
+
     Suffixed += '.';
     Suffixed += Suffix;
     NamedOutput = C.getArgs().MakeArgString(Suffixed.c_str());
@@ -1866,6 +2105,7 @@ std::string Driver::GetTemporaryPath(StringRef Prefix, const char *Suffix)
 static llvm::Triple computeTargetTriple(StringRef DefaultTargetTriple,
                                         const ArgList &Args,
                                         StringRef DarwinArchName) {
+
   // FIXME: Already done in Compilation *Driver::BuildCompilation
   if (const Arg *A = Args.getLastArg(options::OPT_target))
     DefaultTargetTriple = A->getValue();
@@ -1945,100 +2185,133 @@ static llvm::Triple computeTargetTriple(StringRef DefaultTargetTriple,
 }
 
 const ToolChain &Driver::getToolChain(const ArgList &Args,
-                                      StringRef DarwinArchName) const {
-  llvm::Triple Target = computeTargetTriple(DefaultTargetTriple, Args,
-                                            DarwinArchName);
+                                      StringRef DarwinArchName,
+                                      const char *OpenMPTripleString) const {
 
-  ToolChain *&TC = ToolChains[Target.str()];
-  if (!TC) {
+  llvm::Triple Target;
+  ToolChain **TC;
+  bool IsOpenMPTargetToolchain = OpenMPTripleString != nullptr;
+
+  // if a specific triple is passed, that means it was already parsed
+  // before while creating the actions for OpenMP targets, therefore we should
+  // be able to get the architecture directly from it.
+
+  if (IsOpenMPTargetToolchain){
+    Target = llvm::Triple(OpenMPTripleString);
+    assert( Target.getArch() != llvm::Triple::UnknownArch &&
+        "Target unknown - impossible to infer toolchain!");
+
+    TC = &OpenMPTargetToolChains[Target.str()];
+  }  else {
+    Target = computeTargetTriple(DefaultTargetTriple, Args, DarwinArchName);
+    TC = &ToolChains[Target.str()];
+  }
+
+  if (!*TC) {
     switch (Target.getOS()) {
     case llvm::Triple::AuroraUX:
-      TC = new toolchains::AuroraUX(*this, Target, Args);
+      *TC = new toolchains::AuroraUX(*this, Target, Args);
       break;
     case llvm::Triple::Darwin:
     case llvm::Triple::MacOSX:
     case llvm::Triple::IOS:
-      TC = new toolchains::DarwinClang(*this, Target, Args);
+      *TC = new toolchains::DarwinClang(*this, Target, Args);
       break;
     case llvm::Triple::DragonFly:
-      TC = new toolchains::DragonFly(*this, Target, Args);
+      *TC = new toolchains::DragonFly(*this, Target, Args);
       break;
     case llvm::Triple::OpenBSD:
-      TC = new toolchains::OpenBSD(*this, Target, Args);
+      *TC = new toolchains::OpenBSD(*this, Target, Args);
       break;
     case llvm::Triple::Bitrig:
-      TC = new toolchains::Bitrig(*this, Target, Args);
+      *TC = new toolchains::Bitrig(*this, Target, Args);
       break;
     case llvm::Triple::NetBSD:
-      TC = new toolchains::NetBSD(*this, Target, Args);
+      *TC = new toolchains::NetBSD(*this, Target, Args);
       break;
     case llvm::Triple::FreeBSD:
-      TC = new toolchains::FreeBSD(*this, Target, Args);
+      *TC = new toolchains::FreeBSD(*this, Target, Args);
       break;
     case llvm::Triple::Minix:
-      TC = new toolchains::Minix(*this, Target, Args);
+      *TC = new toolchains::Minix(*this, Target, Args);
       break;
     case llvm::Triple::Linux:
       if (Target.getArch() == llvm::Triple::hexagon)
-        TC = new toolchains::Hexagon_TC(*this, Target, Args);
+        *TC = new toolchains::Hexagon_TC(*this, Target, Args);
       else
-        TC = new toolchains::Linux(*this, Target, Args);
+        *TC = new toolchains::Linux(*this, Target, Args,
+                                    IsOpenMPTargetToolchain);
       break;
     case llvm::Triple::Solaris:
-      TC = new toolchains::Solaris(*this, Target, Args);
+      *TC = new toolchains::Solaris(*this, Target, Args);
       break;
     case llvm::Triple::Win32:
       switch (Target.getEnvironment()) {
       default:
         if (Target.isOSBinFormatELF())
-          TC = new toolchains::Generic_ELF(*this, Target, Args);
+          *TC = new toolchains::Generic_ELF(*this, Target, Args);
         else if (Target.isOSBinFormatMachO())
-          TC = new toolchains::MachO(*this, Target, Args);
+          *TC = new toolchains::MachO(*this, Target, Args);
         else
-          TC = new toolchains::Generic_GCC(*this, Target, Args);
+          *TC = new toolchains::Generic_GCC(*this, Target, Args);
         break;
       case llvm::Triple::GNU:
         // FIXME: We need a MinGW toolchain.  Use the default Generic_GCC
         // toolchain for now as the default case would below otherwise.
         if (Target.isOSBinFormatELF())
-          TC = new toolchains::Generic_ELF(*this, Target, Args);
+          *TC = new toolchains::Generic_ELF(*this, Target, Args);
         else
-          TC = new toolchains::Generic_GCC(*this, Target, Args);
+          *TC = new toolchains::Generic_GCC(*this, Target, Args);
         break;
       case llvm::Triple::MSVC:
       case llvm::Triple::UnknownEnvironment:
-        TC = new toolchains::Windows(*this, Target, Args);
+        *TC = new toolchains::Windows(*this, Target, Args);
         break;
       }
       break;
     default:
       // TCE is an OSless target
       if (Target.getArchName() == "tce") {
-        TC = new toolchains::TCEToolChain(*this, Target, Args);
+        *TC = new toolchains::TCEToolChain(*this, Target, Args);
         break;
       }
       // If Hexagon is configured as an OSless target
       if (Target.getArch() == llvm::Triple::hexagon) {
-        TC = new toolchains::Hexagon_TC(*this, Target, Args);
+        *TC = new toolchains::Hexagon_TC(*this, Target, Args);
         break;
       }
       if (Target.getArch() == llvm::Triple::xcore) {
-        TC = new toolchains::XCore(*this, Target, Args);
+        *TC = new toolchains::XCore(*this, Target, Args);
+        break;
+      }
+      if (Target.getArch() == llvm::Triple::nvptx ||
+          Target.getArch() == llvm::Triple::nvptx64 ) {
+        *TC = new toolchains::NVPTX_TC(*this, Target, Args,
+                                       IsOpenMPTargetToolchain);
         break;
       }
       if (Target.isOSBinFormatELF()) {
-        TC = new toolchains::Generic_ELF(*this, Target, Args);
+        *TC = new toolchains::Generic_ELF(*this, Target, Args,
+                                          IsOpenMPTargetToolchain);
         break;
       }
       if (Target.getObjectFormat() == llvm::Triple::MachO) {
-        TC = new toolchains::MachO(*this, Target, Args);
+        *TC = new toolchains::MachO(*this, Target, Args);
         break;
       }
-      TC = new toolchains::Generic_GCC(*this, Target, Args);
+      *TC = new toolchains::Generic_GCC(*this, Target, Args,
+                                        IsOpenMPTargetToolchain);
       break;
     }
   }
-  return *TC;
+
+  // If this is not an OpenMPToolchain the information in TC needs to
+  // be consistent with the flag IsOpenMPTargetToolchain
+  assert((IsOpenMPTargetToolchain ||
+          IsOpenMPTargetToolchain == (*TC)->isOpenMPTargetToolchain()) &&
+          "Unable to initialize toolchain for OpenMP offloading!!!");
+
+  return **TC;
 }
 
 bool Driver::ShouldUseClangCompiler(const JobAction &JA) const {

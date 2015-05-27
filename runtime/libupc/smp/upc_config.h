@@ -54,8 +54,8 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
-#ifdef GUPCR_USE_PTHREADS
 #include <pthread.h>
+#ifdef GUPCR_USE_PTHREADS
 #define GUPCR_THREAD_LOCAL __thread
 #else
 #define GUPCR_THREAD_LOCAL

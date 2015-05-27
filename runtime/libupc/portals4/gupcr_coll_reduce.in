@@ -147,6 +147,7 @@ void upc_all_reduce_GENERIC
   _UPC_RED_T local_result = 0;
   _UPC_RED_T *l_src;
 
+  GUPCR_OMP_CHECK();
   if (!upc_coll_init_flag)
     upc_coll_init ();
 

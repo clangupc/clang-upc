@@ -194,6 +194,7 @@ __upc_notify (int barrier_id)
 {
   ptl_process_t rpid __attribute ((unused));
 
+  GUPCR_OMP_CHECK();
   gupcr_trace (FC_BARRIER, "BARRIER NOTIFY ENTER %d", barrier_id);
 
   if (gupcr_barrier_active)
@@ -378,6 +379,7 @@ __upc_wait (int barrier_id)
   ptl_ct_event_t ct;
   ptl_process_t rpid __attribute ((unused));
   int received_barrier_id;
+  GUPCR_OMP_CHECK();
   gupcr_trace (FC_BARRIER, "BARRIER WAIT ENTER %d", barrier_id);
 
   if (!gupcr_barrier_active)

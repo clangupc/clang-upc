@@ -29,6 +29,15 @@
 #error GUPCR_THREADS_MAX exceeds the size of the packed sptr threads field.
 #endif
 
+//begin lib_omp_check
+#if GUCPR_HAVE_CHECKS
+extern void __upc_omp_check (void);
+#define GUPCR_OMP_CHECK() __upc_omp_check()
+#else
+#define GUPCR_OMP_CHECK()
+#endif
+//end lib_omp_check
+
 /* The filename of the location where a runtime
    error was detected.  This is set by the various
    debug-enabled ('g') UPC runtime library routines.  */
