@@ -48,9 +48,11 @@
 #define	GUPCR_SERVICE_COLL		6
 /** Non-blocking transfers network connection */
 #define	GUPCR_SERVICE_NB		7
+/** Memory atomic functions network connection */
+#define	GUPCR_SERVICE_ATOMIC		8
 /** Number of services */
-#define	GUPCR_SERVICE_COUNT		8
-/** Number of service bits (? TODO - no match with docs) */
+#define	GUPCR_SERVICE_COUNT		9
+/** Number of service bits */
 #define	GUPCR_SERVICE_BITS		8
 /** @} */
 
@@ -62,6 +64,7 @@
 #define	GUPCR_MR_SHUTDOWN	5
 #define	GUPCR_MR_COLL		6
 #define	GUPCR_MR_NB		7
+#define	GUPCR_MR_ATOMIC		8
 
 //begin lib_fabric
 
