@@ -1628,7 +1628,10 @@ ASTContext::getTypeInfoImpl(const Type *T) const {
   case Type::Pointer: {
     if (cast<PointerType>(T)->getPointeeType().getQualifiers().hasShared()) {
       Width = (LangOpts.UPCPhaseBits + LangOpts.UPCThreadBits + LangOpts.UPCAddrBits);
-      Align = Target->getTypeAlign(Target->getInt64Type());
+      if (LangOpts.UPCPtsRep)
+        Align = Target->getTypeAlign(Target->getInt64Type()); // Packed PTS
+      else
+        Align = Target->getTypeAlign(Target->getIntPtrType()); // Struct PTS
     } else {
       unsigned AS = getTargetAddressSpace(cast<PointerType>(T)->getPointeeType());
       Width = Target->getPointerWidth(AS);
