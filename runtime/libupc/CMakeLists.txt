@@ -138,6 +138,9 @@ set(GUPCR_HAVE_STATS ${LIBUPC_ENABLE_RUNTIME_STATS})
 set(LIBUPC_ENABLE_RUNTIME_TRACE FALSE CACHE BOOL "enable internal UPC runtime trace collection support; a runtime trace is a time stamped log that records various significant internal events; this trace is written to a per-process log file.")
 set(GUPCR_HAVE_TRACE ${LIBUPC_ENABLE_RUNTIME_TRACE})
 
+set(LIBUPC_ENABLE_RUNTIME_OMP_CHECKS FALSE CACHE BOOL "enable internal UPC runtime check for OMP thread correctness.")
+set(GUPCR_HAVE_OMP_CHECKS ${LIBUPC_ENABLE_RUNTIME_OMP_CHECKS})
+
 include(CheckFunctionExists)
 include(CheckLibraryExists)
 

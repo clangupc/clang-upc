@@ -336,6 +336,10 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR
   endif()
 endif()
 
+set(LIBUPC_ENABLE_RUNTIME_OMP_CHECKS FALSE CACHE BOOL "enable internal UPC runtime check for OMP thread cor
+rectness.")
+set(LIBUPC_ENABLE_OMP_CHECKS ${LIBUPC_ENABLE_RUNTIME_OMP_CHECKS})
+
 configure_file(
   ${CLANG_SOURCE_DIR}/include/clang/Config/config.h.cmake
   ${CLANG_BINARY_DIR}/include/clang/Config/config.h)

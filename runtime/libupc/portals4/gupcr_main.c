@@ -204,6 +204,7 @@ gupcr_per_thread_init (void)
 
 /** @} */
 
+#if GUPCR_HAVE_OMP_CHECKS
 /**
  *  Check for UPC runtime calls from OMP threads.
  */
@@ -213,6 +214,7 @@ __upc_omp_check (void)
   if (__upc_pthread_id != pthread_self ())
     gupcr_fatal_error ("UPC runtime calls are allowed only from the UPC threads");;
 }
+#endif
 
 /**
  * UPC program exit.

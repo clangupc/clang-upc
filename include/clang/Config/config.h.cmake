@@ -53,6 +53,9 @@
 /* Portals4 SLURM support */                                                    
 #cmakedefine LIBUPC_PORTALS4_SLURM ${LIBUPC_PORTALS4_SLURM}
 
+/* UPC enable OMP checks */
+#cmakedefine LIBUPC_ENABLE_OMP_CHECKS ${LIBUPC_ENABLE_OMP_CHECKS}
+
 /* Define if we have libxml2 */
 #cmakedefine CLANG_HAVE_LIBXML ${CLANG_HAVE_LIBXML}
 

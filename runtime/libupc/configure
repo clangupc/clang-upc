@@ -1440,6 +1440,9 @@ Optional Features:
                           Enable internal UPC runtime checks that validate
                           arguments, and check for inconsistent runtime state
                           [default=no]
+  --enable-upc-runtime-omp-checks
+                          Enable internal UPC runtime checks that validate OMP
+                          threads usage of UPC runtime [default=no]
   --enable-upc-runtime-stats
                           Enable internal UPC runtime statistics collection
                           support; these statistics count the number of
@@ -10558,7 +10561,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 10561 "configure"
+#line 10564 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -22178,6 +22181,35 @@ if test "$enable_upc_runtime_checks" = "yes"; then
 
 cat >>confdefs.h <<\_ACEOF
 #define GUPCR_HAVE_CHECKS 1
+_ACEOF
+
+fi
+
+{ echo "$as_me:$LINENO: checking for UPC runtime OMP checking support" >&5
+echo $ECHO_N "checking for UPC runtime OMP checking support... $ECHO_C" >&6; }
+# Check whether --enable-upc-runtime-omp-checks was given.
+if test "${enable_upc_runtime_omp_checks+set}" = set; then
+  enableval=$enable_upc_runtime_omp_checks;
+  case $enableval in
+  yes | no) ;;
+  *)
+    { { echo "$as_me:$LINENO: error: --enable-upc-runtime-omp-checks accepts only yes or no." >&5
+echo "$as_me: error: --enable-upc-runtime-omp-checks accepts only yes or no." >&2;}
+   { (exit 1); exit 1; }; }
+  esac
+
+else
+
+  enable_upc_runtime_omp_checks=no
+
+fi
+
+{ echo "$as_me:$LINENO: result: $enable_upc_runtime_omp_checks" >&5
+echo "${ECHO_T}$enable_upc_runtime_omp_checks" >&6; }
+if test "$enable_upc_runtime_omp_checks" = "yes"; then
+
+cat >>confdefs.h <<\_ACEOF
+#define GUPCR_HAVE_OMP_CHECKS 1
 _ACEOF
 
 fi

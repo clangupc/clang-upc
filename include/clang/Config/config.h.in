@@ -56,6 +56,9 @@
 /* Portals4 SLURM support */
 #undef LIBUPC_PORTALS4_SLURM
 
+/* Enable OMP checks */
+#undef LIBUPC_ENABLE_OMP_CHECKS
+
 /* Define if we have libxml2 */
 #undef CLANG_HAVE_LIBXML
 

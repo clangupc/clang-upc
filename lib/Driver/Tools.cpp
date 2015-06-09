@@ -6010,8 +6010,12 @@ void darwin::Link::ConstructJob(Compilation &C, const JobAction &JA,
       CmdArgs.push_back("-lomptarget");
   }
 
-  if (D.CCCIsUPC() && !Args.hasArg(options::OPT_nostdlib))
+  if (D.CCCIsUPC() && !Args.hasArg(options::OPT_nostdlib)) {
     CmdArgs.push_back(GetUPCLibOption(Args));
+#ifdef LIBUPC_ENABLE_OMP_CHECKS
+    CmdArgs.push_back("-lpthread");
+#endif
+  }
 
   AddLinkerInputs(getToolChain(), Inputs, Args, CmdArgs,
       JA.getOffloadingDevice());
@@ -6243,6 +6247,9 @@ void solaris::Link::ConstructJob(Compilation &C, const JobAction &JA,
 
   if (getToolChain().getDriver().CCCIsUPC() && !Args.hasArg(options::OPT_nostdlib)) {
     CmdArgs.push_back(GetUPCLibOption(Args));
+#ifdef LIBUPC_ENABLE_OMP_CHECKS
+    CmdArgs.push_back("-lpthread");
+#endif
   }
 
   if (!Args.hasArg(options::OPT_nostdlib) &&
@@ -6592,6 +6599,9 @@ void openbsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
     CmdArgs.push_back(GetUPCLibOption(Args));
 #ifdef LIBUPC_ENABLE_BACKTRACE
     CmdArgs.push_back("-lexecinfo");
+#endif
+#ifdef LIBUPC_ENABLE_OMP_CHECKS
+    CmdArgs.push_back("-lpthread");
 #endif
   }
 
@@ -6994,6 +7004,9 @@ void freebsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
 #ifdef LIBUPC_ENABLE_BACKTRACE
     CmdArgs.push_back("-lexecinfo");
 #endif
+#ifdef LIBUPC_ENABLE_OMP_CHECKS
+    CmdArgs.push_back("-lpthread");
+#endif
   }
 
   if (!Args.hasArg(options::OPT_nostdlib) &&
@@ -7282,6 +7295,9 @@ void netbsd::Link::ConstructJob(Compilation &C, const JobAction &JA,
     CmdArgs.push_back(GetUPCLibOption(Args));
 #ifdef LIBUPC_ENABLE_BACKTRACE
     CmdArgs.push_back("-lexecinfo");
+#endif
+#ifdef LIBUPC_ENABLE_OMP_CHECKS
+    CmdArgs.push_back("-lpthread");
 #endif
   }
 
@@ -7851,6 +7867,8 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
 #else
     CmdArgs.push_back("-lportals_runtime");
 #endif
+#endif
+#if defined(LIBUPC_PORTALS4) || LIBUPC_ENABLE_OMP_CHECKS
     CmdArgs.push_back("-lpthread");
 #endif
 #ifdef LIBUPC_ENABLE_NUMA

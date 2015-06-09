@@ -1745,6 +1745,28 @@ if test "$enable_upc_runtime_checks" = "yes"; then
             [Define to 1 if UPC runtime checks are supported.])
 fi
 
+AC_MSG_CHECKING([for UPC runtime OMP checking support])
+AC_ARG_ENABLE(upc-runtime-omp-checks,
+[AS_HELP_STRING([--enable-upc-runtime-omp-checks],
+		[Enable internal UPC runtime checks that validate
+		 OMP threads usage of UPC runtime
+		 [default=no]])],
+[
+  case $enableval in
+  yes | no) ;;
+  *)
+    AC_MSG_ERROR([--enable-upc-runtime-omp-checks accepts only yes or no.])
+  esac
+],
+[
+  enable_upc_runtime_omp_checks=no
+])
+AC_MSG_RESULT($enable_upc_runtime_omp_checks)
+if test "$enable_upc_runtime_omp_checks" = "yes"; then
+  AC_DEFINE(GUPCR_HAVE_OMP_CHECKS, 1,
+            [Define to 1 if UPC runtime OMP checks are supported.])
+fi
+
 AC_MSG_CHECKING([for UPC runtime statistics support])
 AC_ARG_ENABLE(upc-runtime-stats,
 [AS_HELP_STRING([--enable-upc-runtime-stats],

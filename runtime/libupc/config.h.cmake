@@ -46,6 +46,9 @@
 /* Define to 1 if UPC runtime tracing is supported. */
 #cmakedefine GUPCR_HAVE_TRACE 1
 
+/* Define to 1 if UPC runtime checks for OMP are supported. */
+#cmakedefine GUPCR_HAVE_OMP_CHECKS 1
+
 /* Maximum number of locks held per thread */
 #cmakedefine GUPCR_MAX_LOCKS @GUPCR_MAX_LOCKS@
 

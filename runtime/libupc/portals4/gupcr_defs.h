@@ -30,7 +30,7 @@
 #endif
 
 //begin lib_omp_check
-#if GUCPR_HAVE_CHECKS
+#if GUCPR_HAVE_OMP_CHECKS
 extern void __upc_omp_check (void);
 #define GUPCR_OMP_CHECK() __upc_omp_check()
 #else

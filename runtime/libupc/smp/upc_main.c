@@ -131,6 +131,7 @@ __upc_get_int_value (const char *str, long int *val,
   return 1;
 }
 
+#if GUPCR_HAVE_OMP_CHECKS
 /* Check for UPC runtime calls from OMP threads.  */
 void
 __upc_omp_check (void)
@@ -138,6 +139,7 @@ __upc_omp_check (void)
   if (__upc_pthread_id != pthread_self ())
     __upc_fatal ("UPC runtime calls are allowed only from UPC threads");;
 }
+#endif
 
 /* Get list of CPUs to exclude from scheduling on (n1,n2,...) */
 static int
