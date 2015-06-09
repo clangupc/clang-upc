@@ -2858,9 +2858,48 @@ llvm::Value *NaClX86_64ABIInfo::EmitVAArg(llvm::Value *VAListAddr, QualType Ty,
 // PowerPC-32
 
 namespace {
-class PPC32TargetCodeGenInfo : public DefaultTargetCodeGenInfo {
+/// PPC32_ABIInfo -
+class PPC32_ABIInfo : public DefaultABIInfo {
 public:
-  PPC32TargetCodeGenInfo(CodeGenTypes &CGT) : DefaultTargetCodeGenInfo(CGT) {}
+  PPC32_ABIInfo(CodeGen::CodeGenTypes &CGT) : DefaultABIInfo(CGT) {}
+
+  // DefaultABIInfo handles struct PTS representation via
+  // isAggregateTypeForABI(), leaving us just to handle packed:
+  ABIArgInfo classifyArgumentType(QualType RetTy) const;
+  ABIArgInfo classifyReturnType(QualType RetTy) const;
+
+  void computeInfo(CGFunctionInfo &FI) const override {
+    if (!getCXXABI().classifyReturnType(FI))
+      FI.getReturnInfo() = classifyReturnType(FI.getReturnType());
+    for (auto &I : FI.arguments())
+      I.info = classifyArgumentType(I.type);
+  }
+};
+
+}
+
+ABIArgInfo
+PPC32_ABIInfo::classifyArgumentType(QualType RetTy) const {
+  if (RetTy->hasPointerToSharedRepresentation() &&
+      getContext().getLangOpts().UPCPtsRep)
+    return ABIArgInfo::getDirect();
+  else
+    return DefaultABIInfo::classifyArgumentType(RetTy);
+}
+
+ABIArgInfo
+PPC32_ABIInfo::classifyReturnType(QualType RetTy) const {
+  if (RetTy->hasPointerToSharedRepresentation() &&
+      getContext().getLangOpts().UPCPtsRep)
+    return ABIArgInfo::getDirect();
+  else
+    return DefaultABIInfo::classifyReturnType(RetTy);
+}
+
+namespace {
+class PPC32TargetCodeGenInfo : public TargetCodeGenInfo {
+public:
+  PPC32TargetCodeGenInfo(CodeGenTypes &CGT) : TargetCodeGenInfo(new PPC32_ABIInfo(CGT)) {}
 
   int getDwarfEHStackPointer(CodeGen::CodeGenModule &M) const override {
     // This is recovered from gcc output.
