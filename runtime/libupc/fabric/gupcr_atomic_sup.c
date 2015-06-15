@@ -43,9 +43,6 @@ static size_t gupcr_atomic_mr_count;
 static fab_mr_t gupcr_atomic_lmr;
 #endif
 
-/** Atomic operations use remote gmem network connection */
-#define GUPCR_NC_ATOMIC GUPCR_NC_GMEM
-
 /** Index of the local memory location */
 #define GUPCR_LOCAL_INDEX(addr) \
         (void *) ((char *) addr - (char *) USER_PROG_MEM_START)
