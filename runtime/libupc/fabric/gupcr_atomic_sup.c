@@ -82,7 +82,7 @@ gupcr_atomic_get (size_t dthread, size_t doffset, void *fetch_ptr,
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(gupcr_atomic_ct, gupcr_atomic_mr_count,
 			 GUPCR_TRANSFER_TIMEOUT));
-  GUPCR_TIMEOUT_CHECK (status, "atomic_get", gupcr_atomic_cq);
+  GUPCR_CNT_ERROR_CHECK (status, "atomic_get", gupcr_atomic_cq);
   gupcr_debug (FC_ATOMIC, "ov(%s)",
 	       gupcr_get_buf_as_hex (tmpbuf, fetch_ptr,
 				     gupcr_get_atomic_size (type)));
@@ -124,7 +124,7 @@ gupcr_atomic_set (size_t dthread, size_t doffset, void *fetch_ptr,
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(gupcr_atomic_ct, gupcr_atomic_mr_count,
 			 GUPCR_TRANSFER_TIMEOUT));
-  GUPCR_TIMEOUT_CHECK (status, "atomic_set", gupcr_atomic_cq);
+  GUPCR_CNT_ERROR_CHECK (status, "atomic_set", gupcr_atomic_cq);
   /* Copy result into the user's space if necessary.  */
   if (fetch_ptr)
     {
@@ -171,7 +171,7 @@ gupcr_atomic_cswap (size_t dthread, size_t doffset, void *fetch_ptr,
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(gupcr_atomic_ct, gupcr_atomic_mr_count,
 			 GUPCR_TRANSFER_TIMEOUT));
-  GUPCR_TIMEOUT_CHECK (status, "atomic_cswap", gupcr_atomic_cq);
+  GUPCR_CNT_ERROR_CHECK (status, "atomic_cswap", gupcr_atomic_cq);
 
   /* Copy result into the user's space if necessary.  */
   if (fetch_ptr)
@@ -230,7 +230,7 @@ gupcr_atomic_op (size_t dthread, size_t doffset, void *fetch_ptr,
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(gupcr_atomic_ct, gupcr_atomic_mr_count,
 			 GUPCR_TRANSFER_TIMEOUT));
-  GUPCR_TIMEOUT_CHECK (status, "atomic_cswap", gupcr_atomic_cq);
+  GUPCR_CNT_ERROR_CHECK (status, "atomic_cswap", gupcr_atomic_cq);
 
   /* Copy result into the user space if necessary.  */
   if (fetch_ptr)

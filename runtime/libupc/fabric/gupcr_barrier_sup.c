@@ -128,7 +128,7 @@ gupcr_barrier_put_wait (enum barrier_dir dir, size_t count)
     }
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(ct, wait_count, GUPCR_TRANSFER_TIMEOUT));
-  GUPCR_TIMEOUT_CHECK (status, "barrier put wait", cq);
+  GUPCR_CNT_ERROR_CHECK (status, "barrier put wait", cq);
 }
 
 /** Setup a trigger for sending data to remote thread
@@ -268,7 +268,7 @@ gupcr_barrier_wait_up (size_t count)
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(gupcr_bup_rx_ct, gupcr_bup_rx_count,
 			 GUPCR_TRANSFER_TIMEOUT));
-  GUPCR_TIMEOUT_CHECK (status, "barrier wait up", gupcr_bup_rx_cq);
+  GUPCR_CNT_ERROR_CHECK (status, "barrier wait up", gupcr_bup_rx_cq);
 }
 
 /** Wait for calculated barrier value (down phase).
@@ -282,7 +282,7 @@ gupcr_barrier_wait_down (void)
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(gupcr_bdown_rx_ct, gupcr_bdown_rx_count,
 			 GUPCR_TRANSFER_TIMEOUT));
-  GUPCR_TIMEOUT_CHECK (status, "barrier wait down", gupcr_bdown_rx_cq);
+  GUPCR_CNT_ERROR_CHECK (status, "barrier wait down", gupcr_bdown_rx_cq);
 }
 
 /** Wait for delivery completion (down phase).

@@ -123,11 +123,7 @@ gupcr_gmem_sync_gets (void)
       gupcr_fabric_call_nc (fi_cntr_wait, status,
 			    (gupcr_gmem_gets.ct_handle, num_initiated,
 			     GUPCR_TRANSFER_TIMEOUT));
-      if (status != 0)
-	{
-	  gupcr_process_fail_events (status, "sync gets", gupcr_gmem_cq);
-	  gupcr_abort ();
-	}
+      GUPCR_CNT_ERROR_CHECK (status, "sync gets", gupcr_gmem_cq);
       gupcr_gmem_gets.num_pending = 0;
       gupcr_gmem_gets.num_completed = num_initiated;
     }
@@ -157,11 +153,7 @@ gupcr_gmem_sync_puts (void)
       gupcr_fabric_call_nc (fi_cntr_wait, status,
 			    (gupcr_gmem_puts.ct_handle, num_initiated,
 			     GUPCR_TRANSFER_TIMEOUT));
-      if (status != 0)
-	{
-	  gupcr_process_fail_events (status, "sync puts", gupcr_gmem_cq);
-	  gupcr_abort ();
-	}
+      GUPCR_CNT_ERROR_CHECK (status, "sync puts", gupcr_gmem_cq);
       gupcr_gmem_puts.num_pending = 0;
       gupcr_gmem_puts.num_completed = num_initiated;
       gupcr_pending_strict_put = 0;
@@ -296,11 +288,7 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 	  gupcr_fabric_call_nc (fi_cntr_wait, status,
 				(gupcr_gmem_puts.ct_handle, wait_cnt,
 				 GUPCR_TRANSFER_TIMEOUT));
-	  if (status != 0)
-	    {
-	      gupcr_process_fail_events (status, "gmem put", gupcr_gmem_cq);
-	      gupcr_abort ();
-	    }
+          GUPCR_CNT_ERROR_CHECK (status, "gmem put", gupcr_gmem_cq);
 	  gupcr_gmem_puts.num_pending -= wait_cnt -
 	    gupcr_gmem_puts.num_completed;
 	  gupcr_gmem_puts.num_completed = wait_cnt;

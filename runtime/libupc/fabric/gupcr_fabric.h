@@ -143,8 +143,8 @@ extern size_t gupcr_max_optim_size;
       }									\
     while (0)
 
-/** Check for timeout error code */
-#define GUPCR_TIMEOUT_CHECK(status, msg, queue) 			\
+/** Check for counter error code */
+#define GUPCR_CNT_ERROR_CHECK(status, msg, queue) 			\
     {									\
       int errcode = -(int)status;					\
       if (errcode)							\
