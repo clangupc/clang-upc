@@ -117,7 +117,7 @@ extern size_t gupcr_max_msg_size;
 extern size_t gupcr_max_optim_size;
 #define GUPCR_MAX_OPTIM_SIZE gupcr_max_optim_size
 /** Max time to wait for operation complete (10s) */
-#define GUPCR_TRANSFER_TIMEOUT 10000
+#define GUPCR_TRANSFER_TIMEOUT -1
 
 //end lib_fabric
 
@@ -134,6 +134,18 @@ extern size_t gupcr_max_optim_size;
 	                     gupcr_strfaberror (-pstatus));		\
       }									\
     while (0)
+/** Execute fabric RMA call and abort if error */
+#define gupcr_fabric_size_call(fabric_func, size, args)			\
+    do									\
+      {									\
+        size = fabric_func args;					\
+	if (size < 0 && size != -FI_EAGAIN)				\
+	  gupcr_fatal_error ("UPC runtime fabric call "			\
+	                     "`%s' on thread %d failed: %s\n", 		\
+			     __STRING(fabric_func), gupcr_get_rank (),	\
+	                     gupcr_strfaberror (-size));		\
+      }									\
+    while (size == -FI_EAGAIN)
 
 /** Execute fabric call and return status */
 #define gupcr_fabric_call_nc(fabric_func, pstatus, args)		\

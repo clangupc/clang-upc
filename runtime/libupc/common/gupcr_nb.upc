@@ -131,6 +131,7 @@ upc_memset_nb (shared void *dst, int c, size_t n)
   if (n)
     {
       upc_memset (dst, c, n);
+      upc_fence;
     }
   gupcr_trace (FC_NB, "NB MEMSET_NB EXIT");
   return UPC_COMPLETE_HANDLE;
@@ -261,7 +262,10 @@ upc_memset_nbi (shared void *dst, int c, size_t n)
 {
   gupcr_trace (FC_NB, "NB MEMSET_NBI ENTER");
   if (n)
-    upc_memset (dst, c, n);
+    {
+      upc_memset (dst, c, n);
+      upc_fence;
+    }
   gupcr_trace (FC_NB, "NB MEMSET_NBI EXIT");
 }
 
