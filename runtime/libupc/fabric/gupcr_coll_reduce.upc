@@ -294,11 +294,7 @@ void upc_all_reduceC
          this covers the case of only one thread.  */
       *t_result = local_result;
 
-#ifdef GUPCR_USE_TRIGGERED_OPS
-/* Run reduce operation without triggered functions.  */
-#undef GUPCR_USE_TRIGGERED_OPS
-#endif
-#if GUPCR_USE_TRIGGERED_OPS
+#if NOT_NOW_GUPCR_USE_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
@@ -731,11 +727,7 @@ void upc_all_reduceUC
          this covers the case of only one thread.  */
       *t_result = local_result;
 
-#ifdef GUPCR_USE_TRIGGERED_OPS
-/* Run reduce operation without triggered functions.  */
-#undef GUPCR_USE_TRIGGERED_OPS
-#endif
-#if GUPCR_USE_TRIGGERED_OPS
+#if NOT_NOW_GUPCR_USE_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
@@ -1168,11 +1160,7 @@ void upc_all_reduceS
          this covers the case of only one thread.  */
       *t_result = local_result;
 
-#ifdef GUPCR_USE_TRIGGERED_OPS
-/* Run reduce operation without triggered functions.  */
-#undef GUPCR_USE_TRIGGERED_OPS
-#endif
-#if GUPCR_USE_TRIGGERED_OPS
+#if NOT_NOW_GUPCR_USE_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
@@ -1605,11 +1593,7 @@ void upc_all_reduceUS
          this covers the case of only one thread.  */
       *t_result = local_result;
 
-#ifdef GUPCR_USE_TRIGGERED_OPS
-/* Run reduce operation without triggered functions.  */
-#undef GUPCR_USE_TRIGGERED_OPS
-#endif
-#if GUPCR_USE_TRIGGERED_OPS
+#if NOT_NOW_GUPCR_USE_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
@@ -2042,11 +2026,7 @@ void upc_all_reduceI
          this covers the case of only one thread.  */
       *t_result = local_result;
 
-#ifdef GUPCR_USE_TRIGGERED_OPS
-/* Run reduce operation without triggered functions.  */
-#undef GUPCR_USE_TRIGGERED_OPS
-#endif
-#if GUPCR_USE_TRIGGERED_OPS
+#if NOT_NOW_GUPCR_USE_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
@@ -2479,11 +2459,7 @@ void upc_all_reduceUI
          this covers the case of only one thread.  */
       *t_result = local_result;
 
-#ifdef GUPCR_USE_TRIGGERED_OPS
-/* Run reduce operation without triggered functions.  */
-#undef GUPCR_USE_TRIGGERED_OPS
-#endif
-#if GUPCR_USE_TRIGGERED_OPS
+#if NOT_NOW_GUPCR_USE_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
@@ -2916,11 +2892,7 @@ void upc_all_reduceL
          this covers the case of only one thread.  */
       *t_result = local_result;
 
-#ifdef GUPCR_USE_TRIGGERED_OPS
-/* Run reduce operation without triggered functions.  */
-#undef GUPCR_USE_TRIGGERED_OPS
-#endif
-#if GUPCR_USE_TRIGGERED_OPS
+#if NOT_NOW_GUPCR_USE_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
@@ -3353,11 +3325,7 @@ void upc_all_reduceUL
          this covers the case of only one thread.  */
       *t_result = local_result;
 
-#ifdef GUPCR_USE_TRIGGERED_OPS
-/* Run reduce operation without triggered functions.  */
-#undef GUPCR_USE_TRIGGERED_OPS
-#endif
-#if GUPCR_USE_TRIGGERED_OPS
+#if NOT_NOW_GUPCR_USE_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
@@ -3805,11 +3773,7 @@ void upc_all_reduceF
          this covers the case of only one thread.  */
       *t_result = local_result;
 
-#ifdef GUPCR_USE_TRIGGERED_OPS
-/* Run reduce operation without triggered functions.  */
-#undef GUPCR_USE_TRIGGERED_OPS
-#endif
-#if GUPCR_USE_TRIGGERED_OPS
+#if NOT_NOW_GUPCR_USE_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
@@ -4257,11 +4221,7 @@ void upc_all_reduceD
          this covers the case of only one thread.  */
       *t_result = local_result;
 
-#ifdef GUPCR_USE_TRIGGERED_OPS
-/* Run reduce operation without triggered functions.  */
-#undef GUPCR_USE_TRIGGERED_OPS
-#endif
-#if GUPCR_USE_TRIGGERED_OPS
+#if NOT_NOW_GUPCR_USE_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
@@ -4709,11 +4669,7 @@ void upc_all_reduceLD
          this covers the case of only one thread.  */
       *t_result = local_result;
 
-#ifdef GUPCR_USE_TRIGGERED_OPS
-/* Run reduce operation without triggered functions.  */
-#undef GUPCR_USE_TRIGGERED_OPS
-#endif
-#if GUPCR_USE_TRIGGERED_OPS
+#if NOT_NOW_GUPCR_USE_TRIGGERED_OPS
       /* Note: In the case of UPC_FUNC and UPC_NONCOMM, it is not possible
          to use triggered operations on inner nodes. In that case, inner
          nodes must calculate reduced value by calling the specified
