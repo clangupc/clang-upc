@@ -57,7 +57,7 @@ RValue EmitUPCCall(CodeGenFunction &CGF,
                             ArgTypes,
                             FunctionProtoType::ExtProtoInfo());
     const CGFunctionInfo &Info =
-      CGF.getTypes().arrangeFreeFunctionCall(Args, FuncType->castAs<FunctionType>());
+      CGF.getTypes().arrangeFreeFunctionCall(Args, FuncType->castAs<FunctionType>(), false);
     llvm::FunctionType * FTy =
       cast<llvm::FunctionType>(CGF.ConvertType(FuncType));
     llvm::Value * Fn = CGF.CGM.CreateRuntimeFunction(FTy, Name);

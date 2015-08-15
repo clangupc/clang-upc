@@ -601,9 +601,9 @@ public:
   }
 
 protected:
-  virtual ASTConsumer *CreateASTConsumer(CompilerInstance &CI,
+  virtual std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
                                          llvm::StringRef InFile) {
-    return new ASTWalkerConsumer(CI.getSourceManager(), Decls, Stmts, Diags);
+    return std::unique_ptr<ASTConsumer>(new ASTWalkerConsumer(CI.getSourceManager(), Decls, Stmts, Diags));
   }
 
   // TODO: Use traits to grab Underlying from one of the other two types.
