@@ -1783,13 +1783,6 @@ def Unaligned : IgnoredAttr {
   let Spellings = [Keyword<"__unaligned">];
 }
 
-def OMPLocal : InheritableAttr {
-  let Spellings = [];
-  let SemaHandler = 0;
-  let HasCustomParsing = 1;
-  let Documentation = [Undocumented];
-}
-
 def LoopHint : Attr {
   /// vectorize: vectorizes loop operations if 'value != 0'.
   /// vectorize_width: vectorize loop operations with width 'value'.

@@ -619,6 +619,9 @@ ExprResult Sema::BuildCXXThrow(SourceLocation OpLoc, Expr *Ex,
       !getSourceManager().isInSystemHeader(OpLoc))
     Diag(OpLoc, diag::err_exceptions_disabled) << "throw";
 
+  if (getCurScope() && getCurScope()->isOpenMPSimdDirectiveScope())
+    Diag(OpLoc, diag::err_omp_simd_region_cannot_use_stmt) << "throw";
+
   if (Ex && !Ex->isTypeDependent()) {
     ExprResult ExRes = CheckCXXThrowOperand(OpLoc, Ex, IsThrownVarInScope);
     if (ExRes.isInvalid())
@@ -1666,7 +1669,7 @@ bool Sema::FindAllocationFunctions(SourceLocation StartLoc, SourceRange Range,
       NewName = Context.DeclarationNames.getCXXOperatorName(OO_New);
       DeleteName = Context.DeclarationNames.getCXXOperatorName(OO_Delete);
       if (FindAllocationOverload(StartLoc, Range, NewName, AllocArgs, TUDecl,
-                                 /*AllowMissing=*/false, OperatorNew))
+                               /*AllowMissing=*/false, OperatorNew))
       return true;
     }
   }

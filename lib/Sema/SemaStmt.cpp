@@ -2516,6 +2516,9 @@ Sema::ActOnBreakStmt(SourceLocation BreakLoc, Scope *CurScope) {
   } else if (S->isUPCForAllScope()) {
     Diag(BreakLoc, diag::warn_upc_exits_upc_forall) << "break";
   }
+  if (S->isOpenMPLoopScope())
+    return StmtError(Diag(BreakLoc, diag::err_omp_loop_cannot_use_stmt)
+                     << "break");
 
   return new (Context) BreakStmt(BreakLoc);
 }
@@ -3340,6 +3343,9 @@ StmtResult Sema::ActOnCXXTryBlock(SourceLocation TryLoc, Stmt *TryBlock,
       !getSourceManager().isInSystemHeader(TryLoc))
       Diag(TryLoc, diag::err_exceptions_disabled) << "try";
 
+  if (getCurScope() && getCurScope()->isOpenMPSimdDirectiveScope())
+    Diag(TryLoc, diag::err_omp_simd_region_cannot_use_stmt) << "try";
+
   const unsigned NumHandlers = Handlers.size();
   assert(NumHandlers > 0 &&
          "The parser shouldn't call this if there are no handlers.");
@@ -3528,8 +3534,6 @@ void Sema::ActOnCapturedRegionStart(SourceLocation Loc, Scope *CurScope,
   // Enter the capturing scope for this captured region.
   PushCapturedRegionScope(CurScope, CD, RD, Kind);
 
-  PushCompoundScope();
-
   if (CurScope)
     PushDeclContext(CurScope, CD);
   else
@@ -3582,8 +3586,6 @@ void Sema::ActOnCapturedRegionStart(SourceLocation Loc, Scope *CurScope,
   // Enter the capturing scope for this captured region.
   PushCapturedRegionScope(CurScope, CD, RD, Kind);
 
-  PushCompoundScope();
-
   if (CurScope)
     PushDeclContext(CurScope, CD);
   else
@@ -3605,8 +3607,6 @@ void Sema::ActOnCapturedRegionError() {
               SourceLocation(), SourceLocation(), /*AttributeList=*/nullptr);
 
   PopDeclContext();
-  // Pop the compound scope we inserted implicitly.
-  PopCompoundScope();
   PopFunctionScopeInfo();
 }
 
@@ -3631,8 +3631,6 @@ StmtResult Sema::ActOnCapturedRegionEnd(Stmt *S) {
   PopExpressionEvaluationContext();
 
   PopDeclContext();
-  // Pop the compound scope we inserted implicitly.
-  PopCompoundScope();
   PopFunctionScopeInfo();
 
   return Res;

@@ -566,9 +566,6 @@ unsigned Decl::getIdentifierNamespaceForKind(Kind DeclKind) {
     case TemplateTemplateParm:
       return IDNS_Ordinary | IDNS_Tag | IDNS_Type;
 
-    case OMPDeclareReduction:
-      return IDNS_OMPDeclareReduction;
-
     // Never have names.
     case Friend:
     case FriendTemplate:
@@ -592,8 +589,6 @@ unsigned Decl::getIdentifierNamespaceForKind(Kind DeclKind) {
     case ObjCCategoryImpl:
     case Import:
     case OMPThreadPrivate:
-    case OMPDeclareSimd:
-    case OMPDeclareTarget:
     case PragmaPupc:
     case Empty:
       // Never looked up by name.
@@ -854,8 +849,6 @@ bool DeclContext::isTransparentContext() const {
     return !cast<EnumDecl>(this)->isScoped();
   else if (DeclKind == Decl::LinkageSpec)
     return true;
-  else if (DeclKind == Decl::OMPDeclareTarget)
-    return true;
 
   return false;
 }
@@ -894,8 +887,6 @@ DeclContext *DeclContext::getPrimaryContext() {
   case Decl::LinkageSpec:
   case Decl::Block:
   case Decl::Captured:
-  case Decl::OMPDeclareReduction:
-  case Decl::OMPDeclareTarget:
     // There is only one DeclContext for these entities.
     return this;
 

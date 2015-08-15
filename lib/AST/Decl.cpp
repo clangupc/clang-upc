@@ -18,7 +18,6 @@
 #include "clang/AST/Attr.h"
 #include "clang/AST/DeclCXX.h"
 #include "clang/AST/DeclObjC.h"
-#include "clang/AST/DeclOpenMP.h"
 #include "clang/AST/DeclTemplate.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/ExprCXX.h"
@@ -1448,9 +1447,6 @@ bool NamedDecl::declarationReplaces(NamedDecl *OldD) const {
 
   // For method declarations, we keep track of redeclarations.
   if (isa<ObjCMethodDecl>(this))
-    return false;
-
-  if (isa<OMPDeclareReductionDecl>(this))
     return false;
 
   // FIXME: Is this correct if one of the decls comes from an inline namespace?
@@ -3717,20 +3713,14 @@ BlockDecl *BlockDecl::CreateDeserialized(ASTContext &C, unsigned ID) {
 
 CapturedDecl *CapturedDecl::Create(ASTContext &C, DeclContext *DC,
                                    unsigned NumParams) {
-  unsigned Size = sizeof(CapturedDecl) + NumParams * sizeof(ImplicitParamDecl*);
-  CapturedDecl *CD = new (C, DC, Size) CapturedDecl(DC, NumParams);
-  for (unsigned i = 0; i < NumParams; ++i)
-    CD->setParam(i, 0);
-  return CD;
+  return new (C, DC, NumParams * sizeof(ImplicitParamDecl *))
+      CapturedDecl(DC, NumParams);
 }
 
 CapturedDecl *CapturedDecl::CreateDeserialized(ASTContext &C, unsigned ID,
-                                   unsigned NumParams) {
-  unsigned Size = sizeof(CapturedDecl) + NumParams * sizeof(ImplicitParamDecl*);
-  CapturedDecl *CD = new (C, ID, Size) CapturedDecl(0, NumParams);
-  for (unsigned i = 0; i < NumParams; ++i)
-    CD->setParam(i, 0);
-  return CD;
+                                               unsigned NumParams) {
+  return new (C, ID, NumParams * sizeof(ImplicitParamDecl *))
+      CapturedDecl(nullptr, NumParams);
 }
 
 EnumConstantDecl *EnumConstantDecl::Create(ASTContext &C, EnumDecl *CD,

@@ -119,18 +119,6 @@ def err_drv_emit_llvm_link : Error<
 def err_drv_optimization_remark_pattern : Error<
   "%0 in '%1'">;
 def err_drv_no_neon_modifier : Error<"[no]neon is not accepted as modifier, please use [no]simd instead">;
-def err_drv_unknown_toolchain : Error<
-  "cannot recognize the type of the toolchain">;
-def err_drv_invalid_omp_target : Error<
-  "OpenMP target is invalid: '%0'">;
-def err_drv_omp_target_requires_main_file_path : Error<
-  "Main-file path is required to generate code for OpenMP target regions. Use -omp-main-file-path 'path'.">;
-def err_drv_omp_module_id_required : Error<
-  "Unable to generate module ID from input file '%0' for OpenMP target code generation. Make sure the file exists in the file system.">;
-def err_drv_omp_target_translation_not_available : Error<
-  "OpenMP target '%0' arguments translation is not supported.">;
-def err_drv_omp_target_toolchain_not_available : Error<
-  "Toolchain for target '%0' is not supporting OpenMP offloading.">;
 
 def err_drv_invalid_upc_threads : Error<
   "THREADS value '%0' exceeds UPC implementation limit of '%1'">;

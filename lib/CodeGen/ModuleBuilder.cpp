@@ -16,7 +16,6 @@
 #include "CodeGenModule.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/DeclObjC.h"
-#include "clang/AST/DeclOpenMP.h"
 #include "clang/AST/Expr.h"
 #include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/TargetInfo.h"
@@ -91,7 +90,6 @@ namespace {
       if (Diags.hasErrorOccurred())
         return true;
 
-
       // Make sure to emit all elements of a Decl.
       for (DeclGroupRef::iterator I = DG.begin(), E = DG.end(); I != E; ++I)
         Builder->EmitTopLevelDecl(*I);
@@ -130,14 +128,6 @@ namespace {
         return;
 
       Builder->UpdateCompletedType(D);
-
-      if (Ctx->getLangOpts().CPlusPlus && !D->isDependentContext()) {
-        for (DeclContext::decl_iterator M = D->decls_begin(),
-                                        MEnd = D->decls_end();
-             M != MEnd; ++M)
-          if (OMPThreadPrivateDecl *TD = dyn_cast<OMPThreadPrivateDecl>(*M))
-            Builder->EmitTopLevelDecl(TD);
-      }
 
       // For MSVC compatibility, treat declarations of static data members with
       // inline initializers as definitions.

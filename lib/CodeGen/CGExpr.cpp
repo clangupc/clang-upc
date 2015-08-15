@@ -16,7 +16,6 @@
 #include "CGCall.h"
 #include "CGDebugInfo.h"
 #include "CGObjCRuntime.h"
-#include "CGOpenMPRuntime.h"
 #include "CGRecordLayout.h"
 #include "CodeGenModule.h"
 #include "TargetInfo.h"
@@ -1893,23 +1892,7 @@ LValue CodeGenFunction::EmitDeclRefLValue(const DeclRefExpr *E) {
   CharUnits Alignment = getContext().getDeclAlign(ND);
   QualType T = E->getType();
 
-  // A DeclRefExpr for a reference initialized by a constant expression can
-  // appear without being odr-used. Directly emit the constant initializer.
-  if (const VarDecl *VD = dyn_cast<VarDecl>(ND)) {
-
-    // CodeGen for threadprivate variables.
-    if (getLangOpts().OpenMP) {
-      if (llvm::Value *Val =
-               CGM.getOpenMPRuntime().CreateOpenMPThreadPrivateCached(VD, E->getExprLoc(), *this))
-        return MakeAddrLValue(Val, T, Alignment);
-      // CodeGen for OpenMP private variables - works only in CapturedStmt.
-      else if (llvm::Value *Val = CGM.OpenMPSupport.getOpenMPPrivateVar(VD))
-        return MakeAddrLValue(Val, T, Alignment);
-      else if (CapturedStmtInfo)
-        if (llvm::Value *Val = CapturedStmtInfo->getCachedVar(VD))
-          return MakeAddrLValue(Val, T, Alignment);
-    }
-
+  if (const auto *VD = dyn_cast<VarDecl>(ND)) {
     // Global Named registers access via intrinsics only
     if (VD->getStorageClass() == SC_Register &&
         VD->hasAttr<AsmLabelAttr>() && !VD->isLocalVarDecl())
@@ -2140,9 +2123,8 @@ LValue CodeGenFunction::EmitPredefinedLValue(const PredefinedExpr *E) {
     GVName += FnName;
 
     // If this is outside of a function use the top level decl.
-    const Decl *CurDecl =
-      OpenMPRoot ? OpenMPRoot->CurCodeDecl : CurCodeDecl;
-    if (CurDecl == 0 || isa<VarDecl>(CurDecl))
+    const Decl *CurDecl = CurCodeDecl;
+    if (!CurDecl || isa<VarDecl>(CurDecl))
       CurDecl = getContext().getTranslationUnitDecl();
 
     const Type *ElemType = E->getType()->getArrayElementTypeNoTypeQual();

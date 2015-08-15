@@ -739,7 +739,7 @@ def warn_objc_property_default_assign_on_object : Warning<
   InGroup<ObjCPropertyNoAttribute>;
 def warn_property_attr_mismatch : Warning<
   "property attribute in class extension does not match the primary class">;
-def warn_property_implicitly_mismatched : Warning<
+def warn_property_implicitly_mismatched : Warning <
   "primary property declaration is implicitly strong while redeclaration "
   "in class extension is weak">,
   InGroup<DiagGroup<"objc-property-implicit-mismatch">>;
@@ -769,7 +769,7 @@ def warn_auto_synthesizing_protocol_property :Warning<
   "auto property synthesis will not synthesize property %0"
   " declared in protocol %1">,
   InGroup<DiagGroup<"objc-protocol-property-synthesis">>;
-def warn_no_autosynthesis_shared_ivar_property : Warning<
+def warn_no_autosynthesis_shared_ivar_property : Warning <
   "auto property synthesis will not synthesize property "
   "%0 because it cannot share an ivar with another synthesized property">,
   InGroup<ObjCNoPropertyAutoSynthesis>;
@@ -782,7 +782,7 @@ def warn_autosynthesis_property_ivar_match :Warning<
   "autosynthesized property %0 will use %select{|synthesized}1 instance variable "
   "%2, not existing instance variable %3">,
   InGroup<DiagGroup<"objc-autosynthesis-property-ivar-name-match">>;
-def warn_missing_explicit_synthesis : Warning<
+def warn_missing_explicit_synthesis : Warning <
   "auto property synthesis is synthesizing property not explicitly synthesized">,
   InGroup<DiagGroup<"objc-missing-property-synthesis">>, DefaultIgnore;
 def warn_property_getter_owning_mismatch : Warning<
@@ -848,23 +848,23 @@ def warn_dealloc_in_category : Warning<
 InGroup<DeallocInCategory>;
 def err_gc_weak_property_strong_type : Error<
   "weak attribute declared on a __strong type property in GC mode">;
-def warn_receiver_is_weak : Warning<
+def warn_receiver_is_weak : Warning <
   "weak %select{receiver|property|implicit property}0 may be "
   "unpredictably set to nil">,
   InGroup<DiagGroup<"receiver-is-weak">>, DefaultIgnore;
 def note_arc_assign_to_strong : Note<
   "assign the value to a strong variable to keep the object alive during use">;
-def warn_arc_repeated_use_of_weak : Warning<
+def warn_arc_repeated_use_of_weak : Warning <
   "weak %select{variable|property|implicit property|instance variable}0 %1 is "
   "accessed multiple times in this %select{function|method|block|lambda}2 "
   "but may be unpredictably set to nil; assign to a strong variable to keep "
   "the object alive">,
   InGroup<ARCRepeatedUseOfWeak>, DefaultIgnore;
-def warn_implicitly_retains_self : Warning<
+def warn_implicitly_retains_self : Warning <
   "block implicitly retains 'self'; explicitly mention 'self' to indicate "
   "this is intended behavior">,
   InGroup<DiagGroup<"implicit-retain-self">>, DefaultIgnore;
-def warn_arc_possible_repeated_use_of_weak : Warning<
+def warn_arc_possible_repeated_use_of_weak : Warning <
   "weak %select{variable|property|implicit property|instance variable}0 %1 may "
   "be accessed multiple times in this %select{function|method|block|lambda}2 "
   "and may be unpredictably set to nil; assign to a strong variable to keep "
@@ -1736,7 +1736,7 @@ def err_range_on_array_parameter : Error<
 def err_for_range_dereference : Error<
   "invalid range expression of type %0; did you mean to dereference it "
   "with '*'?">;
-def note_for_range_invalid_iterator : Note<
+def note_for_range_invalid_iterator : Note <
   "in implicit call to 'operator%select{!=|*|++}0' for iterator of type %1">;
 def note_for_range_begin_end : Note<
   "selected '%select{begin|end}0' %select{function|template }1%2 with iterator type %3">;
@@ -3731,7 +3731,7 @@ def note_cannot_inherit : Note<
 def warn_not_enough_argument : Warning<
   "not enough variable arguments in %0 declaration to fit a sentinel">,
   InGroup<Sentinel>;
-def warn_missing_sentinel : Warning<
+def warn_missing_sentinel : Warning <
   "missing sentinel in %select{function call|method dispatch|block call}0">,
   InGroup<Sentinel>;
 def note_sentinel_here : Note<
@@ -3833,7 +3833,7 @@ def err_extern_c_global_conflict : Error<
   "conflicts with declaration %select{in global scope|with C language linkage}0">;
 def note_extern_c_global_conflict : Note<
   "declared %select{in global scope|with C language linkage}0 here">;
-def warn_weak_import : Warning<
+def warn_weak_import : Warning <
   "an already-declared variable is made a weak_import declaration %0">;
 def ext_static_non_static : Extension<
   "redeclaring non-static %0 as static is a Microsoft extension">, InGroup<Microsoft>;
@@ -4815,7 +4815,7 @@ def ext_typecheck_comparison_of_distinct_pointers : ExtWarn<
   InGroup<CompareDistinctPointerType>;
 def ext_typecheck_cond_incompatible_operands : ExtWarn<
   "incompatible operand types (%0 and %1)">;
-def err_cond_voidptr_arc : Error<
+def err_cond_voidptr_arc : Error <
   "operands to conditional of types%diff{ $ and $|}0,1 are incompatible "
   "in ARC mode">;
 def err_typecheck_comparison_of_distinct_pointers : Error<
@@ -6038,11 +6038,11 @@ def err_invalid_conversion_between_vector_and_scalar : Error<
 def err_only_constructors_take_base_inits : Error<
   "only constructors take base initializers">;
 
-def err_multiple_mem_initialization : Error<
+def err_multiple_mem_initialization : Error <
   "multiple initializations given for non-static member %0">;
-def err_multiple_mem_union_initialization : Error<
+def err_multiple_mem_union_initialization : Error <
   "initializing multiple members of union">;
-def err_multiple_base_initialization : Error<
+def err_multiple_base_initialization : Error <
   "multiple initializations given for base %0">;
 
 def err_mem_init_not_member_or_class : Error<
@@ -6380,7 +6380,7 @@ def warn_format_argument_needs_cast : Warning<
   "%select{values of type|enum values with underlying type}2 '%0' should not "
   "be used as format arguments; add an explicit cast to %1 instead">,
   InGroup<Format>;
-def warn_printf_positional_arg_exceeds_data_args : Warning<
+def warn_printf_positional_arg_exceeds_data_args : Warning <
   "data argument position '%0' exceeds the number of data arguments (%1)">,
   InGroup<Format>;
 def warn_format_zero_positional_specifier : Warning<
@@ -7072,186 +7072,151 @@ def err_omp_var_used : Error<
   "'#pragma omp %0' must precede all references to variable %q1">;
 def err_omp_var_thread_local : Error<
   "variable %0 cannot be threadprivate because it is thread-local">;
-def err_omp_threadprivate_incomplete_type : Error<
-  "a threadprivate variable with incomplete type %0">;
 def err_omp_private_incomplete_type : Error<
   "a private variable with incomplete type %0">;
 def err_omp_firstprivate_incomplete_type : Error<
   "a firstprivate variable with incomplete type %0">;
-def err_omp_reduction_incomplete_type : Error<
-  "a reduction variable with incomplete type %0">;
 def err_omp_lastprivate_incomplete_type : Error<
   "a lastprivate variable with incomplete type %0">;
-def err_omp_linear_incomplete_type : Error<
-  "a linear variable with incomplete type %0">;
-def err_omp_directive_nonblock : Error<
-  "directive '#pragma omp %0' bound to nonblock statement">;
-def err_incomplete_class_type : Error<
-  "expression has incomplete type %0">;
-def err_multiple_conversions : Error<
-  "multiple conversions from expression type %0 to an integral "
-  "or enumeration type">;
-def err_explicit_conversion : Error<
-  "expression type %0 requires explicit conversion to %1">;
-def note_conversion : Note<
-  "conversion to %select{integral|enumeration}0 type %1">;
-def err_negative_expression_in_clause : Error<
-  "expression is not a positive integer value">;
-def err_zero_step_in_linear_clause : Error<
-  "zero is not linear enough to be a linear step">;
+def err_omp_reduction_incomplete_type : Error<
+  "a reduction variable with incomplete type %0">;
 def err_omp_unexpected_clause_value : Error<
   "expected %0 in OpenMP clause '%1'">;
 def err_omp_expected_var_name : Error<
   "expected variable name">;
 def err_omp_required_method : Error<
   "%0 variable must have an accessible, unambiguous %select{default constructor|copy constructor|copy assignment operator|'%2'|destructor}1">;
-def note_omp_marked_here : Note<
-  "marked as %0 here">;
+def err_omp_task_predetermined_firstprivate_required_method : Error<
+  "predetermined as a firstprivate in a task construct variable must have an accessible, unambiguous %select{copy constructor|destructor}0">;
 def err_omp_clause_ref_type_arg : Error<
-  "arguments of OpenMP clause '%0' cannot be of reference type">;
-def err_omp_expected_int_or_ptr : Error<
-  "argument of a linear clause should be of integral or pointer type">;
-def err_omp_expected_array_or_ptr : Error<
-  "argument of an aligned clause should be array, pointer, reference to array or reference to pointer">;
-def err_omp_required_access : Error<
-  "%0 variable must be %1">;
-def err_omp_clause_not_arithmetic_type_arg : Error<
-  "arguments of OpenMP clause '%0'%select{| for 'min' and 'max'}1 must be of %select{scalar|arithmetic}1 type">;
-def err_omp_clause_floating_type_arg : Error<
-  "arguments of OpenMP clause 'reduction' with bitwise operators cannot be of floating type">;
-def err_omp_clause_array_type_arg : Error<
-  "arguments of OpenMP clause '%0' cannot be of array type">;
-def err_omp_reduction_ref_type_arg : Error<
-  "argument of OpenMP clause 'reduction' must reference the same object in all threads">;
+  "arguments of OpenMP clause '%0' cannot be of reference type %1">;
+def err_omp_task_predetermined_firstprivate_ref_type_arg : Error<
+  "predetermined as a firstprivate in a task construct variable cannot be of reference type %0">;
+def err_omp_threadprivate_incomplete_type : Error<
+  "threadprivate variable with incomplete type %0">;
+def err_omp_no_dsa_for_variable : Error<
+  "variable %0 must have explicitly specified data sharing attributes">;
 def err_omp_wrong_dsa : Error<
   "%0 variable cannot be %1">;
-def err_omp_at_most_one_uniform_or_linear : Error<
-  "each argument may be in at most one uniform or linear clause">;
-def err_omp_at_most_one_aligned : Error<
-  "each argument may be in at most one aligned clause">;
-def err_omp_inbranch : Error<
-  "declare simd variant cannot be inbranch and notinbranch at the same time">;
-def err_omp_arg_not_found : Error<
-  "cannot find the function argument with the name requested in the openmp clause">;
-def err_omp_reduction_in_task : Error<
-  "reduction variables may not be accessed in an explicit task">;
-def err_omp_once_referenced : Error<
-  "variable can appear only once in OpenMP '%0' clause">;
-def err_omp_once_referenced_in_target_update : Error<
-  "variable can appear only once in OpenMP 'target update' construct">;
-def err_omp_const_variable : Error<
-  "const-qualified variable cannot be %0">;
 def note_omp_explicit_dsa : Note<
   "defined as %0">;
 def note_omp_predetermined_dsa : Note<
-  "predetermined as %0">;
+  "%select{static data member is predetermined as shared|"
+  "variable with static storage duration is predetermined as shared|"
+  "loop iteration variable is predetermined as private|"
+  "loop iteration variable is predetermined as linear|"
+  "loop iteration variable is predetermined as lastprivate|"
+  "constant variable is predetermined as shared|"
+  "global variable is predetermined as shared|"
+  "non-shared variable in a task construct is predetermined as firstprivate|"
+  "variable with automatic storage duration is predetermined as private}0"
+  "%select{|; perhaps you forget to enclose 'omp %2' directive into a parallel or another task region?}1">;
+def note_omp_implicit_dsa : Note<
+  "implicitly determined as %0">;
+def err_omp_loop_var_dsa : Error<
+  "loop iteration variable in the associated loop of 'omp %1' directive may not be %0, predetermined as %2">;
+def err_omp_not_for : Error<
+  "%select{statement after '#pragma omp %1' must be a for loop|"
+  "expected %2 for loops after '#pragma omp %1'%select{|, but found only %4}3}0">;
+def note_omp_collapse_expr : Note<
+  "as specified in 'collapse' clause">;
+def err_omp_negative_expression_in_clause : Error<
+  "argument to '%0' clause must be a positive integer value">;
+def err_omp_not_integral : Error<
+  "expression must have integral or unscoped enumeration "
+  "type, not %0">;
+def err_omp_incomplete_type : Error<
+  "expression has incomplete class type %0">;
+def err_omp_explicit_conversion : Error<
+  "expression requires explicit conversion from %0 to %1">;
+def note_omp_conversion_here : Note<
+  "conversion to %select{integral|enumeration}0 type %1 declared here">;
+def err_omp_ambiguous_conversion : Error<
+  "ambiguous conversion from type %0 to an integral or unscoped "
+  "enumeration type">;
+def err_omp_required_access : Error<
+  "%0 variable must be %1">;
+def err_omp_const_variable : Error<
+  "const-qualified variable cannot be %0">;
+def err_omp_linear_incomplete_type : Error<
+  "a linear variable with incomplete type %0">;
+def err_omp_linear_expected_int_or_ptr : Error<
+  "argument of a linear clause should be of integral or pointer "
+  "type, not %0">;
+def warn_omp_linear_step_zero : Warning<
+  "zero linear step (%0 %select{|and other variables in clause }1should probably be const)">,
+  InGroup<OpenMPClauses>;
+def err_omp_aligned_expected_array_or_ptr : Error<
+  "argument of aligned clause should be array"
+  "%select{ or pointer|, pointer, reference to array or reference to pointer}1"
+  ", not %0">;
+def err_omp_aligned_twice : Error<
+  "a variable cannot appear in more than one aligned clause">;
+def err_omp_local_var_in_threadprivate_init : Error<
+  "variable with local storage in initial value of threadprivate variable">;
+def err_omp_loop_not_canonical_init : Error<
+  "initialization clause of OpenMP for loop must be of the form "
+  "'var = init' or 'T var = init'">;
+def ext_omp_loop_not_canonical_init : ExtWarn<
+  "initialization clause of OpenMP for loop is not in canonical form "
+  "('var = init' or 'T var = init')">, InGroup<OpenMPLoopForm>;
+def err_omp_loop_not_canonical_cond : Error<
+  "condition of OpenMP for loop must be a relational comparison "
+  "('<', '<=', '>', or '>=') of loop variable %0">;
+def err_omp_loop_not_canonical_incr : Error<
+  "increment clause of OpenMP for loop must perform simple addition "
+  "or subtraction on loop variable %0">;
+def err_omp_loop_variable_type : Error<
+  "variable must be of integer or %select{pointer|random access iterator}0 type">;
+def err_omp_loop_incr_not_compatible : Error<
+  "increment expression must cause %0 to %select{decrease|increase}1 "
+  "on each iteration of OpenMP for loop">;
+def note_omp_loop_cond_requres_compatible_incr : Note<
+  "loop step is expected to be %select{negative|positive}0 due to this condition">;
+def err_omp_loop_cannot_use_stmt : Error<
+  "'%0' statement cannot be used in OpenMP for loop">;
+def err_omp_simd_region_cannot_use_stmt : Error<
+  "'%0' statement cannot be used in OpenMP simd region">;
+def err_omp_unknown_reduction_identifier : Error<
+  "incorrect reduction identifier, expected one of '+', '-', '*', '&', '|', '^', '&&', '||', 'min' or 'max'">;
+def err_omp_reduction_type_array : Error<
+  "a reduction variable with array type %0">;
+def err_omp_reduction_ref_type_arg : Error<
+  "argument of OpenMP clause 'reduction' must reference the same object in all threads">;
+def err_omp_clause_not_arithmetic_type_arg : Error<
+  "arguments of OpenMP clause 'reduction' for 'min' or 'max' must be of %select{scalar|arithmetic}0 type">;
+def err_omp_clause_floating_type_arg : Error<
+  "arguments of OpenMP clause 'reduction' with bitwise operators cannot be of floating type">;
+def err_omp_once_referenced : Error<
+  "variable can appear only once in OpenMP '%0' clause">;
 def note_omp_referenced : Note<
   "previously referenced here">;
-def note_omp_specified : Note<
-  "previously specified here">;
-def err_omp_dsa_with_directives : Error<
-  "%0 variable in '#pragma omp %1' cannot be %2 in '#pragma omp %3'">;
-def err_omp_not_for : Error<
-  "only for-loops are allowed for '#pragma omp %0'">;
-def err_omp_for_variable : Error<
-  "variable must be of integer or %select{pointer|random access iterator}0 type">;
-def err_omp_not_canonical_for : Error<
-  "%select{initialization|condition|increment}0 of for-loop does not have canonical form">;
-def err_omp_for_incr_not_integer : Error<
-  "increment expression of for-loop must be of an integer type">;
-def err_omp_for_incr_not_compatible : Error<
-  "increment expression must cause %q0 to %select{decrease|increase}1 on each iteration of the loop">;
-def err_omp_for_type_not_compatible : Error<
-  "expression of type %0 is not compatible with variable %1 of type %2">;
-def err_omp_for_wrong_count : Error<
-  "unable to calculate number of iterations of the for-loop">;
-def err_omp_type_not_rai : Error<
-  "iteration variable is not of a random access iterator type">;
-def err_omp_for_loop_var_dsa : Error<
-  "loop iteration variable may not be %0">;
-def err_omp_sections_not_section : Error<
-  "the statement for '#pragma omp %0' must be '#pragma omp section'">;
-def err_omp_section_orphaned : Error<
-  "orphaned '#pragma omp section' is prohibited">;
-def err_omp_sections_not_compound_stmt : Error<
-  "the statement for '#pragma omp %0' must be compound statement">;
+def err_omp_reduction_in_task : Error<
+  "reduction variables may not be accessed in an explicit task">;
+def err_omp_reduction_id_not_compatible : Error<
+  "variable of type %0 is not valid for specified reduction operation">;
 def err_omp_prohibited_region : Error<
-  "region cannot be%select{| closely}0 nested inside %1 region%select{| with name %3}2">;
-def err_omp_prohibited_ordered_region : Error<
-  "region must be closely nested inside loop or parallel loop region with 'ordered' clause">;
-def err_omp_prohibited_cancel_region : Error<
-  "region must be nested inside a taskgroup region">;
-def err_omp_prohibited_cancel_region_nowait : Error<
-  "region cannot be nested inside region with 'nowait' clause">;
-def err_omp_prohibited_cancel_region_ordered : Error<
-  "region cannot be nested inside region with 'ordered' clause">;
-def err_omp_prohibited_distribute_region : Error<
-  "region must be closely nested inside a teams region">;
-def err_omp_prohibited_teams_region : Error<
-  "region must be closely nested inside a target region">;
-def err_omp_atomic_more_one_clause : Error<
-  "directive '#pragma omp atomic' cannot contain more than one 'read', 'write', 'update' or 'capture' clause">;
-def err_omp_atomic_not_expression : Error<
-  "expected expression statement for '#pragma omp atomic %0'">;
-def err_omp_atomic_wrong_statement : Error<
-  "statement form is not allowed for '#pragma omp atomic %0'">;
-def err_omp_no_dsa_for_variable : Error<
-  "variable %q0 must have explicitly specified data sharing attributes">;
-def err_omp_for_cannot_break: Error<
-  "cannot break from a '#pragma omp %0' loop">;
-def err_omp_for_cannot_have_eh: Error<
-  "exception handling is not allowed in a '#pragma omp %0' loop">;
-def err_capture_vm_type : Error<
-  "variable %q0 with variably modified type cannot be captured">;
-def err_omp_wrong_var_in_combiner : Error<
-  "variable %q0 is not allowed in combiner expression for '#pragma omp declare reduction', only 'omp_in' or 'omp_out' are allowed">;
-def err_omp_wrong_var_in_initializer : Error<
-  "variable %q0 is not allowed in initializer expression for '#pragma omp declare reduction', only 'omp_priv' or 'omp_orig' are allowed">;
-def err_omp_reduction_qualified_type : Error<
-  "a type name cannot be qualified with 'const', 'volatile' or 'restrict'">;
-def err_omp_reduction_function_type : Error<
-  "a type name cannot be a function type">;
-def err_omp_reduction_reference_type : Error<
-  "a type name cannot be a reference type">;
-def err_omp_reduction_array_type : Error<
-  "a type name cannot be an array type">;
-def err_omp_reduction_redeclared : Error<
-  "previous declaration with type %0 is found">;
-def err_omp_reduction_non_function_init : Error<
-  "expected function call">;
-def err_setjmp_longjmp_in_omp_simd : Error<
-  "The simd region cannot contain calls to the longjmp/setjmp functions">;
-def err_cean_not_in_statement : Error<
-  "extended array notation is not allowed">;
-def err_cean_lower_bound_not_integer : Error<
-  "lower bound expression has non-integer type %0">;
-def err_cean_length_not_integer : Error<
-  "length expression has non-integer type %0">;
-def err_cean_no_length_for_non_array : Error<
-  "cannot define default length for non-array type %0">;
-def err_omp_array_section_length_not_greater_zero : Error<
-  "length of the array section must be greater than 0">;
-def err_omp_expected_var_name_or_array_item : Error<
-  "expected variable name or an array item">;
-def err_omp_depend_arg_not_lvalue : Error<
-  "argument expression must be an l-value">;
-def err_omp_teams_not_single_in_target : Error<
-  "the teams construct must be the only construct inside of target region">;
-def err_omp_region_not_file_context : Error<
-  "directive must be at file or namespace scope">;
-def warn_omp_not_in_target_context : Warning<
-  "declaration is not declared in any declare target region">,
-  InGroup<SourceUsesOpenMP>, DefaultWarn;
-def err_omp_threadprivate_in_target : Error<
-  "threadprivate variables cannot be used in target constructs">;
-def err_omp_map_shared_storage : Error<
-  "variable already marked as mapped in current construct">;
-def err_omp_not_mappable_type : Error<
-  "type %0 is not mappable to target">;
-def note_omp_polymorphic_in_target : Note<
-  "mappable type cannot be polymorphic">;
-def note_omp_static_member_in_target : Note<
-  "mappable type cannot contain static members">;
+  "region cannot be%select{| closely}0 nested inside '%1' region"
+  "%select{|; perhaps you forget to enclose 'omp %3' directive into a parallel region?}2">;
+def err_omp_prohibited_region_simd : Error<
+  "OpenMP constructs may not be nested inside a simd region">;
+def err_omp_prohibited_region_critical_same_name : Error<
+  "cannot nest 'critical' regions having the same name %0">;
+def note_omp_previous_critical_region : Note<
+  "previous 'critical' region starts here">;
+def err_omp_sections_not_compound_stmt : Error<
+  "the statement for '#pragma omp sections' must be a compound statement">;
+def err_omp_parallel_sections_not_compound_stmt : Error<
+  "the statement for '#pragma omp parallel sections' must be a compound statement">;
+def err_omp_orphaned_section_directive : Error<
+  "%select{orphaned 'omp section' directives are prohibited, it|'omp section' directive}0"
+  " must be closely nested to a sections region%select{|, not a %1 region}0">;
+def err_omp_sections_substmt_not_section : Error<
+  "statement in 'omp sections' directive must be enclosed into a section region">;
+def err_omp_parallel_sections_substmt_not_section : Error<
+  "statement in 'omp parallel sections' directive must be enclosed into a section region">;
+def err_omp_parallel_reduction_in_task_firstprivate : Error<
+  "argument of a reduction clause of a %0 construct must not appear in a firstprivate clause on a task construct">;
 } // end of OpenMP category
 
 let CategoryName = "Related Result Type Issue" in {
@@ -7322,4 +7287,3 @@ def warn_profile_data_unprofiled : Warning<
 } // end of instrumentation issue category
 
 } // end of sema component.
-

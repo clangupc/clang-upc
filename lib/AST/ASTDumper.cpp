@@ -304,7 +304,6 @@ namespace  {
     void VisitAttributedStmt(const AttributedStmt *Node);
     void VisitLabelStmt(const LabelStmt *Node);
     void VisitGotoStmt(const GotoStmt *Node);
-    void VisitCapturedStmt(const CapturedStmt *Node);
     void VisitCXXCatchStmt(const CXXCatchStmt *Node);
 
     // Exprs
@@ -1524,9 +1523,6 @@ void ASTDumper::dumpStmt(const Stmt *S) {
       lastChild();
     dumpStmt(*CI);
   }
-  if (const CapturedStmt *CS = dyn_cast<CapturedStmt>(S)) {
-    dumpStmt(CS->getCapturedStmt());
-  }
 }
 
 void ASTDumper::VisitStmt(const Stmt *Node) {
@@ -1569,26 +1565,6 @@ void ASTDumper::VisitGotoStmt(const GotoStmt *Node) {
   VisitStmt(Node);
   OS << " '" << Node->getLabel()->getName() << "'";
   dumpPointer(Node->getLabel());
-}
-
-void ASTDumper::VisitCapturedStmt(const CapturedStmt *Node) {
-  VisitStmt(Node);
-  for (CapturedStmt::const_capture_iterator I = Node->capture_begin(),
-                                            E = Node->capture_end();
-                                            I != E; ++I) {
-    IndentScope Indent(*this);
-    OS << "Capture ";
-    switch (I->getCaptureKind()) {
-    case CapturedStmt::VCK_This:
-      OS << "this";
-      break;
-    case CapturedStmt::VCK_ByRef:
-      OS << "byref ";
-      dumpBareDeclRef(I->getCapturedVar());
-      break;
-    }
-  }
-  dumpDecl(Node->getCapturedDecl());
 }
 
 void ASTDumper::VisitCXXCatchStmt(const CXXCatchStmt *Node) {

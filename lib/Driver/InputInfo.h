@@ -10,7 +10,6 @@
 #ifndef CLANG_LIB_DRIVER_INPUTINFO_H_
 #define CLANG_LIB_DRIVER_INPUTINFO_H_
 
-#include "clang/Driver/Action.h"
 #include "clang/Driver/Types.h"
 #include "llvm/Option/Arg.h"
 #include <cassert>
@@ -41,24 +40,19 @@ class InputInfo {
   Class Kind;
   types::ID Type;
   const char *BaseInput;
-  // Action that lead to this info
-  const Action* OrigAction;
 
 public:
   InputInfo() {}
-  InputInfo(const Action* _OrigAction, const char *_BaseInput)
-    : Kind(Nothing), Type(_OrigAction->getType()), BaseInput(_BaseInput),
-      OrigAction(_OrigAction) {
+  InputInfo(types::ID _Type, const char *_BaseInput)
+    : Kind(Nothing), Type(_Type), BaseInput(_BaseInput) {
   }
-  InputInfo(const char *_Filename, const Action* _OrigAction, const char *_BaseInput)
-    : Kind(Filename), Type(_OrigAction->getType()), BaseInput(_BaseInput),
-      OrigAction(_OrigAction) {
+  InputInfo(const char *_Filename, types::ID _Type, const char *_BaseInput)
+    : Kind(Filename), Type(_Type), BaseInput(_BaseInput) {
     Data.Filename = _Filename;
   }
-  InputInfo(const llvm::opt::Arg *_InputArg, const Action* _OrigAction,
+  InputInfo(const llvm::opt::Arg *_InputArg, types::ID _Type,
             const char *_BaseInput)
-      : Kind(InputArg), Type(_OrigAction->getType()), BaseInput(_BaseInput),
-        OrigAction(_OrigAction) {
+      : Kind(InputArg), Type(_Type), BaseInput(_BaseInput) {
     Data.InputArg = _InputArg;
   }
 
@@ -87,10 +81,6 @@ public:
     else
       return "(nothing)";
   }
-
-  // getOriginalAction - Return the action that produced
-  // this input info
-  const Action *getOriginalAction() const {return OrigAction;}
 };
 
 } // end namespace driver

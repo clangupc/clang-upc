@@ -19,7 +19,6 @@
 #include "clang/AST/CharUnits.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/DeclObjC.h"
-#include "clang/AST/DeclOpenMP.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Basic/TargetInfo.h"
 #include "clang/CodeGen/CGFunctionInfo.h"
@@ -78,7 +77,6 @@ void CodeGenFunction::EmitDecl(const Decl &D) {
   case Decl::Captured:
   case Decl::ClassScopeFunctionSpecialization:
   case Decl::UsingShadow:
-  case Decl::OMPDeclareTarget:
     llvm_unreachable("Declaration should not be in declstmts!");
   case Decl::Function:  // void X();
   case Decl::Record:    // struct/union/class X;
@@ -88,6 +86,7 @@ void CodeGenFunction::EmitDecl(const Decl &D) {
   case Decl::StaticAssert: // static_assert(X, ""); [C++0x]
   case Decl::Label:        // __label__ x;
   case Decl::Import:
+  case Decl::OMPThreadPrivate:
   case Decl::Empty:
   case Decl::PragmaPupc:
     // None of these decls require codegen support.
@@ -101,15 +100,6 @@ void CodeGenFunction::EmitDecl(const Decl &D) {
     if (CGDebugInfo *DI = getDebugInfo())
         DI->EmitUsingDecl(cast<UsingDecl>(D));
     return;
-  case Decl::OMPThreadPrivate:
-    CGM.EmitOMPThreadPrivate(cast<OMPThreadPrivateDecl>(&D));
-    break;
-  case Decl::OMPDeclareReduction:
-    CGM.EmitOMPDeclareReduction(cast<OMPDeclareReductionDecl>(&D));
-    break;
-  case Decl::OMPDeclareSimd:
-    CGM.EmitOMPDeclareSimd(cast<OMPDeclareSimdDecl>(&D));
-    break;
   case Decl::UsingDirective: // using namespace X; [C++]
     if (CGDebugInfo *DI = getDebugInfo())
       DI->EmitUsingDirective(cast<UsingDirectiveDecl>(D));

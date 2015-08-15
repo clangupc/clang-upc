@@ -16,7 +16,6 @@
 
 #include "clang/AST/DeclObjC.h"
 #include "clang/AST/DeclarationName.h"
-#include "clang/AST/OpenMPClause.h"
 #include "clang/AST/TemplateBase.h"
 #include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/FileManager.h"
@@ -2081,33 +2080,6 @@ public:
 
   //RIDErief Loads comments ranges.
   void ReadComments() override;
-};
-
-/// \brief AST Reader for OpenMP clauses, used for both clauses-stmts
-///        (e.g. omp parallel) and clauses-decls (e.g. omp declare simd).
-class OMPClauseReader : public OMPClauseVisitor<OMPClauseReader> {
-  ASTReader &Reader;
-  ASTContext &Context;
-  const ASTReader::RecordData &Record;
-  unsigned &Idx;
-  serialization::ModuleFile &MFile;
-public:
-  OMPClauseReader(ASTReader &R, ASTContext &C,
-                  const ASTReader::RecordData &Record, unsigned &Idx,
-                  serialization::ModuleFile &MF)
-    : Reader(R), Context(C), Record(Record), Idx(Idx), MFile(MF) { }
-#define OPENMP_CLAUSE(Name, Class)    \
-  void Visit##Class(Class *S);
-#include "clang/Basic/OpenMPKinds.def"
-  OMPClause *readClause();
-  SourceLocation ReadSourceLocation(const ASTReader::RecordData &R,
-                                    unsigned &I) {
-    return Reader.ReadSourceLocation(MFile, R, I);
-  }
-
-  SourceRange ReadSourceRange(const ASTReader::RecordData &R, unsigned &I) {
-    return Reader.ReadSourceRange(MFile, R, I);
-  }
 };
 
 /// \brief Helper class that saves the current stream position and

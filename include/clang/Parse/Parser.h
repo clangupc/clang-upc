@@ -58,7 +58,6 @@ class Parser : public CodeCompletionHandler {
   friend class ObjCDeclContextSwitch;
   friend class ParenBraceBracketBalancer;
   friend class BalancedDelimiterTracker;
-  friend class AllowCEANExpressions;
 
   Preprocessor &PP;
 
@@ -235,8 +234,6 @@ class Parser : public CodeCompletionHandler {
   bool ParsingInObjCContainer;
 
   bool SkipFunctionBodies;
-
-  bool IsCEANAllowed;
 
 public:
   Parser(Preprocessor &PP, Sema &Actions, bool SkipFunctionBodies);
@@ -1026,21 +1023,6 @@ private:
     /// \brief The set of tokens that make up an exception-specification that
     /// has not yet been parsed.
     CachedTokens *ExceptionSpecTokens;
-  };
-
-  /// LateParsedOpenMPDeclaration - An OpenMP declaration inside a class.
-  struct LateParsedOpenMPDeclaration : public LateParsedDeclaration {
-    explicit LateParsedOpenMPDeclaration(Parser *P, AccessSpecifier AS)
-      : Self(P), AS(AS) { }
-
-    virtual void ParseLexedMethodDeclarations();
-
-    Parser* Self;
-    AccessSpecifier AS;
-
-    /// \brief The set of tokens that make up an exception-specification that
-    /// has not yet been parsed.
-    CachedTokens Tokens;
   };
 
   /// LateParsedMemberInitializer - An initializer for a non-static class data
@@ -2360,13 +2342,8 @@ private:
 
   //===--------------------------------------------------------------------===//
   // OpenMP: Directives and clauses.
-  /// \brief Parses OpenMP directive.
-  OpenMPDirectiveKind ParseOpenMPDirective();
   /// \brief Parses declarative OpenMP directives.
-  DeclGroupPtrTy ParseOpenMPDeclarativeDirective(AccessSpecifier AS);
-  /// \brief Late parsing of declarative OpenMP directives.
-  void LateParseOpenMPDeclarativeDirective(AccessSpecifier AS);
-
+  DeclGroupPtrTy ParseOpenMPDeclarativeDirective();
   /// \brief Parses simple list of variables.
   ///
   /// \param Kind Kind of the directive.
@@ -2377,22 +2354,13 @@ private:
   bool ParseOpenMPSimpleVarList(OpenMPDirectiveKind Kind,
                                 SmallVectorImpl<Expr *> &VarList,
                                 bool AllowScopeSpecifier);
-  /// \param [out] Inits List of inits.
-  ///
-  Decl *ParseOpenMPDeclareReduction(SmallVectorImpl<QualType> &Types,
-                                    SmallVectorImpl<SourceRange> &TyRanges,
-                                    SmallVectorImpl<Expr *> &Combiners,
-                                    SmallVectorImpl<Expr *> &Inits,
-                                    AccessSpecifier AS);
-
   /// \brief Parses declarative or executable directive.
   ///
   /// \param StandAloneAllowed true if allowed stand-alone directives,
   /// false - otherwise
   ///
-  StmtResult ParseOpenMPDeclarativeOrExecutableDirective(
-                                                bool StandAloneAllowed);
-
+  StmtResult
+  ParseOpenMPDeclarativeOrExecutableDirective(bool StandAloneAllowed);
   /// \brief Parses clause of kind \a CKind for directive of a kind \a Kind.
   ///
   /// \param DKind Kind of current directive.
@@ -2401,8 +2369,7 @@ private:
   /// in current directive.
   ///
   OMPClause *ParseOpenMPClause(OpenMPDirectiveKind DKind,
-                               OpenMPClauseKind CKind,
-                               bool FirstClause);
+                               OpenMPClauseKind CKind, bool FirstClause);
   /// \brief Parses clause with a single expression of a kind \a Kind.
   ///
   /// \param Kind Kind of current clause.
@@ -2429,40 +2396,6 @@ private:
   /// \param Kind Kind of current clause.
   ///
   OMPClause *ParseOpenMPVarListClause(OpenMPClauseKind Kind);
-  typedef SmallVector<DeclarationNameInfo, 4> DeclarationNameInfoList;
-  /// \brief The following is temporary info about a clause used later to
-  /// build it (after we have access to the function's arguments scope).
-  struct OmpDeclareSimdVariantInfo {
-    unsigned Idx;             // index in the CL (array of clauses)
-    OpenMPClauseKind CKind;   // clause kind
-    DeclarationNameInfoList NameInfos;
-    SourceLocation StartLoc;
-    SourceLocation EndLoc;
-    Expr *TailExpr;
-    SourceLocation TailLoc;
-    OmpDeclareSimdVariantInfo(OpenMPClauseKind CK, unsigned I)
-      :Idx(I), CKind(CK), TailExpr(0) { }
-  };
-  /// \brief Parses clause with the list of variables of a kind \a Kind in
-  ///        a declarative Varlist-parsing mode for the case when the vars
-  ///        are not declared yet (e.g. arguments in 'declare simd').
-  /// \param CKind Kind of current clause (for now, only OMPD_declare_simd).
-  /// \param pam pam.
-  ///
-  bool ParseOpenMPDeclarativeVarListClause(
-      OpenMPDirectiveKind DKind,
-      OpenMPClauseKind CKind,
-      DeclarationNameInfoList &NameInfos,
-      SourceLocation &StartLoc,
-      SourceLocation &EndLoc,
-      Expr *&TailExpr,
-      SourceLocation &TailLoc);
-  /// \brief Parses clause with a single expression and a type of a kind
-  /// \a Kind.
-  ///
-  /// \param Kind Kind of current clause.
-  ///
-  OMPClause *ParseOpenMPSingleExprWithTypeClause(OpenMPClauseKind Kind);
 public:
   bool ParseUnqualifiedId(CXXScopeSpec &SS, bool EnteringContext,
                           bool AllowDestructorName,

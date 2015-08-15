@@ -678,21 +678,7 @@ void DarwinClang::AddCCKextLibArgs(const ArgList &Args,
 }
 
 DerivedArgList *MachO::TranslateArgs(const DerivedArgList &Args,
-                                      const char *BoundArch,
-                                      bool isOpenMPTarget,
-                                      bool &isSuccess) const {
-
-  if (isOpenMPTarget){
-  	// This translation is not dealing with OpenMP target directives yet
-    isSuccess = false;
-
-    getDriver().Diag(diag::err_drv_omp_target_translation_not_available)
-        << BoundArch;
-    return 0;
-  }
-
-  isSuccess = true;
-
+                                     const char *BoundArch) const {
   DerivedArgList *DAL = new DerivedArgList(Args.getBaseArgs());
   const OptTable &Opts = getDriver().getOpts();
 
@@ -925,22 +911,9 @@ void MachO::AddLinkRuntimeLibArgs(const llvm::opt::ArgList &Args,
 
 
 DerivedArgList *Darwin::TranslateArgs(const DerivedArgList &Args,
-                                      const char *BoundArch,
-                                      bool isOpenMPTarget,
-                                      bool &isSuccess) const {
-
-  if (isOpenMPTarget){
-    // This translation is not dealing with OpenMP target directives yet
-    isSuccess = false;
-
-    getDriver().Diag(diag::err_drv_omp_target_translation_not_available)
-        << BoundArch;
-    return 0;
-  }
-
+                                      const char *BoundArch) const {
   // First get the generic Apple args, before moving onto Darwin-specific ones.
-  DerivedArgList *DAL = MachO::TranslateArgs(Args, BoundArch,
-                                             isOpenMPTarget, isSuccess);
+  DerivedArgList *DAL = MachO::TranslateArgs(Args, BoundArch);
   const OptTable &Opts = getDriver().getOpts();
 
   // If no architecture is bound, none of the translations here are relevant.
@@ -1256,9 +1229,8 @@ static llvm::StringRef getGCCToolchainDir(const ArgList &Args) {
 /// necessary because the driver doesn't store the final version of the target
 /// triple.
 void
-Generic_GCC::GCCInstallationDetector::init( const Driver &D,
-    const llvm::Triple &TargetTriple, const ArgList &Args,
-    bool isOpenMPTarget) {
+Generic_GCC::GCCInstallationDetector::init(
+    const Driver &D, const llvm::Triple &TargetTriple, const ArgList &Args) {
   llvm::Triple BiarchVariantTriple =
       TargetTriple.isArch32Bit() ? TargetTriple.get64BitArchVariant()
                                  : TargetTriple.get32BitArchVariant();
@@ -1308,8 +1280,7 @@ Generic_GCC::GCCInstallationDetector::init( const Driver &D,
         continue;
       for (unsigned k = 0, ke = CandidateTripleAliases.size(); k < ke; ++k)
         ScanLibDirForGCCTriple(TargetTriple, Args, LibDir,
-                               CandidateTripleAliases[k],
-                               isOpenMPTarget);
+                               CandidateTripleAliases[k]);
     }
     for (unsigned j = 0, je = CandidateBiarchLibDirs.size(); j < je; ++j) {
       const std::string LibDir = Prefixes[i] + CandidateBiarchLibDirs[j].str();
@@ -1319,7 +1290,6 @@ Generic_GCC::GCCInstallationDetector::init( const Driver &D,
            ++k)
         ScanLibDirForGCCTriple(TargetTriple, Args, LibDir,
                                CandidateBiarchTripleAliases[k],
-                               isOpenMPTarget,
                                /*NeedsBiarchSuffix=*/ true);
     }
   }
@@ -1692,8 +1662,7 @@ struct DetectedMultilibs {
 
 static bool findMIPSMultilibs(const llvm::Triple &TargetTriple, StringRef Path,
                               const llvm::opt::ArgList &Args,
-                              DetectedMultilibs &Result,
-                              bool isOpenMPTarget) {
+                              DetectedMultilibs &Result) {
   // Some MIPS toolchains put libraries and object files compiled
   // using different options in to the sub-directoris which names
   // reflects the flags used for compilation. For example sysroot
@@ -1930,8 +1899,8 @@ static bool findMIPSMultilibs(const llvm::Triple &TargetTriple, StringRef Path,
   addMultilibFlag(CPUName == "mips64r2" || CPUName == "octeon",
                   "march=mips64r2", Flags);
   addMultilibFlag(isMicroMips(Args), "mmicromips", Flags);
-  addMultilibFlag(tools::mips::isNaN2008(Args, TargetTriple, isOpenMPTarget),
-                  "mnan=2008", Flags);
+  addMultilibFlag(tools::mips::isNaN2008(Args, TargetTriple), "mnan=2008",
+                  Flags);
   addMultilibFlag(ABIName == "n32", "mabi=n32", Flags);
   addMultilibFlag(ABIName == "n64", "mabi=n64", Flags);
   addMultilibFlag(isSoftFloatABI(Args), "msoft-float", Flags);
@@ -2072,7 +2041,7 @@ static bool findBiarchMultilibs(const llvm::Triple &TargetTriple,
 void Generic_GCC::GCCInstallationDetector::ScanLibDirForGCCTriple(
     const llvm::Triple &TargetTriple, const ArgList &Args,
     const std::string &LibDir, StringRef CandidateTriple,
-    bool isOpenMPTarget, bool NeedsBiarchSuffix) {
+    bool NeedsBiarchSuffix) {
   llvm::Triple::ArchType TargetArch = TargetTriple.getArch();
   // There are various different suffixes involving the triple we
   // check for. We also record what is necessary to walk from each back
@@ -2123,8 +2092,7 @@ void Generic_GCC::GCCInstallationDetector::ScanLibDirForGCCTriple(
       // Debian mips multilibs behave more like the rest of the biarch ones,
       // so handle them there
       if (isMipsArch(TargetArch)) {
-        if (!findMIPSMultilibs(TargetTriple, LI->path(), Args, Detected,
-                               isOpenMPTarget))
+        if (!findMIPSMultilibs(TargetTriple, LI->path(), Args, Detected))
           continue;
       } else if (!findBiarchMultilibs(TargetTriple, LI->path(), Args,
                                       NeedsBiarchSuffix, Detected)) {
@@ -2147,9 +2115,8 @@ void Generic_GCC::GCCInstallationDetector::ScanLibDirForGCCTriple(
 }
 
 Generic_GCC::Generic_GCC(const Driver &D, const llvm::Triple& Triple,
-                         const ArgList &Args,
-                         bool IsOpenMPTargetToolchain)
-  : ToolChain(D, Triple, Args, IsOpenMPTargetToolchain), GCCInstallation() {
+                         const ArgList &Args)
+  : ToolChain(D, Triple, Args), GCCInstallation() {
   getProgramPaths().push_back(getDriver().getInstalledDir());
   if (getDriver().getInstalledDir() != getDriver().Dir)
     getProgramPaths().push_back(getDriver().Dir);
@@ -2202,54 +2169,6 @@ bool Generic_GCC::isPICDefaultForced() const {
   return false;
 }
 
-
-llvm::opt::DerivedArgList *
-Generic_GCC::TranslateArgs(const llvm::opt::DerivedArgList &Args,
-              const char *BoundArch,
-              bool isOpenMPTarget,
-              bool &isSuccess) const{
-
-  isSuccess = true;
-
-  // If not a target tool chain we can use the arguments directly without
-  // translation
-  if (!isOpenMPTarget)
-    return 0;
-
-  DerivedArgList *DAL = new DerivedArgList(Args.getBaseArgs());
-  const OptTable &Opts = getDriver().getOpts();
-
-  // FIXME: We should consider move this to each tool.
-
-  for (ArgList::const_iterator it = Args.begin(),
-         ie = Args.end(); it != ie; ++it) {
-    Arg *A = *it;
-
-    // We are forcing the compiler to create a shared library
-    DAL->AddFlagArg(0, Opts.getOption(options::OPT_shared));
-    DAL->AddFlagArg(0, Opts.getOption(options::OPT_fPIC));
-
-    switch ((options::ID) A->getOption().getID()) {
-    default:
-      DAL->append(A);
-      break;
-    case options::OPT_shared:
-    case options::OPT_static:
-    case options::OPT_fPIC:
-    case options::OPT_fno_PIC:
-    case options::OPT_fpic:
-    case options::OPT_fno_pic:
-    case options::OPT_fPIE:
-    case options::OPT_fno_PIE:
-    case options::OPT_fpie:
-    case options::OPT_fno_pie:
-      break;
-    }
-  }
-
-  return DAL;
-}
-
 bool Generic_GCC::IsIntegratedAssemblerDefault() const {
   return getTriple().getArch() == llvm::Triple::x86 ||
          getTriple().getArch() == llvm::Triple::x86_64 ||
@@ -2283,15 +2202,11 @@ void Generic_ELF::addClangTargetOptions(const ArgList &DriverArgs,
 
 /// Hexagon Toolchain
 
-std::string Hexagon_TC::GetGnuDir(const std::string &InstalledDir,
-                                    const ArgList &Args) {
+std::string Hexagon_TC::GetGnuDir(const std::string &InstalledDir) {
 
   // Locate the rest of the toolchain ...
-  const Arg *A = Args.getLastArg(options::OPT_gcc_toolchain);
-  std::string gcc_toolchain( (A) ? A->getValue() : GCC_INSTALL_PREFIX);
-
-  if ( !gcc_toolchain.empty() )
-    return gcc_toolchain;
+  if (strlen(GCC_INSTALL_PREFIX))
+    return std::string(GCC_INSTALL_PREFIX);
 
   std::string InstallRelDir = InstalledDir + "/../../gnu";
   if (llvm::sys::fs::exists(InstallRelDir))
@@ -2331,7 +2246,7 @@ static void GetHexagonLibraryPaths(
   const std::string MarchSuffix = "/" + MarchString;
   const std::string G0Suffix = "/G0";
   const std::string MarchG0Suffix = MarchSuffix + G0Suffix;
-  const std::string RootDir = Hexagon_TC::GetGnuDir(InstalledDir, Args) + "/";
+  const std::string RootDir = Hexagon_TC::GetGnuDir(InstalledDir) + "/";
 
   // lib/gcc/hexagon/...
   std::string LibGCCHexagonDir = RootDir + "lib/gcc/hexagon/";
@@ -2359,7 +2274,7 @@ Hexagon_TC::Hexagon_TC(const Driver &D, const llvm::Triple &Triple,
                        const ArgList &Args)
   : Linux(D, Triple, Args) {
   const std::string InstalledDir(getDriver().getInstalledDir());
-  const std::string GnuDir = Hexagon_TC::GetGnuDir(InstalledDir, Args);
+  const std::string GnuDir = Hexagon_TC::GetGnuDir(InstalledDir);
 
   // Note: Generic_GCC::Generic_GCC adds InstalledDir and getDriver().Dir to
   // program paths
@@ -2414,7 +2329,7 @@ void Hexagon_TC::AddClangSystemIncludeArgs(const ArgList &DriverArgs,
     return;
 
   std::string Ver(GetGCCLibAndIncVersion());
-  std::string GnuDir = Hexagon_TC::GetGnuDir(D.InstalledDir, DriverArgs);
+  std::string GnuDir = Hexagon_TC::GetGnuDir(D.InstalledDir);
   std::string HexagonDir(GnuDir + "/lib/gcc/hexagon/" + Ver);
   addExternCSystemInclude(DriverArgs, CC1Args, HexagonDir + "/include");
   addExternCSystemInclude(DriverArgs, CC1Args, HexagonDir + "/include-fixed");
@@ -2430,7 +2345,7 @@ void Hexagon_TC::AddClangCXXStdlibIncludeArgs(const ArgList &DriverArgs,
 
   const Driver &D = getDriver();
   std::string Ver(GetGCCLibAndIncVersion());
-  SmallString<128> IncludeDir(Hexagon_TC::GetGnuDir(D.InstalledDir, DriverArgs));
+  SmallString<128> IncludeDir(Hexagon_TC::GetGnuDir(D.InstalledDir));
 
   llvm::sys::path::append(IncludeDir, "hexagon/include/c++/");
   llvm::sys::path::append(IncludeDir, Ver);
@@ -3123,10 +3038,9 @@ static StringRef getOSLibDir(const llvm::Triple &Triple, const ArgList &Args) {
   return Triple.isArch32Bit() ? "lib" : "lib64";
 }
 
-Linux::Linux(const Driver &D, const llvm::Triple &Triple, const ArgList &Args,
-             bool IsOpenMPTargetToolchain)
-  : Generic_ELF(D, Triple, Args, IsOpenMPTargetToolchain) {
-  GCCInstallation.init(D, Triple, Args, IsOpenMPTargetToolchain);
+Linux::Linux(const Driver &D, const llvm::Triple &Triple, const ArgList &Args)
+  : Generic_ELF(D, Triple, Args) {
+  GCCInstallation.init(D, Triple, Args);
   Multilibs = GCCInstallation.getMultilibs();
   llvm::Triple::ArchType Arch = Triple.getArch();
   std::string SysRoot = computeSysRoot();
@@ -3707,51 +3621,4 @@ void XCore::AddClangCXXStdlibIncludeArgs(const ArgList &DriverArgs,
 void XCore::AddCXXStdlibLibArgs(const ArgList &Args,
                                 ArgStringList &CmdArgs) const {
   // We don't output any lib args. This is handled by xcc.
-}
-
-/// NVPTX tool chain
-NVPTX_TC::NVPTX_TC(const Driver &D, const llvm::Triple &Triple,
-                   const ArgList &Args, bool IsOpenMPTargetToolchain)
-                 : ToolChain(D, Triple, Args, IsOpenMPTargetToolchain) {
-  // ProgramPaths are found via 'PATH' environment variable.
-}
-
-Tool *NVPTX_TC::buildAssembler() const {
-  return new tools::NVPTX::Assemble(*this);
-}
-
-Tool *NVPTX_TC::buildLinker() const {
-  return new tools::NVPTX::Link(*this);
-}
-
-bool NVPTX_TC::isPICDefault() const {
-  return false;
-}
-
-bool NVPTX_TC::isPIEDefault() const {
-  return false;
-}
-
-bool NVPTX_TC::isPICDefaultForced() const {
-  return false;
-}
-
-bool NVPTX_TC::SupportsProfiling() const {
-  return false;
-}
-
-bool NVPTX_TC::hasBlocksRuntime() const {
-  return false;
-}
-
-llvm::opt::DerivedArgList *
-NVPTX_TC::TranslateArgs(const llvm::opt::DerivedArgList &Args,
-              const char *BoundArch,
-              bool isOpenMPTarget,
-              bool &isSuccess) const {
-
-  isSuccess = true;
-
-  // We do not need any translation for this target
-  return 0;
 }

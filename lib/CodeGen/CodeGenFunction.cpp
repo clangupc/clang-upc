@@ -36,7 +36,7 @@ using namespace CodeGen;
 CodeGenFunction::CodeGenFunction(CodeGenModule &cgm, bool suppressNewContext)
     : CodeGenTypeCache(cgm), CGM(cgm), Target(cgm.getTarget()),
       Builder(cgm.getModule().getContext(), llvm::ConstantFolder(),
-              CGBuilderInserterTy(this)), OpenMPRoot(0),
+              CGBuilderInserterTy(this)),
       CapturedStmtInfo(nullptr), SanOpts(&CGM.getLangOpts().Sanitize),
       IsSanitizerScope(false), AutoreleaseResult(false), BlockInfo(nullptr),
       BlockPointer(nullptr), LambdaThisCaptureField(nullptr),
@@ -74,6 +74,9 @@ CodeGenFunction::~CodeGenFunction() {
   if (FirstBlockInfo)
     destroyBlockInfos(FirstBlockInfo);
 
+  if (getLangOpts().OpenMP) {
+    CGM.getOpenMPRuntime().FunctionFinished(*this);
+  }
 }
 
 
@@ -261,11 +264,6 @@ void CodeGenFunction::FinishFunction(SourceLocation EndLoc) {
   llvm::Instruction *Ptr = AllocaInsertPt;
   AllocaInsertPt = nullptr;
   Ptr->eraseFromParent();
-  if (FirstprivateInsertPt) {
-    Ptr = FirstprivateInsertPt;
-    FirstprivateInsertPt = 0;
-    Ptr->eraseFromParent();
-  }
 
   // If someone took the address of a label but never did an indirect goto, we
   // made a zero entry PHI node, which is illegal, zap it now.
@@ -585,7 +583,6 @@ void CodeGenFunction::StartFunction(GlobalDecl GD,
   // folded.
   llvm::Value *Undef = llvm::UndefValue::get(Int32Ty);
   AllocaInsertPt = new llvm::BitCastInst(Undef, Int32Ty, "", EntryBB);
-  FirstprivateInsertPt = 0;
   if (Builder.isNamePreserving())
     AllocaInsertPt->setName("allocapt");
 
@@ -1554,14 +1551,10 @@ void CodeGenFunction::EmitVariablyModifiedType(QualType type) {
       break;
 
     case Type::Typedef:
-      type = cast<TypedefType>(ty)->desugar();
-      break;
     case Type::Decltype:
-      type = cast<DecltypeType>(ty)->desugar();
-      break;
     case Type::Auto:
-      type = cast<AutoType>(ty)->getDeducedType();
-      break;
+      // Stop walking: nothing to do.
+      return;
 
     case Type::TypeOfExpr:
       // Stop walking: emit typeof expression.
@@ -1572,7 +1565,7 @@ void CodeGenFunction::EmitVariablyModifiedType(QualType type) {
       type = cast<AtomicType>(ty)->getValueType();
       break;
     }
-  } while (!type.isNull() && type->isVariablyModifiedType());
+  } while (type->isVariablyModifiedType());
 }
 
 llvm::Value* CodeGenFunction::EmitVAListRef(const Expr* E) {
@@ -1671,11 +1664,10 @@ CodeGenFunction::SanitizerScope::~SanitizerScope() {
   CGF->IsSanitizerScope = false;
 }
 
-void
-CodeGenFunction::InsertHelper(llvm::Instruction *I,
-                              const llvm::Twine &Name,
-                              llvm::BasicBlock *BB,
-                              llvm::BasicBlock::iterator InsertPt) const {
+void CodeGenFunction::InsertHelper(llvm::Instruction *I,
+                                   const llvm::Twine &Name,
+                                   llvm::BasicBlock *BB,
+                                   llvm::BasicBlock::iterator InsertPt) const {
   LoopStack.InsertHelper(I);
   if (IsSanitizerScope) {
     I->setMetadata(
@@ -1685,26 +1677,21 @@ CodeGenFunction::InsertHelper(llvm::Instruction *I,
 }
 
 template <bool PreserveNames>
-void CGBuilderInserter<PreserveNames>::
-  InsertHelper(llvm::Instruction *I,
-               const llvm::Twine &Name,
-               llvm::BasicBlock *BB,
-               llvm::BasicBlock::iterator InsertPt) const {
+void CGBuilderInserter<PreserveNames>::InsertHelper(
+    llvm::Instruction *I, const llvm::Twine &Name, llvm::BasicBlock *BB,
+    llvm::BasicBlock::iterator InsertPt) const {
   llvm::IRBuilderDefaultInserter<PreserveNames>::InsertHelper(I, Name, BB,
                                                               InsertPt);
   if (CGF)
     CGF->InsertHelper(I, Name, BB, InsertPt);
 }
+
 #ifdef NDEBUG
-template void CGBuilderInserter<false>::
-  InsertHelper(llvm::Instruction *I,
-               const llvm::Twine &Name,
-               llvm::BasicBlock *BB,
-               llvm::BasicBlock::iterator InsertPt) const;
+#define PreserveNames false
 #else
-template void CGBuilderInserter<true>::
-  InsertHelper(llvm::Instruction *I,
-               const llvm::Twine &Name,
-               llvm::BasicBlock *BB,
-               llvm::BasicBlock::iterator InsertPt) const;
+#define PreserveNames true
 #endif
+template void CGBuilderInserter<PreserveNames>::InsertHelper(
+    llvm::Instruction *I, const llvm::Twine &Name, llvm::BasicBlock *BB,
+    llvm::BasicBlock::iterator InsertPt) const;
+#undef PreserveNames

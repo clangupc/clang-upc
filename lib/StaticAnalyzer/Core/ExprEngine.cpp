@@ -731,46 +731,22 @@ void ExprEngine::Visit(const Stmt *S, ExplodedNode *Pred,
     case Stmt::SwitchStmtClass:
     case Stmt::WhileStmtClass:
     case Expr::MSDependentExistsStmtClass:
+    case Stmt::CapturedStmtClass:
     case Stmt::OMPParallelDirectiveClass:
-    case Stmt::OMPForDirectiveClass:
-    case Stmt::OMPParallelForDirectiveClass:
-    case Stmt::OMPParallelForSimdDirectiveClass:
     case Stmt::OMPSimdDirectiveClass:
-    case Stmt::OMPForSimdDirectiveClass:
-    case Stmt::OMPDistributeSimdDirectiveClass:
-    case Stmt::OMPDistributeParallelForDirectiveClass:
-    case Stmt::OMPDistributeParallelForSimdDirectiveClass:
-    case Stmt::OMPTeamsDistributeParallelForDirectiveClass:
-    case Stmt::OMPTeamsDistributeParallelForSimdDirectiveClass:
-    case Stmt::OMPTargetTeamsDistributeParallelForDirectiveClass:
-    case Stmt::OMPTargetTeamsDistributeParallelForSimdDirectiveClass:
+    case Stmt::OMPForDirectiveClass:
     case Stmt::OMPSectionsDirectiveClass:
-    case Stmt::OMPParallelSectionsDirectiveClass:
     case Stmt::OMPSectionDirectiveClass:
     case Stmt::OMPSingleDirectiveClass:
-    case Stmt::OMPTaskDirectiveClass:
-    case Stmt::OMPTaskyieldDirectiveClass:
     case Stmt::OMPMasterDirectiveClass:
     case Stmt::OMPCriticalDirectiveClass:
+    case Stmt::OMPParallelForDirectiveClass:
+    case Stmt::OMPParallelSectionsDirectiveClass:
+    case Stmt::OMPTaskDirectiveClass:
+    case Stmt::OMPTaskyieldDirectiveClass:
     case Stmt::OMPBarrierDirectiveClass:
     case Stmt::OMPTaskwaitDirectiveClass:
-    case Stmt::OMPTaskgroupDirectiveClass:
-    case Stmt::OMPAtomicDirectiveClass:
     case Stmt::OMPFlushDirectiveClass:
-    case Stmt::OMPOrderedDirectiveClass:
-    case Stmt::OMPTeamsDirectiveClass:
-    case Stmt::OMPTargetTeamsDirectiveClass:
-    case Stmt::OMPDistributeDirectiveClass:
-    case Stmt::OMPCancelDirectiveClass:
-    case Stmt::OMPCancellationPointDirectiveClass:
-    case Stmt::OMPTargetDirectiveClass:
-    case Stmt::OMPTargetDataDirectiveClass:
-    case Stmt::OMPTargetUpdateDirectiveClass:
-    case Stmt::OMPTeamsDistributeDirectiveClass:
-    case Stmt::OMPTeamsDistributeSimdDirectiveClass:
-    case Stmt::OMPTargetTeamsDistributeDirectiveClass:
-    case Stmt::OMPTargetTeamsDistributeSimdDirectiveClass:
-    case Stmt::CapturedStmtClass:
       llvm_unreachable("Stmt should not be in analyzer evaluation loop");
 
     case Stmt::ObjCSubscriptRefExprClass:
@@ -824,8 +800,7 @@ void ExprEngine::Visit(const Stmt *S, ExplodedNode *Pred,
     case Stmt::UPCBarrierStmtClass:
     case Stmt::UPCFenceStmtClass:
     case Stmt::UPCPragmaStmtClass:
-    case Stmt::CEANIndexExprClass:
-    // Fall through.
+      // Fall through.
 
     // Cases we intentionally don't evaluate, since they don't need
     // to be explicitly evaluated.

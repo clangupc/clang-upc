@@ -259,7 +259,6 @@ CXCursor cxcursor::MakeCXCursor(const Stmt *S, const Decl *Parent,
   case Stmt::UPCNotifyStmtClass:
   case Stmt::UPCPragmaStmtClass:
   case Stmt::UPCWaitStmtClass:
-  case Stmt::CEANIndexExprClass:
     K = CXCursor_UnexposedExpr;
     break;
 
@@ -529,47 +528,14 @@ CXCursor cxcursor::MakeCXCursor(const Stmt *S, const Decl *Parent,
   case Stmt::OMPParallelDirectiveClass:
     K = CXCursor_OMPParallelDirective;
     break;
-  case Stmt::OMPForDirectiveClass:
-    K = CXCursor_OMPForDirective;
-    break;
-  case Stmt::OMPParallelForDirectiveClass:
-    K = CXCursor_OMPParallelForDirective;
-    break;
-  case Stmt::OMPParallelForSimdDirectiveClass:
-    K = CXCursor_OMPParallelForSimdDirective;
-    break;
   case Stmt::OMPSimdDirectiveClass:
     K = CXCursor_OMPSimdDirective;
     break;
-  case Stmt::OMPForSimdDirectiveClass:
-    K = CXCursor_OMPForSimdDirective;
-    break;
-  case Stmt::OMPDistributeSimdDirectiveClass:
-    K = CXCursor_OMPDistributeSimdDirective;
-    break;
-  case Stmt::OMPDistributeParallelForDirectiveClass:
-    K = CXCursor_OMPDistributeParallelForDirective;
-    break;
-  case Stmt::OMPDistributeParallelForSimdDirectiveClass:
-    K = CXCursor_OMPDistributeParallelForSimdDirective;
-    break;
-  case Stmt::OMPTeamsDistributeParallelForDirectiveClass:
-    K = CXCursor_OMPTeamsDistributeParallelForDirective;
-    break;
-  case Stmt::OMPTeamsDistributeParallelForSimdDirectiveClass:
-    K = CXCursor_OMPTeamsDistributeParallelForSimdDirective;
-    break;
-  case Stmt::OMPTargetTeamsDistributeParallelForDirectiveClass:
-    K = CXCursor_OMPTargetTeamsDistributeParallelForDirective;
-    break;
-  case Stmt::OMPTargetTeamsDistributeParallelForSimdDirectiveClass:
-    K = CXCursor_OMPTargetTeamsDistributeParallelForSimdDirective;
+  case Stmt::OMPForDirectiveClass:
+    K = CXCursor_OMPForDirective;
     break;
   case Stmt::OMPSectionsDirectiveClass:
     K = CXCursor_OMPSectionsDirective;
-    break;
-  case Stmt::OMPParallelSectionsDirectiveClass:
-    K = CXCursor_OMPParallelSectionsDirective;
     break;
   case Stmt::OMPSectionDirectiveClass:
     K = CXCursor_OMPSectionDirective;
@@ -577,17 +543,23 @@ CXCursor cxcursor::MakeCXCursor(const Stmt *S, const Decl *Parent,
   case Stmt::OMPSingleDirectiveClass:
     K = CXCursor_OMPSingleDirective;
     break;
-  case Stmt::OMPTaskDirectiveClass:
-    K = CXCursor_OMPTaskDirective;
-    break;
-  case Stmt::OMPTaskyieldDirectiveClass:
-    K = CXCursor_OMPTaskyieldDirective;
-    break;
   case Stmt::OMPMasterDirectiveClass:
     K = CXCursor_OMPMasterDirective;
     break;
   case Stmt::OMPCriticalDirectiveClass:
     K = CXCursor_OMPCriticalDirective;
+    break;
+  case Stmt::OMPParallelForDirectiveClass:
+    K = CXCursor_OMPParallelForDirective;
+    break;
+  case Stmt::OMPParallelSectionsDirectiveClass:
+    K = CXCursor_OMPParallelSectionsDirective;
+    break;
+  case Stmt::OMPTaskDirectiveClass:
+    K = CXCursor_OMPTaskDirective;
+    break;
+  case Stmt::OMPTaskyieldDirectiveClass:
+    K = CXCursor_OMPTaskyieldDirective;
     break;
   case Stmt::OMPBarrierDirectiveClass:
     K = CXCursor_OMPBarrierDirective;
@@ -595,53 +567,8 @@ CXCursor cxcursor::MakeCXCursor(const Stmt *S, const Decl *Parent,
   case Stmt::OMPTaskwaitDirectiveClass:
     K = CXCursor_OMPTaskwaitDirective;
     break;
-  case Stmt::OMPTaskgroupDirectiveClass:
-    K = CXCursor_OMPTaskgroupDirective;
-    break;
-  case Stmt::OMPAtomicDirectiveClass:
-    K = CXCursor_OMPAtomicDirective;
-    break;
   case Stmt::OMPFlushDirectiveClass:
     K = CXCursor_OMPFlushDirective;
-    break;
-  case Stmt::OMPOrderedDirectiveClass:
-    K = CXCursor_OMPOrderedDirective;
-    break;
-  case Stmt::OMPTeamsDirectiveClass:
-    K = CXCursor_OMPTeamsDirective;
-    break;
-  case Stmt::OMPTargetTeamsDirectiveClass:
-    K = CXCursor_OMPTargetTeamsDirective;
-    break;
-  case Stmt::OMPDistributeDirectiveClass:
-    K = CXCursor_OMPDistributeDirective;
-    break;
-  case Stmt::OMPTargetDirectiveClass:
-    K = CXCursor_OMPTargetDirective;
-    break;
-  case Stmt::OMPTargetDataDirectiveClass:
-    K = CXCursor_OMPTargetDataDirective;
-    break;
-  case Stmt::OMPTargetUpdateDirectiveClass:
-    K = CXCursor_OMPTargetUpdateDirective;
-    break;
-  case Stmt::OMPCancelDirectiveClass:
-    K = CXCursor_OMPCancelDirective;
-    break;
-  case Stmt::OMPCancellationPointDirectiveClass:
-    K = CXCursor_OMPCancellationPointDirective;
-    break;
-  case Stmt::OMPTeamsDistributeDirectiveClass:
-    K = CXCursor_OMPTeamsDistributeDirective;
-    break;
-  case Stmt::OMPTeamsDistributeSimdDirectiveClass:
-    K = CXCursor_OMPTeamsDistributeSimdDirective;
-    break;
-  case Stmt::OMPTargetTeamsDistributeDirectiveClass:
-    K = CXCursor_OMPTargetTeamsDistributeDirective;
-    break;
-  case Stmt::OMPTargetTeamsDistributeSimdDirectiveClass:
-    K = CXCursor_OMPTargetTeamsDistributeSimdDirective;
     break;
   }
 

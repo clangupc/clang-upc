@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -verify -fopenmp -ferror-limit 100 %s
+// RUN: %clang_cc1 -verify -fopenmp=libiomp5 -ferror-limit 100 %s
 
 void foo() {
 }
@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
   S5 g(5);
   int i;
   int &j = i;
-  #pragma omp parallel shared // expected-error {{expected '(' after 'shared'}} expected-error {{expected expression}}
+  #pragma omp parallel shared // expected-error {{expected '(' after 'shared'}}
   #pragma omp parallel shared ( // expected-error {{expected expression}} expected-error {{expected ')'}} expected-note {{to match this '('}}
   #pragma omp parallel shared () // expected-error {{expected expression}}
   #pragma omp parallel shared (argc // expected-error {{expected ')'}} expected-note {{to match this '('}}

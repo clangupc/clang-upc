@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -triple x86_64-apple-macos10.7.0 -verify -fopenmp -ferror-limit 100 %s
+// RUN: %clang_cc1 -verify -fopenmp=libiomp5 %s
 
 int foo();
 
@@ -15,7 +15,7 @@ int main() {
   {
     #pragma omp critical
   } // expected-error {{expected statement}}
-  #pragma omp critical (name)
+  #pragma omp critical (name) // expected-note {{previous 'critical' region starts here}}
   #pragma omp critical
   for (int i = 0; i < 10; ++i) {
     foo();
@@ -23,7 +23,7 @@ int main() {
     #pragma omp for
     for (int j = 0; j < 10; j++) {
       foo();
-      #pragma omp critical(name) // expected-error {{region cannot be nested inside a critical region with name 'name'}}
+      #pragma omp critical(name) // expected-error {{cannot nest 'critical' regions having the same name 'name'}}
       foo();
     }
   }
