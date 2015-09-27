@@ -18,6 +18,11 @@ set(PACKAGE_STRING "${PACKAGE_NAME} ${PACKAGE_VERSION}")
 # Define options.
 option(LIBUPC_ENABLE_SHARED "Build libupc as a shared library. (Broken)" OFF)
 
+include(CheckFunctionExists)
+include(CheckLibraryExists)
+include(CheckIncludeFile)
+include(CheckCSourceCompiles)
+
 #===============================================================================
 # Configure System
 #===============================================================================
@@ -133,9 +138,6 @@ set(GUPCR_HAVE_TRACE ${LIBUPC_ENABLE_RUNTIME_TRACE})
 set(LIBUPC_MAX_LOCKS 1024 CACHE STRING "The maximum number of locks that can be held by a single UPC thread")
 set(GUPCR_MAX_LOCKS ${LIBUPC_MAX_LOCKS})
 
-include(CheckFunctionExists)
-include(CheckLibraryExists)
-
 if (LIBUPC_RUNTIME_MODEL STREQUAL smp)
 
 set(LIBUPC_ENABLE_AFFINITY TRUE CACHE BOOL "enable UPC runtime Linux scheduling affinity")
@@ -144,7 +146,7 @@ if (NOT HAVE_GETAFFINITY)
   set(LIBUPC_ENABLE_AFFINITY FALSE)
 endif()
 set(LIBUPC_ENABLE_NUMA TRUE CACHE BOOL "enable UPC runtime NUMA policy")
-check_include_file(numa.h HAVE_NUMA_H)
+CHECK_INCLUDE_FILE(numa.h HAVE_NUMA_H)
 if (NOT HAVE_NUMA_H)
   set(LIBUPC_ENABLE_NUMA FALSE)
 endif()
@@ -173,11 +175,15 @@ if (LIBUPC_RUNTIME_MODEL STREQUAL fabric)
   endif()
 
   set(LIBUPC_FABRIC_DEVICE ib0 CACHE STRING "Libfabric networking device")
-  set(GUPCR_LIBFABRIC_DEVICE ${LIBUPC_FABRIC_DEVICE})
+  set(GUPCR_FABRIC_DEVICE ${LIBUPC_FABRIC_DEVICE})
+  set(LIBUPC_FABRIC_NAME IP CACHE STRING "Libfabric name - IP, gni, ...")
+  set(GUPCR_FABRIC_NAME ${LIBUPC_FABRIC_NAME})
   set(LIBUPC_FABRIC_PROVIDER sockets CACHE STRING "Libfabric provider - sockets, verbs, gni, ...")
-  set(GUPCR_LIBFABRIC_PROVIDER ${LIBUPC_FABRIC_PROVIDER})
+  set(GUPCR_FABRIC_PROVIDER ${LIBUPC_FABRIC_PROVIDER})
   set(LIBUPC_FABRIC_SHARED_CTX FALSE CACHE BOOLEAN "Libfabric shared context support") 
-  set(GUPCR_LIBFABRIC_SHARED_CTX ${LIBUPC_FABRIC_SHARED_CTX})
+  set(GUPCR_FABRIC_SHARED_CTX ${LIBUPC_FABRIC_SHARED_CTX})
+  set(LIBUPC_FABRIC_SCALABLE_CTX FALSE CACHE BOOLEAN "Libfabric scalable context support") 
+  set(GUPCR_FABRIC_SCALABLE_CTX ${LIBUPC_FABRIC_SCALABLE_CTX})
 endif()
 
 if (LIBUPC_RUNTIME_MODEL STREQUAL portals4 OR
@@ -228,10 +234,18 @@ if (LIBUPC_RUNTIME_MODEL STREQUAL portals4 OR
 
   # Check for PMI.  Default to SLURM on x86_64 linux.
   set(LIBUPC_JOB_PMI_INCLUDE_DIR /usr/include/slurm CACHE PATH "select PMI include (default=/usr/include/slurm).")
-  if(EXISTS ${LIBUPC_JOB_PMI_INCLUDE_DIR}/pmi.h)
+  set(LIBUPC_JOB_PMI2_API FALSE CACHE BOOL "enable PMI2 API.")
+  if(EXISTS ${LIBUPC_JOB_PMI_INCLUDE_DIR})
+    set(CMAKE_REQUIRED_INCLUDES ${LIBUPC_JOB_PMI_INCLUDE_DIR})
     set(LIBUPC_PMI_FLAGS "-I${LIBUPC_JOB_PMI_INCLUDE_DIR}")
-  else()
-    message(fatal_error "pmi.h not found or wrong LIBUPC_JOB_PMI_INCLUDE_DIR(${LIBUPC_JOB_PMI_INCLUDE_DIR}) specified")
+  endif()
+  if (LIBUPC_JOB_PMI2_API)
+    CHECK_INCLUDE_FILE(pmi2.h HAVE_PMI2_H)
+  endif()
+  CHECK_INCLUDE_FILE(pmi.h HAVE_PMI_H)
+  set(CMAKE_REQUIRED_INCLUDES)
+  if (NOT (HAVE_PMI2_H OR HAVE_PMI_H))
+    message(fatal_error "pmi.h/pmi2.h not found or wrong LIBUPC_JOB_PMI_INCLUDE_DIR(${LIBUPC_JOB_PMI_INCLUDE_DIR}) specified")
   endif()
 
   set(LIBUPC_GLOBAL_EXIT_TIMEOUT 2 CACHE STRING "Select upc_global_exit() timeout in seconds (default=2).")
@@ -245,22 +259,22 @@ set(LIBUPC_TREE_FANOUT 4 CACHE STRING "The maximum number of children in each su
 set(GUPCR_TREE_FANOUT ${LIBUPC_TREE_FANOUT})
 
 set(CMAKE_REQUIRED_LIBRARIES rt)
-check_function_exists(clock_gettime HAVE_CLOCK_GETTIME)
+CHECK_FUNCTION_EXISTS(clock_gettime HAVE_CLOCK_GETTIME)
 set(CMAKE_REQUIRED_LIBRARIES)
 
-check_include_file(execinfo.h HAVE_EXECINFO_H)
-check_include_file(limits.h HAVE_LIMITS_H)
-check_include_file(sys/time.h HAVE_SYS_TIME_H)
+CHECK_INCLUDE_FILE(execinfo.h HAVE_EXECINFO_H)
+CHECK_INCLUDE_FILE(limits.h HAVE_LIMITS_H)
+CHECK_INCLUDE_FILE(sys/time.h HAVE_SYS_TIME_H)
 
 # CMake 2.8.4 doesn't accept check_c_source_compiles
-check_cxx_source_compiles("
+CHECK_C_SOURCE_COMPILES("
 typedef unsigned int uint32  __attribute__ ((mode (SI)));
 uint32 i;
 int main() { return __sync_fetch_and_add (&i, 1); }
 "
 HAVE_SYNC_FETCH_AND_ADD_4)
 
-check_cxx_source_compiles("
+CHECK_C_SOURCE_COMPILES("
 typedef unsigned int uint64  __attribute__ ((mode (DI)));
 uint64 i;
 int main() { return __sync_fetch_and_add (&i, 1); }

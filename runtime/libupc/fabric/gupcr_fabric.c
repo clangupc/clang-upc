@@ -57,9 +57,9 @@ static char epname[128];
 static char *epnames;
 
 /** Infiniband interface.  */
-static const char *ifname = GUPCR_LIBFABRIC_DEVICE;
+static const char *ifname = GUPCR_FABRIC_DEVICE;
 /** Libfabric provider */
-static const char *prov_name = GUPCR_LIBFABRIC_PROVIDER;
+static const char *prov_name = GUPCR_FABRIC_PROVIDER;
 /** Libfabric shared context (disabled by default) */
 int gupcr_enable_shared_ctx = 0;
 

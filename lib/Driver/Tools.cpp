@@ -7633,8 +7633,11 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
     CmdArgs.push_back("-lportals");
 #ifdef LIBUPC_JOB_PMI_LIBRARY_DIR
     CmdArgs.push_back("-L" LIBUPC_JOB_PMI_LIBRARY_DIR);
-    CmdArgs.push_back("-lpmi");
 #endif
+#ifdef LIBUPC_JOB_PMI2_API
+    CmdArgs.push_back("-lpmi2");
+#endif
+    CmdArgs.push_back("-lpmi");
     CmdArgs.push_back("-lpthread");
 #endif
 #ifdef LIBUPC_FABRIC
@@ -7642,8 +7645,11 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
     CmdArgs.push_back("-lfabric");
 #ifdef LIBUPC_JOB_PMI_LIBRARY_DIR
     CmdArgs.push_back("-L" LIBUPC_JOB_PMI_LIBRARY_DIR);
-    CmdArgs.push_back("-lpmi");
 #endif
+#ifdef LIBUPC_JOB_PMI2_API
+    CmdArgs.push_back("-lpmi2");
+#endif
+    CmdArgs.push_back("-lpmi");
     CmdArgs.push_back("-lpthread");
 #endif
 #ifdef LIBUPC_ENABLE_NUMA

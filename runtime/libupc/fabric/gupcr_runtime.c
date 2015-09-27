@@ -54,7 +54,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <rdma/fabric.h>
+#if HAVE_PMI2_H && LIBUPC_JOB_PMI2_API
+#include <pmi2.h>
+#endif
+#if HAVE_PMI_H
 #include <pmi.h>
+#endif
 
 /** Process rank */
 static int rank = -1;
@@ -72,20 +77,14 @@ encode (const void *inval, int invallen, char *outval, int outvallen)
     '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
   };
   int i;
-
   if (invallen * 2 + 1 > outvallen)
-    {
-      return 1;
-    }
-
+    return 1;
   for (i = 0; i < invallen; i++)
     {
       outval[2 * i] = encodings[((unsigned char *) inval)[i] & 0xf];
       outval[2 * i + 1] = encodings[((unsigned char *) inval)[i] >> 4];
     }
-
   outval[invallen * 2] = '\0';
-
   return 0;
 }
 
@@ -97,7 +96,6 @@ decode (const char *inval, void *outval, int outvallen)
 
   if (outvallen != (int) (strlen (inval) / 2))
     return 1;
-
   for (i = 0; i < outvallen; ++i)
     {
       if (*inval >= '0' && *inval <= '9')
@@ -111,79 +109,76 @@ decode (const char *inval, void *outval, int outvallen)
 	ret[i] |= ((*inval - 'a' + 10) << 4);
       inval++;
     }
-
   return 0;
 }
 
+#define CHECK_PMI(status) \
+  if (status != PMI_SUCCESS) \
+    return status;
+
+/**
+ * Initialize runtime.
+ */
 int
 gupcr_runtime_init (void)
 {
   int initialized;
+  int __attribute__((unused)) appnum;
+  int status;
 
-  if (PMI_SUCCESS != PMI_Initialized (&initialized))
-    {
-      return 1;
-    }
-
-  if (0 == initialized)
-    {
-      if (PMI_SUCCESS != PMI_Init (&initialized))
-	{
-	  return 2;
-	}
-    }
-
-  if (PMI_SUCCESS != PMI_Get_rank (&rank))
-    {
-      return 3;
-    }
-
-  if (PMI_SUCCESS != PMI_Get_size (&size))
-    {
-      return 4;
-    }
-
+#if LIBUPC_JOB_PMI2_API
+  status = PMI2_Init (&initialized, &size, &rank, &appnum);
+  CHECK_PMI (status);
+  max_name_len = 1024;
+  max_key_len = PMI2_MAX_KEYLEN;
+  max_val_len = PMI2_MAX_VALLEN;
+#else
+  status = PMI_Init (&initialized);
+  CHECK_PMI (status);
+  status = PMI_Get_rank (&rank);
+  CHECK_PMI (status);
+  status = PMI_Get_size (&size);
+  CHECK_PMI (status);
   /* Initialize key/val work strings.  */
-
-  if (PMI_SUCCESS != PMI_KVS_Get_name_length_max (&max_name_len))
-    {
-      return 5;
-    }
-  kvs_name = (char *) malloc (max_name_len);
-  if (NULL == kvs_name)
-    return 5;
-
-  if (PMI_SUCCESS != PMI_KVS_Get_key_length_max (&max_key_len))
-    {
-      return 5;
-    }
-  kvs_key = (char *) malloc (max_key_len);
-  if (NULL == kvs_key)
-    return 5;
-
-  if (PMI_SUCCESS != PMI_KVS_Get_value_length_max (&max_val_len))
-    {
-      return 5;
-    }
-  kvs_val = (char *) malloc (max_val_len);
-  if (NULL == kvs_val)
-    return 5;
-
-  if (PMI_SUCCESS != PMI_KVS_Get_my_name (kvs_name, max_name_len))
-    {
-      return 5;
-    }
-
+  status = PMI_KVS_Get_name_length_max (&max_name_len);
+  CHECK_PMI (status);
+  status = PMI_KVS_Get_key_length_max (&max_key_len);
+  CHECK_PMI (status);
+  status = PMI_KVS_Get_value_length_max (&max_val_len);
+  CHECK_PMI (status);
+#endif
+  kvs_name = calloc (max_name_len, 1);
+  if (!kvs_name)
+    return 1;
+  kvs_key = calloc (max_key_len, 1);
+  if (!kvs_key)
+    return 1;
+  kvs_val = calloc (max_val_len, 1);
+  if (!kvs_val)
+    return 1;
+#if LIBUPC_JOB_PMI2_API
+  status = PMI2_Job_GetId (kvs_name, max_name_len);
+  CHECK_PMI (status);
+#else
+  status = PMI_KVS_Get_my_name (kvs_name, max_name_len);
+  CHECK_PMI (status);
+#endif
   return 0;
 }
 
+/**
+ * Finalize runtime.
+ */
 int
 gupcr_runtime_fini (void)
 {
+#if LIBUPC_JOB_PMI2_API
+  PMI2_Finalize ();
+#else
   PMI_Finalize ();
+#endif
   return 0;
 }
-
 
 /**
  * Share the key via PMI.
@@ -193,12 +188,14 @@ gupcr_runtime_put (const char *key, void *val, size_t len)
 {
   int status;
   snprintf (kvs_key, max_key_len, "gupcr-%s-%lu", key, (long unsigned) rank);
-  status = encode (val, len, kvs_val, max_val_len);
-  if (status)
+  if (encode (val, len, kvs_val, max_val_len))
     return 1;
+#if LIBUPC_JOB_PMI2_API
+  status = PMI2_KVS_Put(kvs_key, kvs_val);
+#else
   status = PMI_KVS_Put(kvs_name, kvs_key, kvs_val);
-  if (status != PMI_SUCCESS)
-    return 2;
+#endif
+  CHECK_PMI (status);
   return 0;
 }
 
@@ -208,11 +205,16 @@ gupcr_runtime_put (const char *key, void *val, size_t len)
 int
 gupcr_runtime_get(int rank, const char *key, void *val, size_t len)
 {
+  int __attribute__((unused)) keylen;
   int status;
   snprintf(kvs_key, max_key_len, "gupcr-%s-%lu", key, (long unsigned) rank);
+#if LIBUPC_JOB_PMI2_API
+  status = PMI2_KVS_Get(kvs_name, PMI2_ID_NULL, kvs_key, kvs_val,
+			max_val_len, &keylen);
+#else
   status = PMI_KVS_Get(kvs_name, kvs_key, kvs_val, max_val_len);
-  if (status != PMI_SUCCESS)
-    return 1;
+#endif
+  CHECK_PMI (status);
   status = decode(kvs_val, val, len);
   return status;
 }
@@ -226,19 +228,19 @@ gupcr_runtime_exchange (const char *key, void *val, size_t len, void *res)
   int i, status;
   char *dst;
 
-  status = gupcr_runtime_put (key, val, len);
-  if (status)
+  if (gupcr_runtime_put (key, val, len))
     return 1;
 
   /* Commit local values.  */
-  status = PMI_KVS_Commit(kvs_name);
-  if (status != PMI_SUCCESS)
-    return 2;
-
-  /* Wait for others.  */
-  status = PMI_Barrier();
-  if (status != PMI_SUCCESS)
-    return 3;
+#if LIBUPC_JOB_PMI2_API
+  status = PMI2_KVS_Fence ();
+  CHECK_PMI (status);
+#else
+  status = PMI_KVS_Commit (kvs_name);
+  CHECK_PMI (status);
+  status = PMI_Barrier ();
+  CHECK_PMI (status);
+#endif
 
   /* Collect info on other threads.  */
   dst = res;
@@ -247,12 +249,10 @@ gupcr_runtime_exchange (const char *key, void *val, size_t len, void *res)
       if (i == rank)
         memcpy (dst, val, len);
       else
-        status = gupcr_runtime_get (i, key, dst, len);
-        if (status)
-	  return 4;
+        if (gupcr_runtime_get (i, key, dst, len))
+	  return status;
       dst += len;
     }
-
   return 0;
 }
 
@@ -286,7 +286,11 @@ gupcr_runtime_get_size (void)
 void
 gupcr_runtime_barrier (void)
 {
+#if LIBUPC_JOB_PMI2_API
+  PMI2_KVS_Fence ();
+#else
   PMI_Barrier ();
+#endif
 }
 
 /** @} */

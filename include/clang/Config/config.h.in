@@ -62,6 +62,9 @@
 /* PMI job manager support */
 #undef LIBUPC_JOB_PMI_LIBRARY_DIR
 
+/* PMI2 support */
+#undef LIBUPC_JOB_PMI2_API
+
 /* Define if we have libxml2 */
 #undef CLANG_HAVE_LIBXML
 

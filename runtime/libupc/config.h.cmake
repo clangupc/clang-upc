@@ -83,13 +83,22 @@
 #cmakedefine GUPCR_GLOBAL_EXIT_TIMEOUT 2
 
 /* Select LIBFABRIC device. */
-#cmakedefine GUPCR_LIBFABRIC_DEVICE "@GUPCR_LIBFABRIC_DEVICE@"
+#cmakedefine GUPCR_FABRIC_DEVICE "@GUPCR_FABRIC_DEVICE@"
+
+/* Select LIBFABRIC name. */
+#cmakedefine GUPCR_FABRIC_NAME "@GUPCR_FABRIC_NAME@"
 
 /* Select LIBFABRIC provider. */
-#cmakedefine GUPCR_LIBFABRIC_PROVIDER "@GUPCR_LIBFABRIC_PROVIDER@"
+#cmakedefine GUPCR_FABRIC_PROVIDER "@GUPCR_FABRIC_PROVIDER@"
 
 /* Select LIBFABRIC shared context support. */
-#cmakedefine GUPCR_LIBFABRIC_SHARED_CTX @GUPCR_LIBFABRIC_SHARED_CTX@
+#cmakedefine GUPCR_FABRIC_SHARED_CTX @GUPCR_FABRIC_SHARED_CTX@
+
+/* Select LIBFABRIC shared context support. */
+#cmakedefine GUPCR_FABRIC_SCALABLE_CTX @GUPCR_FABRIC_SCALABLE_CTX@
+
+/* Define to 1 if PMI2 is available and used. */
+#cmakedefine LIBUPC_JOB_PMI2_API 1
 
 //end gupcr_config_h
 
@@ -137,11 +146,14 @@
 /* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
 #cmakedefine TIME_WITH_SYS_TIME 1
 
+/* Define to 1 if PMI2 is available. */
+#cmakedefine HAVE_PMI2_H 1
+
+/* Define to 1 if PMI is available. */
+#cmakedefine HAVE_PMI_H 1
 
 #ifndef ARG_UNUSED
 # define ARG_UNUSED(NAME) NAME __attribute__ ((__unused__))
 #endif
 
-
 #endif /* __CONFIG_H__ */
-
