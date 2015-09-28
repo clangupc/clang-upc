@@ -273,6 +273,11 @@ namespace clang {
     /// outermost scope.
     LocalInstantiationScope *cloneScopes(LocalInstantiationScope *Outermost) {
       if (this == Outermost) return this;
+
+      // Save the current scope from SemaRef since the LocalInstantiationScope
+      // will overwrite it on construction
+      LocalInstantiationScope *oldScope = SemaRef.CurrentInstantiationScope;
+
       LocalInstantiationScope *newScope =
         new LocalInstantiationScope(SemaRef, CombineWithOuterScope);
 
@@ -299,6 +304,8 @@ namespace clang {
           newScope->ArgumentPacks.push_back(NewPack);
         }
       }
+      // Restore the saved scope to SemaRef
+      SemaRef.CurrentInstantiationScope = oldScope;
       return newScope;
     }
 
@@ -426,11 +433,6 @@ namespace clang {
                             TemplateParameterList *TemplateParams);
     Decl *VisitDecl(Decl *D);
     Decl *VisitVarDecl(VarDecl *D, bool InstantiatingVarTemplate);
-    void TouchOMPVarlist(llvm::MutableArrayRef<clang::Expr*> VL,
-                         SmallVector<Expr *, 4> &NewVL,
-                         Decl *FuncDecl);
-    Decl *TouchOMPDeclareSimdDecl(OMPDeclareSimdDecl *D,
-                                  Decl *NewFunc, DeclContext *DC);
 
     // Enable late instantiation of attributes.  Late instantiated attributes
     // will be stored in LA.

@@ -374,8 +374,10 @@ static AvailabilityResult CheckAvailability(ASTContext &Context,
     if (Message) {
       Message->clear();
       llvm::raw_string_ostream Out(*Message);
+      VersionTuple VTI(A->getIntroduced());
+      VTI.UseDotAsSeparator();
       Out << "introduced in " << PrettyPlatformName << ' ' 
-          << A->getIntroduced() << HintMessage;
+          << VTI << HintMessage;
     }
 
     return AR_NotYetIntroduced;
@@ -386,8 +388,10 @@ static AvailabilityResult CheckAvailability(ASTContext &Context,
     if (Message) {
       Message->clear();
       llvm::raw_string_ostream Out(*Message);
+      VersionTuple VTO(A->getObsoleted());
+      VTO.UseDotAsSeparator();
       Out << "obsoleted in " << PrettyPlatformName << ' ' 
-          << A->getObsoleted() << HintMessage;
+          << VTO << HintMessage;
     }
     
     return AR_Unavailable;
@@ -398,8 +402,10 @@ static AvailabilityResult CheckAvailability(ASTContext &Context,
     if (Message) {
       Message->clear();
       llvm::raw_string_ostream Out(*Message);
+      VersionTuple VTD(A->getDeprecated());
+      VTD.UseDotAsSeparator();
       Out << "first deprecated in " << PrettyPlatformName << ' '
-          << A->getDeprecated() << HintMessage;
+          << VTD << HintMessage;
     }
     
     return AR_Deprecated;
@@ -566,9 +572,6 @@ unsigned Decl::getIdentifierNamespaceForKind(Kind DeclKind) {
     case TemplateTemplateParm:
       return IDNS_Ordinary | IDNS_Tag | IDNS_Type;
 
-    case OMPDeclareReduction:
-      return IDNS_OMPDeclareReduction;
-
     // Never have names.
     case Friend:
     case FriendTemplate:
@@ -592,8 +595,6 @@ unsigned Decl::getIdentifierNamespaceForKind(Kind DeclKind) {
     case ObjCCategoryImpl:
     case Import:
     case OMPThreadPrivate:
-    case OMPDeclareSimd:
-    case OMPDeclareTarget:
     case PragmaPupc:
     case Empty:
       // Never looked up by name.
@@ -854,8 +855,6 @@ bool DeclContext::isTransparentContext() const {
     return !cast<EnumDecl>(this)->isScoped();
   else if (DeclKind == Decl::LinkageSpec)
     return true;
-  else if (DeclKind == Decl::OMPDeclareTarget)
-    return true;
 
   return false;
 }
@@ -894,8 +893,6 @@ DeclContext *DeclContext::getPrimaryContext() {
   case Decl::LinkageSpec:
   case Decl::Block:
   case Decl::Captured:
-  case Decl::OMPDeclareReduction:
-  case Decl::OMPDeclareTarget:
     // There is only one DeclContext for these entities.
     return this;
 
@@ -1306,6 +1303,11 @@ DeclContext::lookup(DeclarationName Name) {
   if (PrimaryContext != this)
     return PrimaryContext->lookup(Name);
 
+  // If this is a namespace, ensure that any later redeclarations of it have
+  // been loaded, since they may add names to the result of this lookup.
+  if (auto *ND = dyn_cast<NamespaceDecl>(this))
+    (void)ND->getMostRecentDecl();
+
   if (hasExternalVisibleStorage()) {
     if (NeedToReconcileExternalVisibleStorage)
       reconcileExternalVisibleStorage();
@@ -1438,6 +1440,17 @@ DeclContext *DeclContext::getEnclosingNamespaceContext() {
   while (!Ctx->isFileContext())
     Ctx = Ctx->getParent();
   return Ctx->getPrimaryContext();
+}
+
+RecordDecl *DeclContext::getOuterLexicalRecordContext() {
+  // Loop until we find a non-record context.
+  RecordDecl *OutermostRD = nullptr;
+  DeclContext *DC = this;
+  while (DC->isRecord()) {
+    OutermostRD = cast<RecordDecl>(DC);
+    DC = DC->getLexicalParent();
+  }
+  return OutermostRD;
 }
 
 bool DeclContext::InEnclosingNamespaceSetOf(const DeclContext *O) const {

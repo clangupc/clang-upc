@@ -29,7 +29,6 @@
 // Test a very broken version of multiarch that shipped in Ubuntu 11.04.
 // RUN: %clang -no-canonical-prefixes %s -### -fsyntax-only 2>&1 \
 // RUN:     -target i386-unknown-linux \
-// RUN:     --gcc-toolchain="" \
 // RUN:     --sysroot=%S/Inputs/ubuntu_11.04_multiarch_tree \
 // RUN:     --gcc-toolchain="" \
 // RUN:   | FileCheck --check-prefix=CHECK-UBUNTU-11-04 %s
@@ -45,7 +44,6 @@
 //
 // RUN: %clang -no-canonical-prefixes %s -### -fsyntax-only 2>&1 \
 // RUN:     -target x86_64-unknown-linux-gnu \
-// RUN:     --gcc-toolchain="" \
 // RUN:     --sysroot=%S/Inputs/ubuntu_13.04_multiarch_tree \
 // RUN:     --gcc-toolchain="" \
 // RUN:   | FileCheck --check-prefix=CHECK-UBUNTU-13-04 %s
@@ -78,7 +76,6 @@
 ///
 // RUN: %clang -no-canonical-prefixes %s -### -fsyntax-only 2>&1 \
 // RUN:     -target arm-linux-gnueabihf \
-// RUN:     --gcc-toolchain="" \
 // RUN:     --sysroot=%S/Inputs/ubuntu_13.04_multiarch_tree \
 // RUN:     --gcc-toolchain="" \
 // RUN:   | FileCheck --check-prefix=CHECK-UBUNTU-13-04-CROSS %s
@@ -95,7 +92,6 @@
 // Test Ubuntu/Debian's new version of multiarch, with -m32.
 // RUN: %clang -no-canonical-prefixes %s -### -fsyntax-only 2>&1 \
 // RUN:     -target x86_64-unknown-linux-gnu -m32 \
-// RUN:     --gcc-toolchain="" \
 // RUN:     --sysroot=%S/Inputs/ubuntu_13.04_multiarch_tree \
 // RUN:     --gcc-toolchain="" \
 // RUN:   | FileCheck --check-prefix=CHECK-UBUNTU-13-04-M32 %s
@@ -154,7 +150,6 @@
 // Thoroughly exercise the Debian multiarch environment.
 // RUN: %clang -no-canonical-prefixes %s -### -fsyntax-only 2>&1 \
 // RUN:     -target i686-linux-gnu \
-// RUN:     --gcc-toolchain="" \
 // RUN:     --sysroot=%S/Inputs/debian_multiarch_tree \
 // RUN:     --gcc-toolchain="" \
 // RUN:   | FileCheck --check-prefix=CHECK-DEBIAN-X86 %s
@@ -170,7 +165,6 @@
 // CHECK-DEBIAN-X86: "-internal-externc-isystem" "[[SYSROOT]]/usr/include"
 // RUN: %clang -no-canonical-prefixes %s -### -fsyntax-only 2>&1 \
 // RUN:     -target x86_64-linux-gnu \
-// RUN:     --gcc-toolchain="" \
 // RUN:     --sysroot=%S/Inputs/debian_multiarch_tree \
 // RUN:     --gcc-toolchain="" \
 // RUN:   | FileCheck --check-prefix=CHECK-DEBIAN-X86-64 %s
@@ -186,7 +180,6 @@
 // CHECK-DEBIAN-X86-64: "-internal-externc-isystem" "[[SYSROOT]]/usr/include"
 // RUN: %clang -no-canonical-prefixes %s -### -fsyntax-only 2>&1 \
 // RUN:     -target powerpc-linux-gnu \
-// RUN:     --gcc-toolchain="" \
 // RUN:     --sysroot=%S/Inputs/debian_multiarch_tree \
 // RUN:     --gcc-toolchain="" \
 // RUN:   | FileCheck --check-prefix=CHECK-DEBIAN-PPC %s
@@ -202,7 +195,6 @@
 // CHECK-DEBIAN-PPC: "-internal-externc-isystem" "[[SYSROOT]]/usr/include"
 // RUN: %clang -no-canonical-prefixes %s -### -fsyntax-only 2>&1 \
 // RUN:     -target powerpc64-linux-gnu \
-// RUN:     --gcc-toolchain="" \
 // RUN:     --sysroot=%S/Inputs/debian_multiarch_tree \
 // RUN:     --gcc-toolchain="" \
 // RUN:   | FileCheck --check-prefix=CHECK-DEBIAN-PPC64 %s
@@ -221,7 +213,6 @@
 // 4.6.4 release.
 // RUN: %clang -no-canonical-prefixes %s -### -fsyntax-only 2>&1 \
 // RUN:     -target x86_64-unknown-linux-gnu \
-// RUN:     --gcc-toolchain="" \
 // RUN:     --sysroot=%S/Inputs/gentoo_linux_gcc_4.6.2_tree \
 // RUN:     --gcc-toolchain="" \
 // RUN:   | FileCheck --check-prefix=CHECK-GENTOO-4-6-2 %s
@@ -236,7 +227,6 @@
 // CHECK-GENTOO-4-6-2: "-internal-externc-isystem" "[[SYSROOT]]/usr/include"
 // RUN: %clang -no-canonical-prefixes %s -### -fsyntax-only 2>&1 \
 // RUN:     -target x86_64-unknown-linux-gnu \
-// RUN:     --gcc-toolchain="" \
 // RUN:     --sysroot=%S/Inputs/gentoo_linux_gcc_4.6.4_tree \
 // RUN:     --gcc-toolchain="" \
 // RUN:   | FileCheck --check-prefix=CHECK-GENTOO-4-6-4 %s

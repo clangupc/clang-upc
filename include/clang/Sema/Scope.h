@@ -138,14 +138,6 @@ private:
   /// scopes seen as a component.
   unsigned short MSLocalManglingNumber;
 
-  /// \brief SEH __try blocks get uniquely numbered within a function.  This
-  /// variable holds the index for an SEH try block.
-  short SEHTryIndex;
-
-  /// \brief SEH __try blocks get uniquely numbered within a function.  This
-  /// variable holds the next free index at a function's scope.
-  short SEHTryIndexPool;
-
   /// PrototypeDepth - This is the number of function prototype scopes
   /// enclosing this scope, including this scope.
   unsigned short PrototypeDepth;
@@ -158,7 +150,6 @@ private:
   /// pointer is non-null and points to it.  This is used for label processing.
   Scope *FnParent;
   Scope *MSLocalManglingParent;
-  Scope *SEHTryParent;
 
   /// BreakParent/ContinueParent - This is a direct link to the innermost
   /// BreakScope/ContinueScope which contains the contents of this scope
@@ -297,14 +288,6 @@ public:
     return 1;
   }
 
-  int getSEHTryIndex() {
-    return SEHTryIndex;
-  }
-
-  int getSEHTryParentIndex() const {
-    return SEHTryParent ? SEHTryParent->SEHTryIndex : -1;
-  }
-
   /// isDeclScope - Return true if this is the scope that the specified decl is
   /// declared in.
   bool isDeclScope(Decl *D) {
@@ -319,6 +302,9 @@ public:
   bool hasUnrecoverableErrorOccurred() const {
     return ErrorTrap.hasUnrecoverableErrorOccurred();
   }
+
+  /// isFunctionScope() - Return true if this scope is a function scope.
+  bool isFunctionScope() const { return (getFlags() & Scope::FnScope); }
 
   /// isClassScope - Return true if this scope is a class/struct/union scope.
   bool isClassScope() const {
@@ -391,13 +377,33 @@ public:
 
   /// \brief Determines whether this scope is the OpenMP directive scope
   bool isOpenMPDirectiveScope() const {
-    for (const Scope *S = this; S; S = S->getParent()) {
-      if (S->getFlags() & Scope::OpenMPDirectiveScope)
-        return true;
+    return (getFlags() & Scope::OpenMPDirectiveScope);
+  }
+
+  /// \brief Determine whether this scope is some OpenMP loop directive scope
+  /// (for example, 'omp for', 'omp simd').
+  bool isOpenMPLoopDirectiveScope() const {
+    if (getFlags() & Scope::OpenMPLoopDirectiveScope) {
+      assert(isOpenMPDirectiveScope() &&
+             "OpenMP loop directive scope is not a directive scope");
+      return true;
     }
     return false;
   }
-  
+
+  /// \brief Determine whether this scope is (or is nested into) some OpenMP
+  /// loop simd directive scope (for example, 'omp simd', 'omp for simd').
+  bool isOpenMPSimdDirectiveScope() const {
+    return getFlags() & Scope::OpenMPSimdDirectiveScope;
+  }
+
+  /// \brief Determine whether this scope is a loop having OpenMP loop
+  /// directive attached.
+  bool isOpenMPLoopScope() const {
+    const Scope *P = getParent();
+    return P && P->isOpenMPLoopDirectiveScope();
+  }
+
   /// \brief Determine whether this scope is a C++ 'try' block.
   bool isTryScope() const { return getFlags() & Scope::TryScope; }
 

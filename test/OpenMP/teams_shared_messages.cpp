@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -triple x86_64-apple-macos10.7.0 -verify -fopenmp -ferror-limit 100 %s
+// RUN: %clang_cc1 -verify -fopenmp=libiomp5 %s
 
 void foo() {
 }
@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
   int i;
   int &j = i;
   #pragma omp target
-  #pragma omp teams shared // expected-error {{expected '(' after 'shared'}} expected-error {{expected expression}}
+  #pragma omp teams shared // expected-error {{expected '(' after 'shared'}}
   foo();
   #pragma omp target
   #pragma omp teams shared ( // expected-error {{expected expression}} expected-error {{expected ')'}} expected-note {{to match this '('}}
@@ -99,7 +99,21 @@ int main(int argc, char **argv) {
   #pragma omp target
   #pragma omp teams private(i), shared(i) // expected-error {{private variable cannot be shared}} expected-note {{defined as private}}
   foo();
-  #pragma omp parallel private(i)
+  #pragma omp target
+  #pragma omp teams firstprivate(i), shared(i) // expected-error {{firstprivate variable cannot be shared}} expected-note {{defined as firstprivate}}
+  foo();
+  #pragma omp target
+  #pragma omp teams private(i)
+  foo();
+  #pragma omp target
+  #pragma omp teams shared(i)
+  foo();
+  #pragma omp target
+  #pragma omp teams shared(j)
+  foo();
+  #pragma omp target
+  #pragma omp teams firstprivate(i)
+  foo();
   #pragma omp target
   #pragma omp teams shared(i)
   foo();

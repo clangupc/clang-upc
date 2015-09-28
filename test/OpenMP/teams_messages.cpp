@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -triple x86_64-apple-macos10.7.0 -verify -fopenmp -ferror-limit 100 -o - %s
+// RUN: %clang_cc1 -verify -fopenmp=libiomp5 -std=c++11 -o - %s
 
 void foo() {
 }
@@ -7,21 +7,29 @@ void foo() {
 
 int main(int argc, char **argv) {
   #pragma omp target
+  #pragma omp teams { // expected-warning {{extra tokens at the end of '#pragma omp teams' are ignored}}
+  foo();
+  #pragma omp target
+  #pragma omp teams ( // expected-warning {{extra tokens at the end of '#pragma omp teams' are ignored}}
+  foo();
+  #pragma omp target
+  #pragma omp teams [ // expected-warning {{extra tokens at the end of '#pragma omp teams' are ignored}}
+  foo();
+  #pragma omp target
+  #pragma omp teams ] // expected-warning {{extra tokens at the end of '#pragma omp teams' are ignored}}
+  foo();
+  #pragma omp target
+  #pragma omp teams ) // expected-warning {{extra tokens at the end of '#pragma omp teams' are ignored}}
+  foo();
+  #pragma omp target
+  #pragma omp teams } // expected-warning {{extra tokens at the end of '#pragma omp teams' are ignored}}
+  foo();
+  #pragma omp target
   #pragma omp teams
   foo();
+  // expected-warning@+2 {{extra tokens at the end of '#pragma omp teams' are ignored}}
   #pragma omp target
-  {
-  #pragma omp teams
-  foo();
-  }
-  #pragma omp target
-  {
-    foo();
-  #pragma omp teams // expected-error {{the teams construct must be the only construct inside of target region}}
-  foo();
-  }
-  #pragma omp target
-  #pragma omp teams unknown() // expected-warning {{extra tokens at the end of '#pragma omp teams' are ignored}}
+  #pragma omp teams unknown()
   foo();
   L1:
     foo();
@@ -53,5 +61,22 @@ int main(int argc, char **argv) {
   #pragma omp teams default(none)
   ++argc; // expected-error {{variable 'argc' must have explicitly specified data sharing attributes}}
 
+  goto L2; // expected-error {{use of undeclared label 'L2'}}
+  #pragma omp target
+  #pragma omp teams
+  L2:
+  foo();
+  #pragma omp target
+  #pragma omp teams
+  {
+    return 1; // expected-error {{cannot return from OpenMP region}}
+  }
+
+  [[]] // expected-error {{an attribute list cannot appear here}}
+  #pragma omp target
+  #pragma omp teams
+  for (int n = 0; n < 100; ++n) {}
+
   return 0;
 }
+

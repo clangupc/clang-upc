@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef CLANG_DRIVER_DRIVER_H_
-#define CLANG_DRIVER_DRIVER_H_
+#ifndef LLVM_CLANG_DRIVER_DRIVER_H
+#define LLVM_CLANG_DRIVER_DRIVER_H
 
 #include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/LLVM.h"
@@ -42,6 +42,7 @@ namespace driver {
   class Command;
   class Compilation;
   class InputInfo;
+  class Job;
   class JobAction;
   class SanitizerArgs;
   class ToolChain;
@@ -103,9 +104,6 @@ public:
 
   /// Default target triple.
   std::string DefaultTargetTriple;
-
-  /// Default name for linked images (e.g., "a.out").
-  std::string DefaultImageName;
 
   /// Driver title to use with help.
   std::string DriverTitle;
@@ -182,18 +180,6 @@ private:
   /// created targeting that triple. The driver owns all the ToolChain objects
   /// stored in it, and will clean them up when torn down.
   mutable llvm::StringMap<ToolChain *> ToolChains;
-  mutable llvm::StringMap<ToolChain *> OpenMPTargetToolChains;
-
-  /// Type of the map used to trace the result information for a given action.
-  /// This is useful to avoid recomputing the action results and allow the same
-  /// result to be used by different actions, as required by OpenMP offloading.
-  /// This has to take into account that the same action may produce different
-  /// results for different toolchains.
-  typedef llvm::SmallDenseMap<const ToolChain*, InputInfo*>
-                                                       ResultInfoMapPerActionTy;
-  typedef llvm::SmallDenseMap<const Action*, ResultInfoMapPerActionTy>
-                                                                ResultInfoMapTy;
-  mutable ResultInfoMapTy ResultInfoMap;
 
 private:
   /// TranslateInputArgs - Create a new derived argument list from the input
@@ -206,17 +192,11 @@ private:
   phases::ID getFinalPhase(const llvm::opt::DerivedArgList &DAL,
                            llvm::opt::Arg **FinalPhaseArg = nullptr) const;
 
-  // registerResultInfo - Register the result information obtained for a given
-  // action in a given toolchain.
-  void registerResultInfo(const ToolChain *TC, const Action *A, InputInfo Res)
-                                                                          const;
-  // getResultInfo - Returns the results obtained for an action in a compatible
-  // toolchain. Offloading implementation can use results from other toolchains,
-  // thus this procedure does the proper checks for compatibility.
-  InputInfo *getResultInfo(const ToolChain *TC, const Action *A) const;
+  // Before executing jobs, sets up response files for commands that need them.
+  void setUpResponseFiles(Compilation &C, Job &J);
 
-  // clearResultInfo - Clear the contents of the result info map.
-  void clearResultInfo() const;
+  void generatePrefixedToolNames(const char *Tool, const ToolChain &TC,
+                                 SmallVectorImpl<std::string> &Names) const;
 
 public:
   Driver(StringRef _ClangExecutable,
@@ -319,16 +299,16 @@ public:
   /// arguments and return an appropriate exit code.
   ///
   /// This routine handles additional processing that must be done in addition
-  /// to just running the subprocesses, for example reporting errors, removing
-  /// temporary files, etc.
-  int ExecuteCompilation(const Compilation &C,
-     SmallVectorImpl< std::pair<int, const Command *> > &FailingCommands) const;
+  /// to just running the subprocesses, for example reporting errors, setting
+  /// up response files, removing temporary files, etc.
+  int ExecuteCompilation(Compilation &C,
+     SmallVectorImpl< std::pair<int, const Command *> > &FailingCommands);
   
   /// generateCompilationDiagnostics - Generate diagnostics information 
   /// including preprocessed source file(s).
   /// 
   void generateCompilationDiagnostics(Compilation &C,
-                                      const Command *FailingCommand);
+                                      const Command &FailingCommand);
 
   /// @}
   /// @name Helper Methods
@@ -371,8 +351,9 @@ public:
   /// ConstructAction - Construct the appropriate action to do for
   /// \p Phase on the \p Input, taking in to account arguments
   /// like -fsyntax-only or --analyze.
-  Action *ConstructPhaseAction(const llvm::opt::ArgList &Args, phases::ID Phase,
-                               Action *Input) const;
+  std::unique_ptr<Action>
+  ConstructPhaseAction(const llvm::opt::ArgList &Args, phases::ID Phase,
+                       std::unique_ptr<Action> Input) const;
 
   /// BuildJobsForAction - Construct the jobs to perform for the
   /// action \p A.
@@ -384,6 +365,9 @@ public:
                           bool MultipleArchs,
                           const char *LinkingOutput,
                           InputInfo &Result) const;
+
+  /// Returns the default name for linked images (e.g., "a.out").
+  const char *getDefaultImageName() const;
 
   /// GetNamedOutputPath - Return the name to use for the output of
   /// the action \p JA. The result is appended to the compilation's
@@ -419,10 +403,9 @@ private:
   /// \brief Retrieves a ToolChain for a particular target triple.
   ///
   /// Will cache ToolChains for the life of the driver object, and create them
-  /// on-demand. If TripleString is provided, the triple is obtained exclusively from it
+  /// on-demand.
   const ToolChain &getToolChain(const llvm::opt::ArgList &Args,
-                                StringRef DarwinArchName = "",
-                                const char *OpenMPTripleString = nullptr) const;
+                                StringRef DarwinArchName = "") const;
 
   /// @}
 

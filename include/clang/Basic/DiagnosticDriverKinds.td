@@ -22,6 +22,8 @@ def err_drv_unknown_stdin_type_clang_cl : Error<
 def err_drv_unknown_language : Error<"language not recognized: '%0'">;
 def err_drv_invalid_arch_name : Error<
   "invalid arch name '%0'">;
+def err_drv_invalid_thread_model_for_target : Error<
+  "invalid thread model '%0' in '%1' for this target">;
 def err_drv_invalid_linker_name : Error<
   "invalid linker name in argument '%0'">;
 def err_drv_invalid_rtlib_name : Error<
@@ -100,10 +102,6 @@ def err_drv_cc_print_options_failure : Error<
     "unable to open CC_PRINT_OPTIONS file: %0">;
 def err_drv_preamble_format : Error<
     "incorrect format for -preamble-bytes=N,END">;
-def err_drv_conflicting_deployment_targets : Error<
-  "conflicting deployment targets, both '%0' and '%1' are present in environment">;
-def err_drv_invalid_arch_for_deployment_target : Error<
-  "invalid architecture '%0' for deployment target '%1'">;
 def err_drv_objc_gc_arr : Error<
   "cannot specify both '-fobjc-arc' and '%0'">;
 def err_arc_unsupported_on_runtime : Error<
@@ -119,18 +117,6 @@ def err_drv_emit_llvm_link : Error<
 def err_drv_optimization_remark_pattern : Error<
   "%0 in '%1'">;
 def err_drv_no_neon_modifier : Error<"[no]neon is not accepted as modifier, please use [no]simd instead">;
-def err_drv_unknown_toolchain : Error<
-  "cannot recognize the type of the toolchain">;
-def err_drv_invalid_omp_target : Error<
-  "OpenMP target is invalid: '%0'">;
-def err_drv_omp_target_requires_main_file_path : Error<
-  "Main-file path is required to generate code for OpenMP target regions. Use -omp-main-file-path 'path'.">;
-def err_drv_omp_module_id_required : Error<
-  "Unable to generate module ID from input file '%0' for OpenMP target code generation. Make sure the file exists in the file system.">;
-def err_drv_omp_target_translation_not_available : Error<
-  "OpenMP target '%0' arguments translation is not supported.">;
-def err_drv_omp_target_toolchain_not_available : Error<
-  "Toolchain for target '%0' is not supporting OpenMP offloading.">;
 
 def err_drv_invalid_upc_threads : Error<
   "THREADS value '%0' exceeds UPC implementation limit of '%1'">;
@@ -139,7 +125,7 @@ def warn_O4_is_O3 : Warning<"-O4 is equivalent to -O3">, InGroup<Deprecated>;
 def warn_drv_optimization_value : Warning<"optimization level '%0' is not supported; using '%1%2' instead">,
   InGroup<InvalidCommandLineArgument>;
 def warn_ignored_gcc_optimization : Warning<"optimization flag '%0' is not supported">,
-  InGroup<InvalidCommandLineArgument>;
+  InGroup<IgnoredOptimizationArgument>;
 def warn_c_kext : Warning<
   "ignoring -fapple-kext which is valid for C++ and Objective-C++ only">;
 def warn_drv_input_file_unused : Warning<
@@ -183,9 +169,11 @@ def warn_debug_compression_unavailable : Warning<"cannot compress debug sections
 
 def note_drv_command_failed_diag_msg : Note<
   "diagnostic msg: %0">;
-def note_drv_t_option_is_global :
-  Note<"The last /TC or /TP option takes precedence over earlier instances">;
-  
+def note_drv_t_option_is_global : Note<
+  "The last /TC or /TP option takes precedence over earlier instances">;
+def note_drv_address_sanitizer_debug_runtime : Note<
+  "AddressSanitizer doesn't support linking with debug runtime libraries yet">;
+
 def err_analyzer_config_no_value : Error<
   "analyzer-config option '%0' has a key but no value">;
 def err_analyzer_config_multiple_values : Error<
@@ -193,7 +181,7 @@ def err_analyzer_config_multiple_values : Error<
 
 def err_drv_modules_validate_once_requires_timestamp : Error<
   "option '-fmodules-validate-once-per-build-session' requires "
-  "'-fbuild-session-timestamp=<seconds since Epoch>'">;
+  "'-fbuild-session-timestamp=<seconds since Epoch>' or '-fbuild-session-file=<file>'">;
 
 def warn_drv_invoking_fallback : Warning<"falling back to %0">,
   InGroup<Fallback>;

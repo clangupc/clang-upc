@@ -12,24 +12,17 @@
 ///
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_CLANG_LANGOPTIONS_H
-#define LLVM_CLANG_LANGOPTIONS_H
+#ifndef LLVM_CLANG_BASIC_LANGOPTIONS_H
+#define LLVM_CLANG_BASIC_LANGOPTIONS_H
 
 #include "clang/Basic/CommentOptions.h"
 #include "clang/Basic/LLVM.h"
 #include "clang/Basic/ObjCRuntime.h"
+#include "clang/Basic/Sanitizers.h"
 #include "clang/Basic/Visibility.h"
 #include <string>
 
 namespace clang {
-
-struct SanitizerOptions {
-#define SANITIZER(NAME, ID) unsigned ID : 1;
-#include "clang/Basic/Sanitizers.def"
-
-  /// \brief Cached set of sanitizer options with all sanitizers disabled.
-  static const SanitizerOptions Disabled;
-};
 
 /// Bitfields of LangOptions, split out from LangOptions in order to ensure that
 /// this large collection of bitfields is a trivial class type.
@@ -40,7 +33,6 @@ public:
 #define ENUM_LANGOPT(Name, Type, Bits, Default, Description)
 #include "clang/Basic/LangOptions.def"
 
-  SanitizerOptions Sanitize;
 protected:
   // Define language options of enumeration type. These are private, and will
   // have accessors (below).
@@ -75,6 +67,13 @@ public:
   enum AddrSpaceMapMangling { ASMM_Target, ASMM_On, ASMM_Off };
 
 public:
+  /// \brief Set of enabled sanitizers.
+  SanitizerSet Sanitize;
+
+  /// \brief Path to blacklist file specifying which objects
+  /// (files, functions, variables) should not be instrumented.
+  std::string SanitizerBlacklistFile;
+
   clang::ObjCRuntime ObjCRuntime;
 
   std::string ObjCConstantStringClass;
@@ -88,19 +87,14 @@ public:
   /// \brief The name of the current module.
   std::string CurrentModule;
 
+  /// \brief The name of the module that the translation unit is an
+  /// implementation of. Prevents semantic imports, but does not otherwise
+  /// treat this as the CurrentModule.
+  std::string ImplementationOfModule;
+
   /// \brief Options for parsing comments.
   CommentOptions CommentOpts;
   
-  /// \brief ID passed to the frontend that identifies the module.
-  /// The same ID must be passed for all targets for a given compilation
-  /// unit.
-  std::string OMPModuleUniqueID;
-
-  /// \brief Triples of the OpenMP targets that the host code
-  /// codegen should take into account in order to generate
-  /// accurate offloading translation tables
-  std::vector<llvm::Triple> OMPTargetTriples;
-
   LangOptions();
 
   // Define accessors/mutators for language options of enumeration type.

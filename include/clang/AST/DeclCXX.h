@@ -538,6 +538,12 @@ class CXXRecordDecl : public RecordDecl {
         ManglingNumber(0), ContextDecl(nullptr), Captures(nullptr),
         MethodTyInfo(Info) {
       IsLambda = true;
+
+      // C++11 [expr.prim.lambda]p3:
+      //   This class type is neither an aggregate nor a literal type.
+      Aggregate = false;
+      PlainOldData = false;
+      HasNonLiteralTypeFieldsOrBases = true;
     }
 
     /// \brief Whether this lambda is known to be dependent, even if its
@@ -820,7 +826,11 @@ public:
   /// This value is used for lazy creation of default constructors.
   bool needsImplicitDefaultConstructor() const {
     return !data().UserDeclaredConstructor &&
-           !(data().DeclaredSpecialMembers & SMF_DefaultConstructor);
+           !(data().DeclaredSpecialMembers & SMF_DefaultConstructor) &&
+           // C++14 [expr.prim.lambda]p20:
+           //   The closure type associated with a lambda-expression has no
+           //   default constructor.
+           !isLambda();
   }
 
   /// \brief Determine whether this class has any user-declared constructors.
@@ -1371,6 +1381,15 @@ public:
   /// \brief Set the kind of specialization or template instantiation this is.
   void setTemplateSpecializationKind(TemplateSpecializationKind TSK);
 
+  /// \brief Retrieve the record declaration from which this record could be
+  /// instantiated. Returns null if this class is not a template instantiation.
+  const CXXRecordDecl *getTemplateInstantiationPattern() const;
+
+  CXXRecordDecl *getTemplateInstantiationPattern() {
+    return const_cast<CXXRecordDecl *>(const_cast<const CXXRecordDecl *>(this)
+                                           ->getTemplateInstantiationPattern());
+  }
+
   /// \brief Returns the destructor decl for this class.
   CXXDestructorDecl *getDestructor() const;
 
@@ -1557,15 +1576,6 @@ public:
   static bool FindNestedNameSpecifierMember(const CXXBaseSpecifier *Specifier,
                                             CXXBasePath &Path,
                                             void *UserData);
-
-  /// \brief Base-class lookup callback that determines whether there exists
-  /// a member with the given name.
-  ///
-  /// This callback can be used with \c lookupInBases() to find members
-  /// of the given name within a C++ class hierarchy. The user data pointer
-  /// is an opaque \c DeclarationName pointer.
-  static bool FindOMPDeclareReductionMember(const CXXBaseSpecifier *Specifier,
-                                            CXXBasePath &Path, void *Name);
 
   /// \brief Retrieve the final overriders for each virtual member
   /// function in the class hierarchy where this class is the
@@ -2113,8 +2123,8 @@ public:
   }
   ArrayRef<VarDecl *> getArrayIndexes() {
     assert(getNumArrayIndices() != 0 && "Getting indexes for non-array init");
-    return ArrayRef<VarDecl *>(reinterpret_cast<VarDecl **>(this + 1),
-                               getNumArrayIndices());
+    return llvm::makeArrayRef(reinterpret_cast<VarDecl **>(this + 1),
+                              getNumArrayIndices());
   }
 
   /// \brief Get the initializer.
@@ -2645,7 +2655,8 @@ public:
 /// \code
 /// namespace Foo = Bar;
 /// \endcode
-class NamespaceAliasDecl : public NamedDecl {
+class NamespaceAliasDecl : public NamedDecl,
+                           public Redeclarable<NamespaceAliasDecl> {
   void anchor() override;
 
   /// \brief The location of the \c namespace keyword.
@@ -2663,17 +2674,47 @@ class NamespaceAliasDecl : public NamedDecl {
   /// a NamespaceAliasDecl.
   NamedDecl *Namespace;
 
-  NamespaceAliasDecl(DeclContext *DC, SourceLocation NamespaceLoc,
-                     SourceLocation AliasLoc, IdentifierInfo *Alias,
-                     NestedNameSpecifierLoc QualifierLoc,
+  NamespaceAliasDecl(ASTContext &C, DeclContext *DC,
+                     SourceLocation NamespaceLoc, SourceLocation AliasLoc,
+                     IdentifierInfo *Alias, NestedNameSpecifierLoc QualifierLoc,
                      SourceLocation IdentLoc, NamedDecl *Namespace)
-    : NamedDecl(NamespaceAlias, DC, AliasLoc, Alias),
-      NamespaceLoc(NamespaceLoc), IdentLoc(IdentLoc),
-      QualifierLoc(QualifierLoc), Namespace(Namespace) { }
+      : NamedDecl(NamespaceAlias, DC, AliasLoc, Alias), redeclarable_base(C),
+        NamespaceLoc(NamespaceLoc), IdentLoc(IdentLoc),
+        QualifierLoc(QualifierLoc), Namespace(Namespace) {}
+
+  typedef Redeclarable<NamespaceAliasDecl> redeclarable_base;
+  NamespaceAliasDecl *getNextRedeclarationImpl() override;
+  NamespaceAliasDecl *getPreviousDeclImpl() override;
+  NamespaceAliasDecl *getMostRecentDeclImpl() override;
 
   friend class ASTDeclReader;
 
 public:
+  static NamespaceAliasDecl *Create(ASTContext &C, DeclContext *DC,
+                                    SourceLocation NamespaceLoc,
+                                    SourceLocation AliasLoc,
+                                    IdentifierInfo *Alias,
+                                    NestedNameSpecifierLoc QualifierLoc,
+                                    SourceLocation IdentLoc,
+                                    NamedDecl *Namespace);
+
+  static NamespaceAliasDecl *CreateDeserialized(ASTContext &C, unsigned ID);
+
+  typedef redeclarable_base::redecl_range redecl_range;
+  typedef redeclarable_base::redecl_iterator redecl_iterator;
+  using redeclarable_base::redecls_begin;
+  using redeclarable_base::redecls_end;
+  using redeclarable_base::redecls;
+  using redeclarable_base::getPreviousDecl;
+  using redeclarable_base::getMostRecentDecl;
+
+  NamespaceAliasDecl *getCanonicalDecl() override {
+    return getFirstDecl();
+  }
+  const NamespaceAliasDecl *getCanonicalDecl() const {
+    return getFirstDecl();
+  }
+
   /// \brief Retrieve the nested-name-specifier that qualifies the
   /// name of the namespace, with source-location information.
   NestedNameSpecifierLoc getQualifierLoc() const { return QualifierLoc; }
@@ -2709,16 +2750,6 @@ public:
   /// \brief Retrieve the namespace that this alias refers to, which
   /// may either be a NamespaceDecl or a NamespaceAliasDecl.
   NamedDecl *getAliasedNamespace() const { return Namespace; }
-
-  static NamespaceAliasDecl *Create(ASTContext &C, DeclContext *DC,
-                                    SourceLocation NamespaceLoc,
-                                    SourceLocation AliasLoc,
-                                    IdentifierInfo *Alias,
-                                    NestedNameSpecifierLoc QualifierLoc,
-                                    SourceLocation IdentLoc,
-                                    NamedDecl *Namespace);
-
-  static NamespaceAliasDecl *CreateDeserialized(ASTContext &C, unsigned ID);
 
   SourceRange getSourceRange() const override LLVM_READONLY {
     return SourceRange(NamespaceLoc, IdentLoc);
@@ -2833,7 +2864,7 @@ public:
 /// \code
 ///    using someNameSpace::someIdentifier;
 /// \endcode
-class UsingDecl : public NamedDecl {
+class UsingDecl : public NamedDecl, public Mergeable<UsingDecl> {
   void anchor() override;
 
   /// \brief The source location of the 'using' keyword itself.
@@ -2957,6 +2988,10 @@ public:
 
   SourceRange getSourceRange() const override LLVM_READONLY;
 
+  /// Retrieves the canonical declaration of this declaration.
+  UsingDecl *getCanonicalDecl() override { return getFirstDecl(); }
+  const UsingDecl *getCanonicalDecl() const { return getFirstDecl(); }
+
   static bool classof(const Decl *D) { return classofKind(D->getKind()); }
   static bool classofKind(Kind K) { return K == Using; }
 
@@ -2975,7 +3010,8 @@ public:
 ///   using Base<T>::foo;
 /// };
 /// \endcode
-class UnresolvedUsingValueDecl : public ValueDecl {
+class UnresolvedUsingValueDecl : public ValueDecl,
+                                 public Mergeable<UnresolvedUsingValueDecl> {
   void anchor() override;
 
   /// \brief The source location of the 'using' keyword
@@ -3031,6 +3067,14 @@ public:
 
   SourceRange getSourceRange() const override LLVM_READONLY;
 
+  /// Retrieves the canonical declaration of this declaration.
+  UnresolvedUsingValueDecl *getCanonicalDecl() override {
+    return getFirstDecl();
+  }
+  const UnresolvedUsingValueDecl *getCanonicalDecl() const {
+    return getFirstDecl();
+  }
+
   static bool classof(const Decl *D) { return classofKind(D->getKind()); }
   static bool classofKind(Kind K) { return K == UnresolvedUsingValue; }
 
@@ -3049,7 +3093,9 @@ public:
 ///
 /// The type associated with an unresolved using typename decl is
 /// currently always a typename type.
-class UnresolvedUsingTypenameDecl : public TypeDecl {
+class UnresolvedUsingTypenameDecl
+    : public TypeDecl,
+      public Mergeable<UnresolvedUsingTypenameDecl> {
   void anchor() override;
 
   /// \brief The source location of the 'typename' keyword
@@ -3092,6 +3138,14 @@ public:
 
   static UnresolvedUsingTypenameDecl *
   CreateDeserialized(ASTContext &C, unsigned ID);
+
+  /// Retrieves the canonical declaration of this declaration.
+  UnresolvedUsingTypenameDecl *getCanonicalDecl() override {
+    return getFirstDecl();
+  }
+  const UnresolvedUsingTypenameDecl *getCanonicalDecl() const {
+    return getFirstDecl();
+  }
 
   static bool classof(const Decl *D) { return classofKind(D->getKind()); }
   static bool classofKind(Kind K) { return K == UnresolvedUsingTypename; }

@@ -1,5 +1,7 @@
 set(LLVM_LINK_COMPONENTS support)
 
+add_subdirectory(Core)
+
 add_clang_library(clangTooling
   ArgumentsAdjusters.cpp
   CommonOptionsParser.cpp
@@ -21,4 +23,5 @@ add_clang_library(clangTooling
   clangFrontend
   clangLex
   clangRewrite
+  clangToolingCore
   )

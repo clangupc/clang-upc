@@ -7,13 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef CLANG_DRIVER_TOOLCHAIN_H_
-#define CLANG_DRIVER_TOOLCHAIN_H_
+#ifndef LLVM_CLANG_DRIVER_TOOLCHAIN_H
+#define LLVM_CLANG_DRIVER_TOOLCHAIN_H
 
 #include "clang/Driver/Action.h"
 #include "clang/Driver/Multilib.h"
-#include "clang/Driver/DriverDiagnostic.h"
-#include "clang/Driver/Driver.h"
 #include "clang/Driver/Types.h"
 #include "clang/Driver/Util.h"
 #include "llvm/ADT/SmallVector.h"
@@ -43,7 +41,7 @@ namespace driver {
 /// ToolChain - Access to tools for a single platform.
 class ToolChain {
 public:
-  typedef SmallVector<std::string, 4> path_list;
+  typedef SmallVector<std::string, 16> path_list;
 
   enum CXXStdlibType {
     CST_Libcxx,
@@ -78,16 +76,11 @@ private:
 
   mutable std::unique_ptr<SanitizerArgs> SanitizerArguments;
 
-  /// This is set to true when the toolchain is created if it refers to an
-  /// OpenMP target toolchain
-  bool IsOpenMPTargetToolchain;
-
 protected:
   MultilibSet Multilibs;
 
   ToolChain(const Driver &D, const llvm::Triple &T,
-            const llvm::opt::ArgList &Args,
-            bool IsOpenMPTargetToolchain = false);
+            const llvm::opt::ArgList &Args);
 
   virtual Tool *buildAssembler() const;
   virtual Tool *buildLinker() const;
@@ -117,7 +110,6 @@ public:
 
   const Driver &getDriver() const;
   const llvm::Triple &getTriple() const { return Triple; }
-  bool isOpenMPTargetToolchain() const { return IsOpenMPTargetToolchain; }
 
   llvm::Triple::ArchType getArch() const { return Triple.getArch(); }
   StringRef getArchName() const { return Triple.getArchName(); }
@@ -126,7 +118,7 @@ public:
 
   /// \brief Provide the default architecture name (as expected by -arch) for
   /// this toolchain. Note t
-  std::string getDefaultUniversalArchName() const;
+  StringRef getDefaultUniversalArchName() const;
 
   std::string getTripleString() const {
     return Triple.getTriple();
@@ -149,25 +141,9 @@ public:
   /// specific translations are needed.
   ///
   /// \param BoundArch - The bound architecture name, or 0.
-  /// \param isOpenMPTarget - True if this toolchain is an OpenMP target.
-  /// \param isSuccess - set to True if the arguments were successfully
-  /// translated.
   virtual llvm::opt::DerivedArgList *
   TranslateArgs(const llvm::opt::DerivedArgList &Args,
-                const char *BoundArch,
-                bool isOpenMPTarget,
-                bool &isSuccess) const {
-
-    if (isOpenMPTarget){
-      isSuccess = false;
-
-      D.Diag(diag::err_drv_omp_target_translation_not_available)
-          << BoundArch;
-
-      return nullptr;
-    }
-
-    isSuccess = true;
+                const char *BoundArch) const {
     return nullptr;
   }
 
@@ -271,6 +247,12 @@ public:
 
   /// UseSjLjExceptions - Does this tool chain use SjLj exceptions.
   virtual bool UseSjLjExceptions() const { return false; }
+
+  /// getThreadModel() - Which thread model does this target use?
+  virtual std::string getThreadModel() const { return "posix"; }
+
+  /// isThreadModelSupported() - Does this target support a thread model?
+  virtual bool isThreadModelSupported(const StringRef Model) const;
 
   /// ComputeLLVMTriple - Return the LLVM target triple to use, after taking
   /// command line arguments into account.

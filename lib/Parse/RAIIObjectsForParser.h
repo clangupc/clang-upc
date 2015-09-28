@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_CLANG_PARSE_RAII_OBJECTS_FOR_PARSER_H
-#define LLVM_CLANG_PARSE_RAII_OBJECTS_FOR_PARSER_H
+#ifndef LLVM_CLANG_LIB_PARSE_RAIIOBJECTSFORPARSER_H
+#define LLVM_CLANG_LIB_PARSE_RAIIOBJECTSFORPARSER_H
 
 #include "clang/Parse/ParseDiagnostic.h"
 #include "clang/Parse/Parser.h"
@@ -428,22 +428,6 @@ namespace clang {
       return diagnoseMissingClose();
     }
     void skipToEnd();
-  };
-
-  /// \brief A RAII object used to temporarily allow using of CEAN expressions.
-  class AllowCEANExpressions {
-    Parser &P;
-    bool IsCEANAllowed;
-
-  public:
-    AllowCEANExpressions(Parser &P, bool IsAllowed)
-        : P(P), IsCEANAllowed(P.IsCEANAllowed) {
-      P.IsCEANAllowed = IsAllowed;
-    }
-
-    ~AllowCEANExpressions() {
-      P.IsCEANAllowed = IsCEANAllowed;
-    }
   };
 
 } // end namespace clang
