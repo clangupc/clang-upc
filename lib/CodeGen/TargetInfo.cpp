@@ -3668,16 +3668,6 @@ PPC64_SVR4_ABIInfo::classifyReturnType(QualType RetTy) const {
   if (RetTy->isAnyComplexType())
     return ABIArgInfo::getDirect();
 
-  // UPC shared pointer is returned in register for
-  // packed pointer representation, otherwise indirectly
-  // for struct representation.
-  if (RetTy->hasPointerToSharedRepresentation()) {
-    if (getContext().getLangOpts().UPCPtsRep == 0)
-      return ABIArgInfo::getIndirect(0);
-    else
-      return ABIArgInfo::getDirect();
-  }
-
   // Non-Altivec vector types are returned in GPRs (smaller than 16 bytes)
   // or via reference (larger than 16 bytes).
   if (RetTy->isVectorType()) {
