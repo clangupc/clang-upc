@@ -403,7 +403,20 @@ void DeclPrinter::VisitRecordDecl(RecordDecl *D) {
     Out << "__module_private__ ";
   Out << D->getKindName();
 
-  prettyPrintAttributes(D);
+  // HACK: clang 3.6 doesn't accept
+  // __attribute__((transparent_union)) in
+  // the normal location. -SJW
+  Attr *Extra = nullptr;
+  if (D->hasAttrs()) {
+    AttrVec &Attrs = D->getAttrs();
+    for (AttrVec::const_iterator i=Attrs.begin(), e=Attrs.end(); i!=e; ++i) {
+      Attr *A = *i;
+      if (A->getKind() == attr::TransparentUnion)
+        Extra = A;
+      else
+        A->printPretty(Out, Policy);
+    }
+  }
 
   if (D->getIdentifier())
     Out << ' ' << *D;
@@ -413,6 +426,9 @@ void DeclPrinter::VisitRecordDecl(RecordDecl *D) {
     VisitDeclContext(D);
     Indent() << "}";
   }
+
+  if (Extra)
+    Extra->printPretty(Out, Policy);
 }
 
 void DeclPrinter::VisitEnumConstantDecl(EnumConstantDecl *D) {
