@@ -159,9 +159,9 @@ gupcr_fini (void)
   gupcr_broadcast_fini ();
   gupcr_barrier_fini ();
   gupcr_lock_fini ();
+  gupcr_coll_fini ();
   gupcr_gmem_fini ();
   gupcr_node_fini ();
-  gupcr_coll_fini ();
   gupcr_fabric_ni_fini ();
   gupcr_fabric_fini ();
   gupcr_runtime_fini ();

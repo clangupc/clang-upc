@@ -36,7 +36,6 @@ int gupcr_rank_cnt;
 int gupcr_child[GUPCR_TREE_FANOUT];
 int gupcr_child_cnt;
 int gupcr_parent_thread;
-struct fid_ep *gupcr_ep = NULL;
 
 size_t gupcr_max_order_size;
 size_t gupcr_max_msg_size;
@@ -48,21 +47,25 @@ static fab_t gupcr_fab;
 fab_info_t gupcr_fi;
 /** Fabric domain */
 fab_domain_t gupcr_fd;
+#if GUPCR_FABRIC_SCALABLE_CTX
 /** Endpoint comm resource  */
 fab_ep_t gupcr_ep;
 /** Address vector for remote endpoints  */
 fab_av_t gupcr_av;
 /** All endpoint names in the system */
-static char epname[128];
-static char *epnames;
+static char *gupcr_epnames;
+#endif
+/** Endpoint name length  */
+static size_t gupcr_epnamelen;
 
 /** Infiniband interface.  */
 static const char *ifname = GUPCR_FABRIC_DEVICE;
+/** Libfabric name */
+static const char *fab_name = GUPCR_FABRIC_NAME;
 /** Libfabric provider */
-static const char *prov_name = GUPCR_FABRIC_PROVIDER;
+static const char *fab_prov_name = GUPCR_FABRIC_PROVIDER;
 /** Libfabric shared context (disabled by default) */
 int gupcr_enable_shared_ctx = 0;
-
 /** Interface IPv4 address */
 in_addr_t net_addr;
 /** IPv4 addresses for all ranks */
@@ -232,7 +235,7 @@ gupcr_strfaberror (int errnum)
     case FI_EAVAIL:
       return "Error available";
       break;
-    case FI_EBADFLAGS	:
+    case FI_EBADFLAGS:
       return "Flags not supported";
       break;
     case FI_ENOEQ:
@@ -253,7 +256,7 @@ gupcr_strfaberror (int errnum)
     case FI_ENOKEY:
       return "Required key not available";
       break;
-    
+
     default:
       break;
     }
@@ -485,8 +488,7 @@ gupcr_process_fail_events (int status, const char *msg, fab_cq_t cq)
       char buf[256];
       const char *errstr;
       struct fi_cq_err_entry cq_error;
-      gupcr_fabric_call_nc (fi_cq_readerr, ret,
-			    (cq, (void *) &cq_error, 0));
+      gupcr_fabric_call_nc (fi_cq_readerr, ret, (cq, (void *) &cq_error, 0));
       gupcr_fabric_call_nc (fi_cq_strerror, errstr,
 			    (cq, cq_error.err, cq_error.err_data,
 			     buf, sizeof (buf)));
@@ -506,6 +508,17 @@ int
 gupcr_get_rank (void)
 {
   return gupcr_rank;
+}
+
+/**
+ * Get process NID for specified rank.
+ * @param [in] rank Rank of the thread
+ * @retval NID of the thread
+ */
+int
+gupcr_get_rank_nid (int rank)
+{
+  return (int) net_addr_map[rank];
 }
 
 /**
@@ -530,17 +543,6 @@ gupcr_get_rank_pid (int rank)
 }
 
 /**
- * Get process NID for specified rank.
- * @param [in] rank Rank of the thread
- * @retval NID of the thread
- */
-int
-gupcr_get_rank_nid (int rank)
-{
-  return (int) net_addr_map[rank];
-}
-
-/**
  * Wait for all threads to complete initialization.
  */
 void
@@ -562,74 +564,84 @@ gupcr_startup_barrier (void)
 void
 gupcr_fabric_init (void)
 {
-  struct fi_info hints = { 0 };
+  struct fi_info *hints;
   struct fi_fabric_attr fi_attr = { 0 };
   struct fi_domain_attr fi_domain_attr = { 0 };
-  av_attr_t av_attr = { 0 };
   ep_attr_t ep_attr = { 0 };
-  size_t epnamelen = sizeof (epname);
-  char node[16];
+  char node_name[16];
+  char *node = NULL;
 
-  /* Find the network ID (IPv4 address).  */
-  net_addr = check_ip_address (ifname);
-  if (net_addr == INADDR_ANY)
+  hints = fi_allocinfo ();
+  if ((long) hints <= 0)
     {
-      gupcr_fatal_error ("IPv4 is not available on interface %s", ifname);
-      gupcr_abort ();
+      gupcr_fatal_error ("UPC runtime fabric call "
+			 "fi_allocinfo on thread %d failed: %s\n",
+			 gupcr_get_rank (),
+			 gupcr_strfaberror (-(long) hints));
     }
-  if (!inet_ntop(AF_INET, &net_addr, node, sizeof(node)))
+  if (!strcmp (fab_prov_name, "sockets"))
     {
-      gupcr_fatal_error (
-	"Error while converting IPv4 (%x) address into a string", net_addr);
-      gupcr_abort ();
+      /* Find the network ID (IPv4 address).  */
+      net_addr = check_ip_address (ifname);
+      if (net_addr == INADDR_ANY)
+	gupcr_fatal_error ("IPv4 is not available on interface %s", ifname);
+      if (!inet_ntop (AF_INET, &net_addr, node_name, sizeof (node_name)))
+	gupcr_fatal_error
+	  ("Error while converting IPv4 (%x) address into a string",
+	   net_addr);
+      node = node_name;
     }
 
   /* Find fabric provider based on the hints.  */
-  hints.caps = FI_RMA |		/* Request RMA capability,  */
-    FI_ATOMICS; 		/* atomics capability,  */
+  hints->caps = FI_RMA |	/* Request RMA capability,  */
+    FI_ATOMICS;			/* atomics capability,  */
   ep_attr.type = FI_EP_RDM;	/* Reliable datagram message.  */
-  hints.addr_format = FI_FORMAT_UNSPEC;
+  hints->addr_format = FI_FORMAT_UNSPEC;
+#if GUPCR_FABRIC_SCALABLE_CTX
   ep_attr.rx_ctx_cnt = GUPCR_SERVICE_COUNT;
   ep_attr.tx_ctx_cnt = GUPCR_SERVICE_COUNT;
-  hints.ep_attr = &ep_attr;
+#else
+  ep_attr.rx_ctx_cnt = 1;
+  ep_attr.tx_ctx_cnt = 1;
+#endif
+  hints->ep_attr = &ep_attr;
 
   /* Choose provider.  */
-  hints.fabric_attr = &fi_attr;
-  hints.fabric_attr->prov_name = (char *) prov_name;
+  hints->fabric_attr = &fi_attr;
+  hints->fabric_attr->name = strdup (fab_name);
+  hints->fabric_attr->prov_name = strdup (fab_prov_name);
 
   /* Set domain requirements.  */
   fi_domain_attr.mr_mode = FI_MR_SCALABLE;
-  hints.domain_attr = &fi_domain_attr;
+  hints->domain_attr = &fi_domain_attr;
 
 #define __GUPCR_STR__(S) #S
 #define __GUPCR_XSTR__(S) __GUPCR_STR__(S)
   gupcr_fabric_call (fi_getinfo,
 		     (FI_VERSION (1, 0), node, NULL,
-		      FI_SOURCE, &hints, &gupcr_fi));
-  if (gupcr_fi->ep_attr->rx_ctx_cnt < GUPCR_SERVICE_COUNT)
+		      FI_SOURCE, hints, &gupcr_fi));
+  if (gupcr_fi->ep_attr->rx_ctx_cnt < ep_attr.rx_ctx_cnt)
     gupcr_fatal_error ("cannot provide requested number of rx scalable "
-		       "contexts: req %d, prov %d", GUPCR_SERVICE_COUNT,
-		       (int) gupcr_fi->ep_attr->rx_ctx_cnt);
-  if (gupcr_fi->ep_attr->tx_ctx_cnt < GUPCR_SERVICE_COUNT)
+		       "contexts: req %ld, prov %ld", ep_attr.rx_ctx_cnt,
+		       gupcr_fi->ep_attr->rx_ctx_cnt);
+  if (gupcr_fi->ep_attr->tx_ctx_cnt < ep_attr.tx_ctx_cnt)
     gupcr_fatal_error ("cannot provide requested number of tx scalable "
-		       "contexts: req %d, prov %d", GUPCR_SERVICE_COUNT,
-		       (int) gupcr_fi->ep_attr->tx_ctx_cnt);
-#if GUPCR_LIBFABRIC_SHARED_CTX
+		       "contexts: req %ld, prov %ld", ep_attr.tx_ctx_cnt,
+		       gupcr_fi->ep_attr->tx_ctx_cnt);
+#if GUPCR_FABRIC_SHARED_CTX
   /* Check for shared context support.  In order to save TX/RX resources
      endpoints can share TX/RX contexts.  */
   {
     int status;
     fab_info_t ret_info;
     ep_attr.tx_ctx_cnt = FI_SHARED_CONTEXT;
-    gupcr_fabric_call_nc (fi_getinfo, status, 
-		     (FI_VERSION (1, 0), node, NULL,
-		      FI_SOURCE, &hints, &ret_info));
+    gupcr_fabric_call_nc (fi_getinfo, status,
+			  (FI_VERSION (1, 0), node, NULL,
+			   FI_SOURCE, &hints, &ret_info));
     if (!status && (ret_info->ep_attr->tx_ctx_cnt == FI_SHARED_CONTEXT))
       gupcr_enable_shared_ctx = 1;
   }
 #endif
-  gupcr_fi->ep_attr->rx_ctx_cnt = GUPCR_SERVICE_COUNT;
-  gupcr_fi->ep_attr->tx_ctx_cnt = GUPCR_SERVICE_COUNT;
   gupcr_fabric_call (fi_fabric, (gupcr_fi->fabric_attr, &gupcr_fab, NULL));
   gupcr_fabric_call (fi_domain, (gupcr_fab, gupcr_fi, &gupcr_fd, NULL));
 
@@ -641,55 +653,65 @@ gupcr_fabric_init (void)
   gupcr_max_order_size = gupcr_fi->ep_attr->max_order_raw_size;
   gupcr_max_optim_size = gupcr_fi->tx_attr->inject_size;
 
-  /* Create an endpoint for all UPC contexts.  */
-  gupcr_fabric_call (fi_scalable_ep, (gupcr_fd, gupcr_fi, &gupcr_ep, NULL));
-
-  /* Other threads' endpoints are mapped via address vector table with
-     each threads' endpoint indexed by the thread number.  */
-  av_attr.type = FI_AV_TABLE;
-  av_attr.count = gupcr_rank_cnt;
-  /* TODO: Naming AV allows for AV to be shared among threads on the same
-     node. 
-     av_attr.name = "ENDPOINTS";
-  */
-  av_attr.name = NULL;
-  av_attr.rx_ctx_bits = GUPCR_SERVICE_BITS;
-  gupcr_fabric_call (fi_av_open, (gupcr_fd, &av_attr, &gupcr_av, NULL));
-  gupcr_fabric_call (fi_ep_bind, (gupcr_ep, &gupcr_av->fid, 0));
-
-  /* Enable endpoint.  */
-  gupcr_fabric_call (fi_enable, (gupcr_ep));
-
-  /* Exchange endpoint name with other threads.  */
-  gupcr_fabric_call (fi_getname, ((fid_t) gupcr_ep, epname, &epnamelen));
-  if (epnamelen > sizeof (epname))
-    gupcr_fatal_error ("sizeof endpoint name greater then %lu",
-		       sizeof (epname));
-
-  epnames = calloc (gupcr_rank_cnt * epnamelen, 1);
-  if (!epnames)
-    gupcr_fatal_error ("cannot allocate %ld for epnames",
-		       gupcr_rank_cnt * epnamelen);
+#if GUPCR_FABRIC_SCALABLE_CTX
   {
-    int ret = gupcr_runtime_exchange ("gmem", epname, epnamelen, epnames);
+    int ret, status;
+    av_attr_t av_attr = { 0 };
+    /* Create an endpoint for all UPC contexts.  */
+    gupcr_fabric_call (fi_scalable_ep, (gupcr_fd, gupcr_fi, &gupcr_ep, NULL));
+
+    /* Other threads' endpoints are mapped via address vector table with
+       each threads' endpoint indexed by the thread number.  */
+    av_attr.type = FI_AV_TABLE;
+    av_attr.count = gupcr_rank_cnt;
+    /* TODO: Naming AV allows for AV to be shared among threads on the same
+       node. 
+       av_attr.name = "ENDPOINTS";
+       Not supported by all providers.
+     */
+    av_attr.name = NULL;
+    av_attr.rx_ctx_bits = GUPCR_SERVICE_BITS;
+    gupcr_fabric_call (fi_av_open, (gupcr_fd, &av_attr, &gupcr_av, NULL));
+    gupcr_fabric_call (fi_ep_bind, (gupcr_ep, &gupcr_av->fid, 0));
+
+    /* Enable endpoint.  */
+    gupcr_fabric_call (fi_enable, (gupcr_ep));
+
+    /* Exchange endpoint name with other threads.  */
+    /* Find the size of end-point name.  */
+    gupcr_fabric_call_nc (fi_getname, status, ((fid_t) gupcr_ep, NULL,
+					       &gupcr_epnamelen));
+    gupcr_epnames = calloc (gupcr_rank_cnt * gupcr_epnamelen, 1);
+    if (!gupcr_epnames)
+      gupcr_fatal_error ("cannot allocate %ld for epnames",
+			 gupcr_rank_cnt * gupcr_epnamelen);
+    gupcr_fabric_call (fi_getname, ((fid_t) gupcr_ep,
+				    &gupcr_epnames[gupcr_rank *
+						   gupcr_epnamelen],
+				    &gupcr_epnamelen));
+    ret =
+      gupcr_runtime_exchange ("sep",
+			      &gupcr_epnames[gupcr_rank * gupcr_epnamelen],
+			      gupcr_epnamelen, gupcr_epnames);
     if (ret)
       {
 	gupcr_fatal_error
-	  ("error (%d) reported while exchanging GMEM endpoints", ret);
+	  ("error (%d) reported while exchanging endpoints", ret);
       }
     gupcr_log
       (FC_FABRIC, "exchanged ep names with %d threads", gupcr_rank_cnt);
+    /* Map endpoints.  */
+    {
+      int insert_cnt;
+      gupcr_fabric_call_nc
+	(fi_av_insert, insert_cnt,
+	 (gupcr_av, gupcr_epnames, gupcr_rank_cnt, NULL, 0, NULL));
+      if (insert_cnt != gupcr_rank_cnt)
+	gupcr_fatal_error ("cannot av insert %d entries (reported %d)",
+			   gupcr_rank_cnt, insert_cnt);
+    }
   }
-  /* Map endpoints.  */
-  {
-    int insert_cnt;
-    gupcr_fabric_call_nc
-      (fi_av_insert, insert_cnt,
-       (gupcr_av, epnames, gupcr_rank_cnt, NULL, 0, NULL));
-    if (insert_cnt != gupcr_rank_cnt)
-      gupcr_fatal_error ("cannot av insert %d entries (reported %d)",
-		       gupcr_rank_cnt, insert_cnt);
-  }
+#endif /* GUPCR_FABRIC_SCALABLE_CTX */
 }
 
 /**
@@ -698,9 +720,11 @@ gupcr_fabric_init (void)
 void
 gupcr_fabric_fini (void)
 {
+#if GUPCR_FABRIC_SCALABLE_CTX
   gupcr_fabric_call (fi_close, (&gupcr_ep->fid));
   gupcr_fabric_call (fi_close, (&gupcr_av->fid));
-  free (epnames);
+  free (gupcr_epnames);
+#endif
   gupcr_fabric_call (fi_close, (&gupcr_fab->fid));
 }
 
@@ -718,7 +742,9 @@ gupcr_fabric_ni_init (void)
   /* Exchange network id with other nodes.  */
   status = gupcr_runtime_exchange ("NI", &net_addr, sizeof (in_addr_t),
 				   net_addr_map);
-
+  if (status)
+    gupcr_fatal_error
+      ("error (%d) reported while exchanging network addresses", status);
 }
 
 /**
@@ -727,6 +753,76 @@ gupcr_fabric_ni_init (void)
 void
 gupcr_fabric_ni_fini (void)
 {
+  free (net_addr_map);
+}
+
+/**
+ * Create fabric endpoint.
+ */
+fab_ep_t
+gupcr_fabric_endpoint (const char *name, char **eps, fab_av_t * avs)
+{
+  fab_ep_t ep;
+  av_attr_t av_attr = { 0 };
+  fab_av_t av;
+  char *epnames;
+  int status;
+
+  gupcr_fabric_call (fi_scalable_ep, (gupcr_fd, gupcr_fi, &ep, NULL));
+
+  /* Other threads' endpoints are mapped via address vector table with
+     each threads' endpoint indexed by the thread number.  */
+  av_attr.type = FI_AV_TABLE;
+  av_attr.count = gupcr_rank_cnt;
+  /* TODO: Naming AV allows for AV to be shared among threads on the same
+     node. 
+     av_attr.name = "ENDPOINTS";
+     Not supported by all providers.
+   */
+  av_attr.name = NULL;
+  gupcr_fabric_call (fi_av_open, (gupcr_fd, &av_attr, &av, NULL));
+  gupcr_fabric_call (fi_ep_bind, (ep, &av->fid, 0));
+
+  /* Enable endpoint.  */
+  gupcr_fabric_call (fi_enable, (ep));
+
+  /* Exchange endpoint name with other threads.  */
+  if (!gupcr_epnamelen)
+    {
+      /* Get the size of the ep name.  */
+      gupcr_fabric_call_nc (fi_getname, status, (&ep->fid, NULL,
+						 &gupcr_epnamelen));
+    }
+  epnames = calloc (gupcr_rank_cnt * gupcr_epnamelen, 1);
+  if (!epnames)
+    gupcr_fatal_error ("cannot allocate %ld for epnames",
+		       gupcr_rank_cnt * gupcr_epnamelen);
+  gupcr_fabric_call (fi_getname, (&ep->fid,
+				  &epnames[gupcr_rank * gupcr_epnamelen],
+				  &gupcr_epnamelen));
+  {
+    int ret =
+      gupcr_runtime_exchange (name, &epnames[gupcr_rank * gupcr_epnamelen],
+			      gupcr_epnamelen, epnames);
+    if (ret)
+      gupcr_fatal_error
+	("error (%d) reported while exchanging \"%s\" endpoints", ret, name);
+    gupcr_log
+      (FC_FABRIC, "exchanged ep names with %d threads", gupcr_rank_cnt);
+  }
+  /* Map endpoints.  */
+  {
+    int insert_cnt;
+    gupcr_fabric_call_nc
+      (fi_av_insert, insert_cnt,
+       (av, epnames, gupcr_rank_cnt, NULL, 0, NULL));
+    if (insert_cnt != gupcr_rank_cnt)
+      gupcr_fatal_error ("cannot av insert %d entries (reported %d)",
+			 gupcr_rank_cnt, insert_cnt);
+  }
+  *avs = av;
+  *eps = epnames;
+  return ep;
 }
 
 /**

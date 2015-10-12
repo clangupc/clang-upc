@@ -111,6 +111,24 @@ fab_mr_t gupcr_shutdown_mr;
 /** Local memory access memory region  */
 fab_mr_t gupcr_shutdown_lmr;
 #endif
+/** Shutdown endpoint */
+fab_ep_t gupcr_shutdown_ep;
+#if !GUPCR_FABRIC_SCALABLE_CTX
+/** Address vector for remote endpoints  */
+fab_av_t gupcr_shutdown_av;
+/** Shutdown endpoint names  */
+char *gupcr_shutdown_epnames;
+#endif
+
+/** Target endpoint */
+#if GUPCR_FABRIC_SCALABLE_CTX
+#define GUPCR_TARGET_ADDR(target) \
+	fi_rx_addr ((fi_addr_t)target, \
+	GUPCR_SERVICE_SHUTDOWN, GUPCR_SERVICE_BITS)
+#else
+#define GUPCR_TARGET_ADDR(target) \
+	fi_rx_addr ((fi_addr_t)target, 0, 1)
+#endif
 
 /**
  * Send a remote shutdown request to all threads.
@@ -139,10 +157,9 @@ gupcr_signal_exit (int status)
 			 (gupcr_shutdown_tx_ep,
 			  GUPCR_LOCAL_INDEX (&gupcr_shutdown_send_status),
 			  sizeof (gupcr_shutdown_send_status),
-			  NULL, fi_rx_addr ((fi_addr_t) thread,
-					    GUPCR_SERVICE_SHUTDOWN,
-					    GUPCR_SERVICE_BITS),
-			  (uint64_t) GUPCR_LOCAL_INDEX (&gupcr_shutdown_send_status),
+			  NULL, GUPCR_TARGET_ADDR (thread),
+			  (uint64_t)
+			  GUPCR_LOCAL_INDEX (&gupcr_shutdown_send_status),
 			  GUPCR_MR_SHUTDOWN, NULL));
     }
   /* It is NOT ok to call finalize routines as there might
@@ -185,10 +202,9 @@ gupcr_shutdown_terminate_pthread (void)
 		     (gupcr_shutdown_tx_ep,
 		      GUPCR_LOCAL_INDEX (&gupcr_shutdown_send_status),
 		      sizeof (gupcr_shutdown_send_status),
-		      NULL, fi_rx_addr ((fi_addr_t) MYTHREAD,
-					GUPCR_SERVICE_SHUTDOWN,
-					GUPCR_SERVICE_BITS),
-		      (uint64_t) GUPCR_LOCAL_INDEX (&gupcr_shutdown_send_status),
+		      NULL, GUPCR_TARGET_ADDR (MYTHREAD),
+		      (uint64_t)
+		      GUPCR_LOCAL_INDEX (&gupcr_shutdown_send_status),
 		      GUPCR_MR_SHUTDOWN, NULL));
   gupcr_shutdown_lmr_count += 1;
   pthread_join (gupcr_shutdown_pthread_id, NULL);
@@ -259,6 +275,7 @@ gupcr_shutdown_signal_handler (int signum __attribute__ ((unused)))
 void
 gupcr_shutdown_init (void)
 {
+  int sep_ctx;
   cntr_attr_t cntr_attr = { 0 };
   cq_attr_t cq_attr = { 0 };
   tx_attr_t tx_attr = { 0 };
@@ -267,12 +284,21 @@ gupcr_shutdown_init (void)
   gupcr_log (FC_MISC, "shutdown init called");
 
   /* Create context endpoints for shutdown signalling.  */
+#if GUPCR_FABRIC_SCALABLE_CTX
+  gupcr_shutdown_ep = gupcr_ep;
+  sep_ctx = GUPCR_SERVICE_SHUTDOWN;
+#else
+  gupcr_shutdown_ep =
+    gupcr_fabric_endpoint ("shutdown", &gupcr_shutdown_epnames,
+			   &gupcr_shutdown_av);
+  sep_ctx = 0;
+#endif
   tx_attr.op_flags = FI_DELIVERY_COMPLETE;
   gupcr_fabric_call (fi_tx_context,
-		     (gupcr_ep, GUPCR_SERVICE_SHUTDOWN, &tx_attr,
+		     (gupcr_shutdown_ep, sep_ctx, &tx_attr,
 		      &gupcr_shutdown_tx_ep, NULL));
   gupcr_fabric_call (fi_rx_context,
-		     (gupcr_ep, GUPCR_SERVICE_SHUTDOWN, &rx_attr,
+		     (gupcr_shutdown_ep, sep_ctx, &rx_attr,
 		      &gupcr_shutdown_rx_ep, NULL));
 
   /* ... and completion counter/eq for remote read/write.  */
@@ -281,7 +307,7 @@ gupcr_shutdown_init (void)
   gupcr_fabric_call (fi_cntr_open, (gupcr_fd, &cntr_attr,
 				    &gupcr_shutdown_lct, NULL));
   gupcr_fabric_call (fi_ep_bind, (gupcr_shutdown_tx_ep,
-			          &gupcr_shutdown_lct->fid,
+				  &gupcr_shutdown_lct->fid,
 				  FI_READ | FI_WRITE));
 
   /* ... and completion queue for remote target transfer errors.  */
@@ -292,8 +318,8 @@ gupcr_shutdown_init (void)
 				  NULL));
   /* Use FI_SELECTIVE_COMPLETION flag to report errors only.  */
   gupcr_fabric_call (fi_ep_bind, (gupcr_shutdown_tx_ep,
-			          &gupcr_shutdown_lcq->fid,
-			          FI_WRITE | FI_READ |
+				  &gupcr_shutdown_lcq->fid,
+				  FI_WRITE | FI_READ |
 				  FI_SELECTIVE_COMPLETION));
 
 #if LOCAL_MR_NEEDED
@@ -306,7 +332,7 @@ gupcr_shutdown_init (void)
   /*       Hmm ... ? We can probably use only one throughout the runtime,  */
   /*       as counters and events are bound to endpoint.  */
   gupcr_fabric_call (fi_ep_bind, (gupcr_shutdown_tx_ep,
-			          &gupcr_shutdown_lmr->fid,
+				  &gupcr_shutdown_lmr->fid,
 				  FI_READ | FI_WRITE));
 #endif
 
@@ -317,14 +343,15 @@ gupcr_shutdown_init (void)
   /* ... and memory region for remote inbound accesses.  */
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, gupcr_gmem_base, gupcr_gmem_size,
 				 FI_REMOTE_READ | FI_REMOTE_WRITE, 0,
-				 GUPCR_MR_SHUTDOWN, 0, &gupcr_shutdown_mr, NULL));
+				 GUPCR_MR_SHUTDOWN, 0, &gupcr_shutdown_mr,
+				 NULL));
   /* ... and counter for remote inbound writes.  */
   cntr_attr.events = FI_CNTR_EVENTS_COMP;
   cntr_attr.flags = 0;
   gupcr_fabric_call (fi_cntr_open, (gupcr_fd, &cntr_attr,
 				    &gupcr_shutdown_ct, NULL));
   gupcr_fabric_call (fi_mr_bind, (gupcr_shutdown_mr,
-			          &gupcr_shutdown_ct->fid, FI_REMOTE_WRITE));
+				  &gupcr_shutdown_ct->fid, FI_REMOTE_WRITE));
   /* ... and completion queue for remote inbound errors.  */
   cq_attr.size = 1;
   cq_attr.format = FI_CQ_FORMAT_MSG;
@@ -332,16 +359,16 @@ gupcr_shutdown_init (void)
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr,
 				  &gupcr_shutdown_cq, NULL));
   gupcr_fabric_call (fi_mr_bind, (gupcr_shutdown_mr,
-			          &gupcr_shutdown_cq->fid,
-			          FI_REMOTE_WRITE | FI_EVENT));
+				  &gupcr_shutdown_cq->fid,
+				  FI_REMOTE_WRITE | FI_EVENT));
   /* ... local/remote transaction counts.  */
   gupcr_shutdown_lmr_count = 0;
   gupcr_shutdown_mr_count = 0;
 
   /* ... bind MR to endpoint.  */
   gupcr_fabric_call (fi_ep_bind, (gupcr_shutdown_rx_ep,
-			          &gupcr_shutdown_mr->fid,
-			          FI_REMOTE_READ | FI_REMOTE_WRITE));
+				  &gupcr_shutdown_mr->fid,
+				  FI_REMOTE_READ | FI_REMOTE_WRITE));
 
   /* Start a pthread that listens for remote shutdown requests.  */
   gupcr_syscall (pthread_create,
@@ -378,6 +405,12 @@ gupcr_shutdown_fini (void)
   /* NOTE: Do not check for errors.  Fails occasionally.  */
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_shutdown_rx_ep->fid));
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_shutdown_tx_ep->fid));
+#if !GUPCR_FABRIC_SCALABLE_CTX
+  gupcr_fabric_call_nc (fi_close, status, (&gupcr_shutdown_ep->fid));
+  gupcr_fabric_call_nc (fi_close, status, (&gupcr_shutdown_av->fid));
+  free (gupcr_shutdown_epnames);
+#endif
+  gupcr_log (FC_MISC, "shutdown fini completed");
 }
 
 /** @} */

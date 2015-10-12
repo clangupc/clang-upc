@@ -60,6 +60,7 @@
 #if HAVE_PMI_H
 #include <pmi.h>
 #endif
+#include "gupcr_utils.h"
 
 /** Process rank */
 static int rank = -1;
@@ -196,6 +197,7 @@ gupcr_runtime_put (const char *key, void *val, size_t len)
   status = PMI_KVS_Put(kvs_name, kvs_key, kvs_val);
 #endif
   CHECK_PMI (status);
+  gupcr_log (FC_SYSTEM, "[%d] PMI put key: %s val: %s", rank, kvs_key, kvs_val);
   return 0;
 }
 
@@ -203,11 +205,11 @@ gupcr_runtime_put (const char *key, void *val, size_t len)
  * Get the key from PMI.
  */
 int
-gupcr_runtime_get(int rank, const char *key, void *val, size_t len)
+gupcr_runtime_get (int trank, const char *key, void *val, size_t len)
 {
   int __attribute__((unused)) keylen;
   int status;
-  snprintf(kvs_key, max_key_len, "gupcr-%s-%lu", key, (long unsigned) rank);
+  snprintf(kvs_key, max_key_len, "gupcr-%s-%lu", key, (long unsigned) trank);
 #if LIBUPC_JOB_PMI2_API
   status = PMI2_KVS_Get(kvs_name, PMI2_ID_NULL, kvs_key, kvs_val,
 			max_val_len, &keylen);
@@ -215,6 +217,7 @@ gupcr_runtime_get(int rank, const char *key, void *val, size_t len)
   status = PMI_KVS_Get(kvs_name, kvs_key, kvs_val, max_val_len);
 #endif
   CHECK_PMI (status);
+  gupcr_log (FC_SYSTEM, "[%d] PMI get key: %s val: %s", rank, kvs_key, kvs_val);
   status = decode(kvs_val, val, len);
   return status;
 }
@@ -246,9 +249,7 @@ gupcr_runtime_exchange (const char *key, void *val, size_t len, void *res)
   dst = res;
   for (i = 0; i < size; ++i)
     {
-      if (i == rank)
-        memcpy (dst, val, len);
-      else
+      if (i != rank)
         if (gupcr_runtime_get (i, key, dst, len))
 	  return status;
       dst += len;

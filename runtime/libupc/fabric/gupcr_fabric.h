@@ -215,6 +215,7 @@ extern void gupcr_fabric_init (void);
 extern void gupcr_fabric_fini (void);
 extern void gupcr_fabric_ni_init (void);
 extern void gupcr_fabric_ni_fini (void);
+extern fab_ep_t gupcr_fabric_endpoint (const char *, char **, fab_av_t *);
 extern void gupcr_nodetree_setup (void);
 
 #endif /* gupcr_fabric.h */

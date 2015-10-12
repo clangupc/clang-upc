@@ -48,6 +48,23 @@ fab_mr_t gupcr_coll_mr;
 /** Local memory access memory region  */
 fab_mr_t gupcr_coll_lmr;
 #endif
+/** Collectives endpoint */
+fab_ep_t gupcr_coll_ep;
+#if !GUPCR_FABRIC_SCALABLE_CTX
+/** Address vector for remote endpoints  */
+fab_av_t gupcr_coll_av;
+/** Collectives endpoint names  */
+char *gupcr_coll_epnames;
+#endif
+/** Target endpoint */
+#if GUPCR_FABRIC_SCALABLE_CTX
+#define GUPCR_TARGET_ADDR(target) \
+	fi_rx_addr ((fi_addr_t)target, \
+	GUPCR_SERVICE_COLL, GUPCR_SERVICE_BITS)
+#else
+#define GUPCR_TARGET_ADDR(target) \
+	fi_rx_addr ((fi_addr_t)target, 0, 1)
+#endif
 
 /** Collectives number of received puts on NC */
 static size_t gupcr_coll_signal_cnt;
@@ -161,9 +178,7 @@ gupcr_coll_put (size_t dthread, size_t doffset, size_t soffset, size_t nbytes)
       gupcr_fabric_size_call (fi_inject_write, csize,
 			 (gupcr_coll_tx_ep,
 			  GUPCR_LOCAL_INDEX (gupcr_gmem_base + soffset),
-			  nbytes, fi_rx_addr ((fi_addr_t) dthread,
-					      GUPCR_SERVICE_COLL,
-					      GUPCR_SERVICE_BITS),
+			  nbytes, GUPCR_TARGET_ADDR (dthread),
 			  doffset, GUPCR_MR_COLL));
     }
   else
@@ -171,9 +186,7 @@ gupcr_coll_put (size_t dthread, size_t doffset, size_t soffset, size_t nbytes)
       gupcr_fabric_size_call (fi_write, csize,
 			 (gupcr_coll_tx_ep,
 			  GUPCR_LOCAL_INDEX (gupcr_gmem_base + soffset),
-			  nbytes, NULL, fi_rx_addr ((fi_addr_t) dthread,
-						    GUPCR_SERVICE_COLL,
-						    GUPCR_SERVICE_BITS),
+			  nbytes, NULL, GUPCR_TARGET_ADDR (dthread),
 			  doffset, GUPCR_MR_COLL, NULL));
     }
 }
@@ -225,9 +238,7 @@ gupcr_coll_put_atomic (size_t dthread, size_t doffset, size_t soffset,
   gupcr_fabric_call (fi_atomic,
 		     (gupcr_coll_tx_ep,
 		      GUPCR_LOCAL_INDEX (gupcr_gmem_base + soffset),
-		      1, NULL, fi_rx_addr ((fi_addr_t) dthread,
-					   GUPCR_SERVICE_ATOMIC,
-					   GUPCR_SERVICE_BITS),
+		      1, NULL,  GUPCR_TARGET_ADDR (dthread),
 		      doffset, GUPCR_MR_COLL, datatype, op, NULL));
 }
 
@@ -314,6 +325,7 @@ gupcr_coll_signal_wait (size_t cnt)
 void
 gupcr_coll_init (void)
 {
+  int sep_ctx;
   cntr_attr_t cntr_attr = { 0 };
   cq_attr_t cq_attr = { 0 };
   tx_attr_t tx_attr = { 0 };
@@ -326,12 +338,19 @@ gupcr_coll_init (void)
   gupcr_coll_ack_cnt = 0;
 
   /* Create context endpoints for COLL transfers.  */
+#if GUPCR_FABRIC_SCALABLE_CTX
+  gupcr_coll_ep = gupcr_ep;
+  sep_ctx = GUPCR_SERVICE_COLL;
+#else
+  gupcr_coll_ep = gupcr_fabric_endpoint ("coll", &gupcr_coll_epnames, &gupcr_coll_av);
+  sep_ctx = 0;
+#endif
   tx_attr.op_flags = FI_DELIVERY_COMPLETE;
   gupcr_fabric_call (fi_tx_context,
-		     (gupcr_ep, GUPCR_SERVICE_COLL, &tx_attr, &gupcr_coll_tx_ep,
+		     (gupcr_coll_ep, sep_ctx, &tx_attr, &gupcr_coll_tx_ep,
 		      NULL));
   gupcr_fabric_call (fi_rx_context,
-		     (gupcr_ep, GUPCR_SERVICE_COLL, &rx_attr, &gupcr_coll_rx_ep,
+		     (gupcr_coll_ep, sep_ctx, &rx_attr, &gupcr_coll_rx_ep,
 		      NULL));
 
   /* ... and completion counter/eq for remote read/write.  */
@@ -412,8 +431,16 @@ gupcr_coll_fini (void)
   gupcr_fabric_call (fi_close, (&gupcr_coll_lmr->fid));
 #endif
   /* NOTE: Do not check for errors.  Fails occasionally.  */
+#if 0
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_coll_rx_ep->fid));
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_coll_tx_ep->fid));
+#endif
+#if !GUPCR_FABRIC_SCALABLE_CTX
+  gupcr_fabric_call_nc (fi_close, status, (&gupcr_coll_ep->fid));
+  gupcr_fabric_call_nc (fi_close, status, (&gupcr_coll_av->fid));
+  free (gupcr_coll_epnames);
+#endif
+  gupcr_log (FC_COLL, "coll fini completed");
 }
 
 /** @} */

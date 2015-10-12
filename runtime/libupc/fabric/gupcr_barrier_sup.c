@@ -54,6 +54,27 @@
 DEFINE_ENDPOINTS (bup)
 DEFINE_ENDPOINTS (bdown)
 
+/** Barrier endpoints */
+fab_ep_t gupcr_bup_ep;
+fab_ep_t gupcr_bdown_ep;
+#if !GUPCR_FABRIC_SCALABLE_CTX
+/** Address vector for remote endpoints  */
+fab_av_t gupcr_bup_av;
+fab_av_t gupcr_bdown_av;
+/** Barrier endpoint names  */
+char *gupcr_bup_epnames;
+char *gupcr_bdown_epnames;
+#endif
+/** Target endpoint */
+#if GUPCR_FABRIC_SCALABLE_CTX
+#define GUPCR_TARGET_ADDR(target,service) \
+	fi_rx_addr ((fi_addr_t)target, \
+	service, GUPCR_SERVICE_BITS)
+#else
+#define GUPCR_TARGET_ADDR(target,service) \
+	fi_rx_addr ((fi_addr_t)target, 0, 1)
+#endif
+
 /** Max number of outstanding triggered operations  */
 #define GUPCR_BAR_MAX_TRIG_CTX 3
 /** Triggered context structures.  Libfabric spec requires context
@@ -72,7 +93,7 @@ gupcr_barrier_put (enum barrier_dir dir, void *src, int thread, void *dst,
 		   size_t count)
 {
   fab_ep_t ep = dir == BARRIER_UP ? gupcr_bup_tx_ep : gupcr_bdown_tx_ep;
-  int bar_serv = dir == BARRIER_UP ?
+  int bar_serv __attribute__ ((unused)) = dir == BARRIER_UP ?
 		GUPCR_SERVICE_BARRIER_UP : GUPCR_SERVICE_BARRIER_DOWN;
   gupcr_debug (FC_BARRIER, "%lx -> %d:%lx (%ld)", (unsigned long)src,
 	       thread, (unsigned long) dst, (unsigned long) count);
@@ -81,8 +102,7 @@ gupcr_barrier_put (enum barrier_dir dir, void *src, int thread, void *dst,
     {
       gupcr_fabric_call (fi_inject_write,
 			 (ep, (const void *) src, count,
-			  fi_rx_addr ((fi_addr_t) thread,
-			  bar_serv, GUPCR_SERVICE_BITS),
+			  GUPCR_TARGET_ADDR (thread, bar_serv),
 			  (uint64_t) GUPCR_LOCAL_INDEX (dst),
 			  dir == BARRIER_UP ? GUPCR_MR_BARRIER_UP :
 					      GUPCR_MR_BARRIER_DOWN));
@@ -91,8 +111,7 @@ gupcr_barrier_put (enum barrier_dir dir, void *src, int thread, void *dst,
     {
       gupcr_fabric_call (fi_write,
 			 (ep, (const void *) src, count, NULL,
-			  fi_rx_addr ((fi_addr_t) thread,
-			  bar_serv, GUPCR_SERVICE_BITS),
+			  GUPCR_TARGET_ADDR (thread, bar_serv),
 			  (uint64_t) GUPCR_LOCAL_INDEX (dst),
 			  dir == BARRIER_UP ? GUPCR_MR_BARRIER_UP :
 			  GUPCR_MR_BARRIER_DOWN, NULL));
@@ -148,7 +167,7 @@ gupcr_barrier_tr_put (enum barrier_dir dir, void *src,
 		      enum barrier_dir from_dir, size_t trig, int ctx)
 {
   fab_ep_t ep = dir == BARRIER_UP ? gupcr_bup_tx_ep : gupcr_bdown_tx_ep;
-  int bar_serv = dir == BARRIER_UP ?
+  int bar_serv __attribute__ ((unused)) = dir == BARRIER_UP ?
 		GUPCR_SERVICE_BARRIER_UP : GUPCR_SERVICE_BARRIER_DOWN;
   gupcr_assert (ctx < GUPCR_BAR_MAX_TRIG_CTX);
   gupcr_debug (FC_BARRIER, "%lx -> %d:%lx (%ld)", (unsigned long)src,
@@ -178,8 +197,7 @@ gupcr_barrier_tr_put (enum barrier_dir dir, void *src,
     endpt.key = dir == BARRIER_UP ? GUPCR_MR_BARRIER_UP :
 				    GUPCR_MR_BARRIER_DOWN;
     msg_rma.msg_iov = &msg;
-    msg_rma.addr = fi_rx_addr ((fi_addr_t) thread, bar_serv,
-			       GUPCR_SERVICE_BITS);
+    msg_rma.addr = GUPCR_TARGET_ADDR (thread, bar_serv);
     msg_rma.rma_iov = &endpt;
     msg_rma.context = &trig_ctx[ctx];
     gupcr_fabric_call (fi_writemsg, (ep, &msg_rma, FI_TRIGGER));
@@ -202,8 +220,7 @@ gupcr_barrier_atomic (int *src, int thread, int *dst)
     {
       gupcr_fabric_call (fi_inject_atomic,
 			 (gupcr_bup_tx_ep, (const void *) src, 1,
-			  fi_rx_addr ((fi_addr_t) thread,
-			  GUPCR_SERVICE_BARRIER_UP, GUPCR_SERVICE_BITS),
+			  GUPCR_TARGET_ADDR (thread, GUPCR_SERVICE_BARRIER_UP),
 			  (uint64_t) GUPCR_LOCAL_INDEX (dst), GUPCR_MR_BARRIER_UP,
 			  FI_UINT32, FI_MIN));
     }
@@ -211,8 +228,7 @@ gupcr_barrier_atomic (int *src, int thread, int *dst)
     {
       gupcr_fabric_call (fi_atomic,
 			 (gupcr_bup_tx_ep, (const void *) src, 1, NULL,
-			  fi_rx_addr ((fi_addr_t) thread,
-			  GUPCR_SERVICE_BARRIER_UP, GUPCR_SERVICE_BITS),
+			  GUPCR_TARGET_ADDR (thread, GUPCR_SERVICE_BARRIER_UP),
 			  (uint64_t) GUPCR_LOCAL_INDEX (dst), GUPCR_MR_BARRIER_UP,
 			  FI_UINT32, FI_MIN, NULL));
     }
@@ -245,8 +261,7 @@ gupcr_barrier_tr_atomic (int *src, int thread, int *dst, size_t trig, int ctx)
   endpt.count = 1;
   endpt.key = GUPCR_MR_BARRIER_UP;
   msg_atomic.msg_iov = &msg;
-  msg_atomic.addr = fi_rx_addr ((fi_addr_t) thread, GUPCR_SERVICE_BARRIER_UP,
-				GUPCR_SERVICE_BITS);
+  msg_atomic.addr = GUPCR_TARGET_ADDR (thread, GUPCR_SERVICE_BARRIER_UP);
   msg_atomic.rma_iov = &endpt;
   msg_atomic.context = &trig_ctx[ctx];
   msg_atomic.datatype = FI_UINT32;
@@ -263,7 +278,7 @@ void
 gupcr_barrier_wait_up (size_t count)
 {
   int status;
-  gupcr_debug (FC_BARRIER, "");
+  gupcr_debug (FC_BARRIER, "%ld", count);
   gupcr_bup_rx_count += count;
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(gupcr_bup_rx_ct, gupcr_bup_rx_count,
@@ -330,7 +345,7 @@ gupcr_barrier_sup_init (void)
 	gupcr_##bar##_tx_put_count = 0; \
 	gupcr_##bar##_tx_get_count = 0; \
 	gupcr_fabric_call (fi_tx_context, \
-			   (gupcr_ep, ep_service, &tx_attr, \
+			   (gupcr_##bar##_ep, ep_service, &tx_attr, \
 			    &gupcr_##bar##_tx_ep, NULL)); \
 	/* Create local endpoint counter/queue.  */ \
 	cntr_attr.events = FI_CNTR_EVENTS_COMP; \
@@ -364,7 +379,7 @@ gupcr_barrier_sup_init (void)
 	/* Create target side of the endpoint.  */ \
 	gupcr_##bar##_rx_count = 0; \
 	gupcr_fabric_call (fi_rx_context, \
-			   (gupcr_ep, ep_service, &rx_attr, \
+			   (gupcr_##bar##_ep, ep_service, &rx_attr, \
 			    &gupcr_##bar##_rx_ep, NULL)); \
 	/* Create target memory region.  Map the whole memory too.  */ \
 	gupcr_fabric_call (fi_mr_reg, (gupcr_fd, USER_PROG_MEM_START, \
@@ -392,10 +407,18 @@ gupcr_barrier_sup_init (void)
 	gupcr_fabric_call (fi_enable, (gupcr_##bar##_rx_ep)); \
 	gupcr_fabric_call (fi_ep_bind, (gupcr_##bar##_rx_ep, \
 				       &gupcr_##bar##_rx_mr->fid, \
-				       FI_REMOTE_WRITE | FI_REMOTE_READ)); \
-
+				       FI_REMOTE_WRITE | FI_REMOTE_READ));
+#if GUPCR_FABRIC_SCALABLE_CTX
+  gupcr_bup_ep = gupcr_ep;
+  gupcr_bdown_ep = gupcr_ep;
   CREATE_ENDPOINTS (bup, GUPCR_SERVICE_BARRIER_UP, GUPCR_MR_BARRIER_UP);
   CREATE_ENDPOINTS (bdown, GUPCR_SERVICE_BARRIER_DOWN, GUPCR_MR_BARRIER_DOWN);
+#else
+  gupcr_bup_ep = gupcr_fabric_endpoint ("bup", &gupcr_bup_epnames, &gupcr_bup_av);
+  gupcr_bdown_ep = gupcr_fabric_endpoint ("bdown", &gupcr_bdown_epnames, &gupcr_bdown_av);
+  CREATE_ENDPOINTS (bup, 0, GUPCR_MR_BARRIER_UP);
+  CREATE_ENDPOINTS (bdown, 0, GUPCR_MR_BARRIER_DOWN);
+#endif
 }
 
 /**
@@ -420,7 +443,17 @@ gupcr_barrier_sup_fini (void)
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_##bar##_tx_ep->fid));
 
   DELETE_ENDPOINTS (bup);
+#if !GUPCR_FABRIC_SCALABLE_CTX
+  gupcr_fabric_call_nc (fi_close, status, (&gupcr_bup_ep->fid));
+  gupcr_fabric_call_nc (fi_close, status, (&gupcr_bup_av->fid));
+  free (gupcr_bup_epnames);
+#endif
   DELETE_ENDPOINTS (bdown);
+#if !GUPCR_FABRIC_SCALABLE_CTX
+  gupcr_fabric_call_nc (fi_close, status, (&gupcr_bdown_ep->fid));
+  gupcr_fabric_call_nc (fi_close, status, (&gupcr_bdown_av->fid));
+  free (gupcr_bdown_epnames);
+#endif
 }
 
 /** @} */

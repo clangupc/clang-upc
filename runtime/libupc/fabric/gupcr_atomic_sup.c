@@ -42,6 +42,23 @@ static size_t gupcr_atomic_mr_count;
 /** Local memory access memory region  */
 static fab_mr_t gupcr_atomic_lmr;
 #endif
+/** Atomic endpoint */
+fab_ep_t gupcr_atomic_ep;
+#if !GUPCR_FABRIC_SCALABLE_CTX
+/** Address vector for remote endpoints  */
+fab_av_t gupcr_atomic_av;
+/** Atomic endpoint names  */
+char *gupcr_atomic_epnames;
+#endif
+/** Target endpoint */
+#if GUPCR_FABRIC_SCALABLE_CTX
+#define GUPCR_TARGET_ADDR(target) \
+	fi_rx_addr ((fi_addr_t)target, \
+	GUPCR_SERVICE_ATOMIC, GUPCR_SERVICE_BITS)
+#else
+#define GUPCR_TARGET_ADDR(target) \
+	fi_rx_addr ((fi_addr_t)target, 0, 1)
+#endif
 
 /** Index of the local memory location */
 #define GUPCR_LOCAL_INDEX(addr) \
@@ -73,9 +90,7 @@ gupcr_atomic_get (size_t dthread, size_t doffset, void *fetch_ptr,
   gupcr_fabric_call (fi_fetch_atomic,
 		     (gupcr_atomic_tx_ep, NULL,
 		      1, NULL, GUPCR_LOCAL_INDEX (fetch_ptr),
-		      NULL, fi_rx_addr ((fi_addr_t) dthread,
-						   GUPCR_SERVICE_ATOMIC,
-						   GUPCR_SERVICE_BITS),
+		      NULL, GUPCR_TARGET_ADDR (dthread),
 		      doffset, GUPCR_MR_ATOMIC, type,
 		      FI_ATOMIC_READ, NULL));
   gupcr_atomic_mr_count += 1;
@@ -114,9 +129,7 @@ gupcr_atomic_set (size_t dthread, size_t doffset, void *fetch_ptr,
   gupcr_fabric_call (fi_fetch_atomic,
 		     (gupcr_atomic_tx_ep, GUPCR_LOCAL_INDEX (value),
 		      1, NULL, GUPCR_LOCAL_INDEX (atomic_tmp_buf),
-		      NULL, fi_rx_addr ((fi_addr_t) dthread,
-						   GUPCR_SERVICE_ATOMIC,
-						   GUPCR_SERVICE_BITS),
+		      NULL, GUPCR_TARGET_ADDR (dthread),
 		      doffset, GUPCR_MR_ATOMIC, type,
 		      FI_ATOMIC_WRITE, NULL));
 
@@ -161,9 +174,7 @@ gupcr_atomic_cswap (size_t dthread, size_t doffset, void *fetch_ptr,
 		     (gupcr_atomic_tx_ep, GUPCR_LOCAL_INDEX (value),
 		      1, NULL, GUPCR_LOCAL_INDEX (expected),
 		      NULL, GUPCR_LOCAL_INDEX (atomic_tmp_buf),
-		      NULL, fi_rx_addr ((fi_addr_t) dthread,
-						   GUPCR_SERVICE_ATOMIC,
-						   GUPCR_SERVICE_BITS),
+		      NULL, GUPCR_TARGET_ADDR (dthread),
 		      doffset, GUPCR_MR_ATOMIC, type,
 		      FI_CSWAP, NULL));
 
@@ -210,9 +221,7 @@ gupcr_atomic_op (size_t dthread, size_t doffset, void *fetch_ptr,
       gupcr_fabric_call (fi_fetch_atomic,
 			 (gupcr_atomic_tx_ep, GUPCR_LOCAL_INDEX (value),
 			 1, NULL, GUPCR_LOCAL_INDEX (atomic_tmp_buf),
-			 NULL, fi_rx_addr ((fi_addr_t) dthread,
-					   GUPCR_SERVICE_ATOMIC,
-					   GUPCR_SERVICE_BITS),
+			 NULL, GUPCR_TARGET_ADDR (dthread),
 			 doffset, GUPCR_MR_ATOMIC, type,
 			 op, NULL));
     }
@@ -220,9 +229,7 @@ gupcr_atomic_op (size_t dthread, size_t doffset, void *fetch_ptr,
     {
       gupcr_fabric_call (fi_atomic,
 			 (gupcr_atomic_tx_ep, GUPCR_LOCAL_INDEX (value),
-			 1, NULL, fi_rx_addr ((fi_addr_t) dthread,
-					      GUPCR_SERVICE_ATOMIC,
-					      GUPCR_SERVICE_BITS),
+			 1, NULL, GUPCR_TARGET_ADDR (dthread),
 			 doffset, GUPCR_MR_ATOMIC, type,
 			 op, NULL));
     }
@@ -248,21 +255,28 @@ gupcr_atomic_op (size_t dthread, size_t doffset, void *fetch_ptr,
 void
 gupcr_atomic_init (void)
 {
+  int sep_ctx;
   cntr_attr_t cntr_attr = { 0 };
   cq_attr_t cq_attr = { 0 };
   tx_attr_t tx_attr = { 0 };
   rx_attr_t rx_attr = { 0 };
+#if GUPCR_FABRIC_SCALABLE_CTX
+  gupcr_atomic_ep = gupcr_ep;
+  sep_ctx = GUPCR_SERVICE_ATOMIC;
+#else
+  gupcr_atomic_ep = gupcr_fabric_endpoint ("atomic", &gupcr_atomic_epnames,
+					   &gupcr_atomic_av);
+  sep_ctx = 0;
+#endif
 
   gupcr_log (FC_ATOMIC, "atomic init called");
 
   /* Create context endpoints for ATOMIC transfers.  */
   tx_attr.op_flags = FI_DELIVERY_COMPLETE;
-  gupcr_fabric_call (fi_tx_context,
-		     (gupcr_ep, GUPCR_SERVICE_ATOMIC, &tx_attr, &gupcr_atomic_tx_ep,
-		      NULL));
-  gupcr_fabric_call (fi_rx_context,
-		     (gupcr_ep, GUPCR_SERVICE_ATOMIC, &rx_attr, &gupcr_atomic_rx_ep,
-		      NULL));
+  gupcr_fabric_call (fi_tx_context, (gupcr_atomic_ep, sep_ctx,
+				     &tx_attr, &gupcr_atomic_tx_ep, NULL));
+  gupcr_fabric_call (fi_rx_context, (gupcr_atomic_ep, sep_ctx,
+				     &rx_attr, &gupcr_atomic_rx_ep, NULL));
 
   /* ... and completion cntr/cq for remote read/write.  */
   cntr_attr.events = FI_CNTR_EVENTS_COMP;
@@ -330,6 +344,11 @@ gupcr_atomic_fini (void)
   /* NOTE: Do not check for errors.  Fails occasionally.  */
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_atomic_rx_ep->fid));
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_atomic_tx_ep->fid));
+#if !GUPCR_FABRIC_SCALABLE_CTX
+  gupcr_fabric_call_nc (fi_close, status, (&gupcr_atomic_ep->fid));
+  gupcr_fabric_call_nc (fi_close, status, (&gupcr_atomic_av->fid));
+  free (gupcr_atomic_epnames);
+#endif
   gupcr_log (FC_ATOMIC, "atomic fini completed");
 }
 

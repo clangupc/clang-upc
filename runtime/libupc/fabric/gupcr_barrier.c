@@ -396,8 +396,12 @@ __upc_wait (int barrier_id)
 void
 __upc_barrier (int barrier_id)
 {
+#if 0
   __upc_notify (barrier_id);
   __upc_wait (barrier_id);
+#else
+  gupcr_runtime_barrier ();
+#endif
 }
 
 /* This broadcast implementation uses barrier resources
@@ -567,6 +571,7 @@ gupcr_barrier_init (void)
   gupcr_log (FC_BARRIER, "barrier init called");
   notify_value = BARRIER_ID_MAX;
   gupcr_barrier_sup_init ();
+  gupcr_log (FC_BARRIER, "barrier init completed");
 }
 
 /**
@@ -579,6 +584,7 @@ gupcr_barrier_fini (void)
 {
   gupcr_log (FC_BARRIER, "barrier fini called");
   gupcr_barrier_sup_fini ();
+  gupcr_log (FC_BARRIER, "barrier fini completed");
 }
 
 /** @} */
