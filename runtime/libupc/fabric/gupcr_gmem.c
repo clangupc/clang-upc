@@ -34,15 +34,11 @@
 /** Index of the local memory location */
 #define GUPCR_LOCAL_INDEX(addr) \
 	(void *) ((char *) addr - (char *) USER_PROG_MEM_START)
-/** Target endpoint */
-#if GUPCR_FABRIC_SCALABLE_CTX
+/** Target address */
 #define GUPCR_TARGET_ADDR(target) \
 	fi_rx_addr ((fi_addr_t)target, \
-	GUPCR_SERVICE_GMEM, GUPCR_SERVICE_BITS)
-#else
-#define GUPCR_TARGET_ADDR(target) \
-	fi_rx_addr ((fi_addr_t)target, 0, 1)
-#endif
+	GUPCR_FABRIC_SCALABLE_CTX() ? GUPCR_SERVICE_GMEM : 0, \
+	GUPCR_FABRIC_SCALABLE_CTX() ? GUPCR_SERVICE_BITS : 1)
 
 /** Shared memory base and size */
 void *gupcr_gmem_base;
@@ -89,12 +85,10 @@ fab_mr_t gupcr_gmem_lmr;
 
 /** GMEM endpoint */
 fab_ep_t gupcr_gmem_ep;
-#if !GUPCR_FABRIC_SCALABLE_CTX
 /** Address vector for remote endpoints  */
 fab_av_t gupcr_gmem_av;
 /** GMEM endpoint names  */
 char *gupcr_gmem_epnames;
-#endif
 
 /**
  * Allocate memory for this thread's shared space contribution.
@@ -435,13 +429,16 @@ gupcr_gmem_init (void)
   gupcr_gmem_alloc_shared ();
 
   /* Create endpoint for gmem.  */
-#if GUPCR_FABRIC_SCALABLE_CTX
-  gupcr_gmem_ep = gupcr_ep;
-  sep_ctx = GUPCR_SERVICE_GMEM;
-#else
-  gupcr_gmem_ep = gupcr_fabric_endpoint ("gmem", &gupcr_gmem_epnames, &gupcr_gmem_av);
-  sep_ctx = 0;
-#endif
+  if (GUPCR_FABRIC_SCALABLE_CTX())
+    {
+      gupcr_gmem_ep = gupcr_ep;
+      sep_ctx = GUPCR_SERVICE_GMEM;
+    }
+  else
+    {
+      gupcr_gmem_ep = gupcr_fabric_endpoint ("gmem", &gupcr_gmem_epnames, &gupcr_gmem_av);
+      sep_ctx = 0;
+    }
   /* Create context endpoints for LOC transfers.  */
   tx_attr.op_flags = FI_DELIVERY_COMPLETE;
   /* Create context endpoints for GMEM transfers.  */
@@ -496,7 +493,7 @@ gupcr_gmem_init (void)
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, USER_PROG_MEM_START,
 				 USER_PROG_MEM_SIZE, FI_READ | FI_WRITE,
 				 0, 0, 0, &gupcr_gmem_lmr, NULL));
-  /* NOTE: No need to bind, it is done implictly.  */
+  /* NOTE: No need to bind, it is done implicitly.  */
   gupcr_fabric_call (fi_ep_bind, (gupcr_gmem_tx_ep,
 			          &gupcr_gmem_lmr->fid, FI_READ | FI_WRITE));
 #endif
@@ -530,16 +527,14 @@ gupcr_gmem_fini (void)
   gupcr_fabric_call (fi_close, (&gupcr_gmem_lmr->fid));
 #endif
   /* NOTE: Do not check for errors. Fails occasionally.  */
-#if 0
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_gmem_tx_ep->fid));
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_gmem_rx_ep->fid));
-#endif
-#if !GUPCR_FABRIC_SCALABLE_CTX
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_gmem_ep->fid));
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_gmem_av->fid));
-  free (gupcr_gmem_epnames);
-#endif
-  gupcr_log (FC_MEM, "gmem fini completed");
+  if (!GUPCR_FABRIC_SCALABLE_CTX())
+    {
+      gupcr_fabric_call_nc (fi_close, status, (&gupcr_gmem_ep->fid));
+      gupcr_fabric_call_nc (fi_close, status, (&gupcr_gmem_av->fid));
+      free (gupcr_gmem_epnames);
+    }
 }
 
 /** @} */

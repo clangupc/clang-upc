@@ -57,23 +57,18 @@ DEFINE_ENDPOINTS (bdown)
 /** Barrier endpoints */
 fab_ep_t gupcr_bup_ep;
 fab_ep_t gupcr_bdown_ep;
-#if !GUPCR_FABRIC_SCALABLE_CTX
 /** Address vector for remote endpoints  */
 fab_av_t gupcr_bup_av;
 fab_av_t gupcr_bdown_av;
 /** Barrier endpoint names  */
 char *gupcr_bup_epnames;
 char *gupcr_bdown_epnames;
-#endif
-/** Target endpoint */
-#if GUPCR_FABRIC_SCALABLE_CTX
+
+/** Target address */
 #define GUPCR_TARGET_ADDR(target,service) \
 	fi_rx_addr ((fi_addr_t)target, \
-	service, GUPCR_SERVICE_BITS)
-#else
-#define GUPCR_TARGET_ADDR(target,service) \
-	fi_rx_addr ((fi_addr_t)target, 0, 1)
-#endif
+	GUPCR_FABRIC_SCALABLE_CTX() ? service : 0, \
+	GUPCR_FABRIC_SCALABLE_CTX() ? GUPCR_SERVICE_BITS : 1)
 
 /** Max number of outstanding triggered operations  */
 #define GUPCR_BAR_MAX_TRIG_CTX 3
@@ -408,17 +403,20 @@ gupcr_barrier_sup_init (void)
 	gupcr_fabric_call (fi_ep_bind, (gupcr_##bar##_rx_ep, \
 				       &gupcr_##bar##_rx_mr->fid, \
 				       FI_REMOTE_WRITE | FI_REMOTE_READ));
-#if GUPCR_FABRIC_SCALABLE_CTX
-  gupcr_bup_ep = gupcr_ep;
-  gupcr_bdown_ep = gupcr_ep;
-  CREATE_ENDPOINTS (bup, GUPCR_SERVICE_BARRIER_UP, GUPCR_MR_BARRIER_UP);
-  CREATE_ENDPOINTS (bdown, GUPCR_SERVICE_BARRIER_DOWN, GUPCR_MR_BARRIER_DOWN);
-#else
-  gupcr_bup_ep = gupcr_fabric_endpoint ("bup", &gupcr_bup_epnames, &gupcr_bup_av);
-  gupcr_bdown_ep = gupcr_fabric_endpoint ("bdown", &gupcr_bdown_epnames, &gupcr_bdown_av);
-  CREATE_ENDPOINTS (bup, 0, GUPCR_MR_BARRIER_UP);
-  CREATE_ENDPOINTS (bdown, 0, GUPCR_MR_BARRIER_DOWN);
-#endif
+  if (GUPCR_FABRIC_SCALABLE_CTX())
+    {
+      gupcr_bup_ep = gupcr_ep;
+      gupcr_bdown_ep = gupcr_ep;
+      CREATE_ENDPOINTS (bup, GUPCR_SERVICE_BARRIER_UP, GUPCR_MR_BARRIER_UP);
+      CREATE_ENDPOINTS (bdown, GUPCR_SERVICE_BARRIER_DOWN, GUPCR_MR_BARRIER_DOWN);
+    }
+  else
+    {
+      gupcr_bup_ep = gupcr_fabric_endpoint ("bup", &gupcr_bup_epnames, &gupcr_bup_av);
+      gupcr_bdown_ep = gupcr_fabric_endpoint ("bdown", &gupcr_bdown_epnames, &gupcr_bdown_av);
+      CREATE_ENDPOINTS (bup, 0, GUPCR_MR_BARRIER_UP);
+      CREATE_ENDPOINTS (bdown, 0, GUPCR_MR_BARRIER_DOWN);
+    }
 }
 
 /**
@@ -443,17 +441,19 @@ gupcr_barrier_sup_fini (void)
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_##bar##_tx_ep->fid));
 
   DELETE_ENDPOINTS (bup);
-#if !GUPCR_FABRIC_SCALABLE_CTX
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_bup_ep->fid));
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_bup_av->fid));
-  free (gupcr_bup_epnames);
-#endif
+  if (!GUPCR_FABRIC_SCALABLE_CTX())
+    {
+      gupcr_fabric_call_nc (fi_close, status, (&gupcr_bup_ep->fid));
+      gupcr_fabric_call_nc (fi_close, status, (&gupcr_bup_av->fid));
+      free (gupcr_bup_epnames);
+    }
   DELETE_ENDPOINTS (bdown);
-#if !GUPCR_FABRIC_SCALABLE_CTX
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_bdown_ep->fid));
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_bdown_av->fid));
-  free (gupcr_bdown_epnames);
-#endif
+  if (!GUPCR_FABRIC_SCALABLE_CTX())
+    {
+      gupcr_fabric_call_nc (fi_close, status, (&gupcr_bdown_ep->fid));
+      gupcr_fabric_call_nc (fi_close, status, (&gupcr_bdown_av->fid));
+      free (gupcr_bdown_epnames);
+    }
 }
 
 /** @} */

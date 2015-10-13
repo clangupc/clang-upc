@@ -61,22 +61,16 @@ fab_mr_t gupcr_lock_lmr;
 
 /** Lock endpoint */
 fab_ep_t gupcr_lock_ep;
-#if !GUPCR_FABRIC_SCALABLE_CTX
 /** Address vector for remote endpoints  */
 fab_av_t gupcr_lock_av;
 /** Lock endpoint names  */
 char *gupcr_lock_epnames;
-#endif
 
-/** Target endpoint */
-#if GUPCR_FABRIC_SCALABLE_CTX
+/** Target address */
 #define GUPCR_TARGET_ADDR(target) \
 	fi_rx_addr ((fi_addr_t)target, \
-	GUPCR_SERVICE_LOCK, GUPCR_SERVICE_BITS)
-#else
-#define GUPCR_TARGET_ADDR(target) \
-	fi_rx_addr ((fi_addr_t)target, 0, 1)
-#endif
+	GUPCR_FABRIC_SCALABLE_CTX() ? GUPCR_SERVICE_LOCK : 0, \
+	GUPCR_FABRIC_SCALABLE_CTX() ? GUPCR_SERVICE_BITS : 1)
 
 /**
  * Execute lock-related atomic fetch and store remote operation.
@@ -265,13 +259,16 @@ gupcr_lock_init (void)
   gupcr_log (FC_LOCK, "lock init called");
 
   /* Create context endpoints for LOC transfers.  */
-#if GUPCR_FABRIC_SCALABLE_CTX
-  gupcr_lock_ep = gupcr_ep;
-  sep_ctx = GUPCR_SERVICE_LOCK;
-#else
-  gupcr_lock_ep = gupcr_fabric_endpoint ("lock", &gupcr_lock_epnames, &gupcr_lock_av);
-  sep_ctx = 0;
-#endif
+  if (GUPCR_FABRIC_SCALABLE_CTX())
+    {
+      gupcr_lock_ep = gupcr_ep;
+      sep_ctx = GUPCR_SERVICE_LOCK;
+    }
+  else
+    {
+      gupcr_lock_ep = gupcr_fabric_endpoint ("lock", &gupcr_lock_epnames, &gupcr_lock_av);
+      sep_ctx = 0;
+    }
   tx_attr.op_flags = FI_DELIVERY_COMPLETE;
   gupcr_fabric_call (fi_tx_context,
 		     (gupcr_lock_ep, sep_ctx, &tx_attr, &gupcr_lock_tx_ep,
@@ -365,15 +362,14 @@ gupcr_lock_fini (void)
   gupcr_fabric_call (fi_close, (&gupcr_lock_lmr->fid));
 #endif
   /* NOTE: Do not check for errors.  Fails occasionally.  */
-#if 0
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_lock_rx_ep->fid));
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_lock_tx_ep->fid));
-#endif
-#if !GUPCR_FABRIC_SCALABLE_CTX
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_lock_ep->fid));
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_lock_av->fid));
-  free (gupcr_lock_epnames);
-#endif
+  if (!GUPCR_FABRIC_SCALABLE_CTX())
+    {
+      gupcr_fabric_call_nc (fi_close, status, (&gupcr_lock_ep->fid));
+      gupcr_fabric_call_nc (fi_close, status, (&gupcr_lock_av->fid));
+      free (gupcr_lock_epnames);
+    }
 }
 
 /** @} */

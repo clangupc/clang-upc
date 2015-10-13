@@ -50,21 +50,16 @@ fab_mr_t gupcr_coll_lmr;
 #endif
 /** Collectives endpoint */
 fab_ep_t gupcr_coll_ep;
-#if !GUPCR_FABRIC_SCALABLE_CTX
 /** Address vector for remote endpoints  */
 fab_av_t gupcr_coll_av;
 /** Collectives endpoint names  */
 char *gupcr_coll_epnames;
-#endif
-/** Target endpoint */
-#if GUPCR_FABRIC_SCALABLE_CTX
+
+/** Target address */
 #define GUPCR_TARGET_ADDR(target) \
 	fi_rx_addr ((fi_addr_t)target, \
-	GUPCR_SERVICE_COLL, GUPCR_SERVICE_BITS)
-#else
-#define GUPCR_TARGET_ADDR(target) \
-	fi_rx_addr ((fi_addr_t)target, 0, 1)
-#endif
+	GUPCR_FABRIC_SCALABLE_CTX() ? GUPCR_SERVICE_COLL : 0, \
+	GUPCR_FABRIC_SCALABLE_CTX() ? GUPCR_SERVICE_BITS : 1)
 
 /** Collectives number of received puts on NC */
 static size_t gupcr_coll_signal_cnt;
@@ -332,19 +327,21 @@ gupcr_coll_init (void)
   rx_attr_t rx_attr = { 0 };
 
   gupcr_log (FC_COLL, "coll init called");
-
+  /* Create context endpoints for COLL transfers.  */
+  if (GUPCR_FABRIC_SCALABLE_CTX())
+    {
+      gupcr_coll_ep = gupcr_ep;
+      sep_ctx = GUPCR_SERVICE_COLL;
+    }
+  else
+    {
+      gupcr_coll_ep = gupcr_fabric_endpoint ("coll", &gupcr_coll_epnames, &gupcr_coll_av);
+      sep_ctx = 0;
+    }
   /* Reset the number of signals/acks.  */
   gupcr_coll_signal_cnt = 0;
   gupcr_coll_ack_cnt = 0;
 
-  /* Create context endpoints for COLL transfers.  */
-#if GUPCR_FABRIC_SCALABLE_CTX
-  gupcr_coll_ep = gupcr_ep;
-  sep_ctx = GUPCR_SERVICE_COLL;
-#else
-  gupcr_coll_ep = gupcr_fabric_endpoint ("coll", &gupcr_coll_epnames, &gupcr_coll_av);
-  sep_ctx = 0;
-#endif
   tx_attr.op_flags = FI_DELIVERY_COMPLETE;
   gupcr_fabric_call (fi_tx_context,
 		     (gupcr_coll_ep, sep_ctx, &tx_attr, &gupcr_coll_tx_ep,
@@ -431,15 +428,14 @@ gupcr_coll_fini (void)
   gupcr_fabric_call (fi_close, (&gupcr_coll_lmr->fid));
 #endif
   /* NOTE: Do not check for errors.  Fails occasionally.  */
-#if 0
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_coll_rx_ep->fid));
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_coll_tx_ep->fid));
-#endif
-#if !GUPCR_FABRIC_SCALABLE_CTX
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_coll_ep->fid));
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_coll_av->fid));
-  free (gupcr_coll_epnames);
-#endif
+  if (!GUPCR_FABRIC_SCALABLE_CTX())
+    {
+      gupcr_fabric_call_nc (fi_close, status, (&gupcr_coll_ep->fid));
+      gupcr_fabric_call_nc (fi_close, status, (&gupcr_coll_av->fid));
+      free (gupcr_coll_epnames);
+    }
   gupcr_log (FC_COLL, "coll fini completed");
 }
 

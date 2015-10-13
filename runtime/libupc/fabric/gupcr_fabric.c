@@ -47,14 +47,15 @@ static fab_t gupcr_fab;
 fab_info_t gupcr_fi;
 /** Fabric domain */
 fab_domain_t gupcr_fd;
-#if GUPCR_FABRIC_SCALABLE_CTX
+
+/* Support for scalable endpoints */
 /** Endpoint comm resource  */
 fab_ep_t gupcr_ep;
 /** Address vector for remote endpoints  */
 fab_av_t gupcr_av;
 /** All endpoint names in the system */
 static char *gupcr_epnames;
-#endif
+
 /** Endpoint name length  */
 static size_t gupcr_epnamelen;
 
@@ -65,7 +66,10 @@ static const char *fab_name = GUPCR_FABRIC_NAME;
 /** Libfabric provider */
 static const char *fab_prov_name = GUPCR_FABRIC_PROVIDER;
 /** Libfabric shared context (disabled by default) */
-int gupcr_enable_shared_ctx = 0;
+int gupcr_enable_shared_tx_ctx = 0;
+int gupcr_enable_shared_rx_ctx = 0;
+/** Libfabric scalable context (disabled by default) */
+int gupcr_enable_scalable_ctx = 0;
 /** Interface IPv4 address */
 in_addr_t net_addr;
 /** IPv4 addresses for all ranks */
@@ -597,13 +601,8 @@ gupcr_fabric_init (void)
     FI_ATOMICS;			/* atomics capability,  */
   ep_attr.type = FI_EP_RDM;	/* Reliable datagram message.  */
   hints->addr_format = FI_FORMAT_UNSPEC;
-#if GUPCR_FABRIC_SCALABLE_CTX
   ep_attr.rx_ctx_cnt = GUPCR_SERVICE_COUNT;
   ep_attr.tx_ctx_cnt = GUPCR_SERVICE_COUNT;
-#else
-  ep_attr.rx_ctx_cnt = 1;
-  ep_attr.tx_ctx_cnt = 1;
-#endif
   hints->ep_attr = &ep_attr;
 
   /* Choose provider.  */
@@ -620,14 +619,14 @@ gupcr_fabric_init (void)
   gupcr_fabric_call (fi_getinfo,
 		     (FI_VERSION (1, 0), node, NULL,
 		      FI_SOURCE, hints, &gupcr_fi));
-  if (gupcr_fi->ep_attr->rx_ctx_cnt < ep_attr.rx_ctx_cnt)
-    gupcr_fatal_error ("cannot provide requested number of rx scalable "
-		       "contexts: req %ld, prov %ld", ep_attr.rx_ctx_cnt,
-		       gupcr_fi->ep_attr->rx_ctx_cnt);
-  if (gupcr_fi->ep_attr->tx_ctx_cnt < ep_attr.tx_ctx_cnt)
-    gupcr_fatal_error ("cannot provide requested number of tx scalable "
-		       "contexts: req %ld, prov %ld", ep_attr.tx_ctx_cnt,
-		       gupcr_fi->ep_attr->tx_ctx_cnt);
+  if (gupcr_fi->ep_attr->rx_ctx_cnt == ep_attr.rx_ctx_cnt &&
+      gupcr_fi->ep_attr->tx_ctx_cnt == ep_attr.tx_ctx_cnt)
+    {
+      gupcr_enable_scalable_ctx = 0;
+      gupcr_log
+        (FC_FABRIC, "enabled SCALABLE endpoint context");
+    }
+
 #if GUPCR_FABRIC_SHARED_CTX
   /* Check for shared context support.  In order to save TX/RX resources
      endpoints can share TX/RX contexts.  */
@@ -639,7 +638,22 @@ gupcr_fabric_init (void)
 			  (FI_VERSION (1, 0), node, NULL,
 			   FI_SOURCE, &hints, &ret_info));
     if (!status && (ret_info->ep_attr->tx_ctx_cnt == FI_SHARED_CONTEXT))
-      gupcr_enable_shared_ctx = 1;
+      {
+        gupcr_enable_shared_tx_ctx = 1;
+        gupcr_log
+          (FC_FABRIC, "enabled SHARED TX endpoint");
+      }
+    ep_attr.tx_ctx_cnt = 0;
+    ep_attr.rx_ctx_cnt = FI_SHARED_CONTEXT;
+    gupcr_fabric_call_nc (fi_getinfo, status,
+			  (FI_VERSION (1, 0), node, NULL,
+			   FI_SOURCE, &hints, &ret_info));
+    if (!status && (ret_info->ep_attr->rx_ctx_cnt == FI_SHARED_CONTEXT))
+      {
+        gupcr_enable_shared_rx_ctx = 1;
+        gupcr_log
+          (FC_FABRIC, "enabled SHARED RX endpoint");
+      }
   }
 #endif
   gupcr_fabric_call (fi_fabric, (gupcr_fi->fabric_attr, &gupcr_fab, NULL));
@@ -653,65 +667,13 @@ gupcr_fabric_init (void)
   gupcr_max_order_size = gupcr_fi->ep_attr->max_order_raw_size;
   gupcr_max_optim_size = gupcr_fi->tx_attr->inject_size;
 
-#if GUPCR_FABRIC_SCALABLE_CTX
-  {
-    int ret, status;
-    av_attr_t av_attr = { 0 };
-    /* Create an endpoint for all UPC contexts.  */
-    gupcr_fabric_call (fi_scalable_ep, (gupcr_fd, gupcr_fi, &gupcr_ep, NULL));
-
-    /* Other threads' endpoints are mapped via address vector table with
-       each threads' endpoint indexed by the thread number.  */
-    av_attr.type = FI_AV_TABLE;
-    av_attr.count = gupcr_rank_cnt;
-    /* TODO: Naming AV allows for AV to be shared among threads on the same
-       node. 
-       av_attr.name = "ENDPOINTS";
-       Not supported by all providers.
-     */
-    av_attr.name = NULL;
-    av_attr.rx_ctx_bits = GUPCR_SERVICE_BITS;
-    gupcr_fabric_call (fi_av_open, (gupcr_fd, &av_attr, &gupcr_av, NULL));
-    gupcr_fabric_call (fi_ep_bind, (gupcr_ep, &gupcr_av->fid, 0));
-
-    /* Enable endpoint.  */
-    gupcr_fabric_call (fi_enable, (gupcr_ep));
-
-    /* Exchange endpoint name with other threads.  */
-    /* Find the size of end-point name.  */
-    gupcr_fabric_call_nc (fi_getname, status, ((fid_t) gupcr_ep, NULL,
-					       &gupcr_epnamelen));
-    gupcr_epnames = calloc (gupcr_rank_cnt * gupcr_epnamelen, 1);
-    if (!gupcr_epnames)
-      gupcr_fatal_error ("cannot allocate %ld for epnames",
-			 gupcr_rank_cnt * gupcr_epnamelen);
-    gupcr_fabric_call (fi_getname, ((fid_t) gupcr_ep,
-				    &gupcr_epnames[gupcr_rank *
-						   gupcr_epnamelen],
-				    &gupcr_epnamelen));
-    ret =
-      gupcr_runtime_exchange ("sep",
-			      &gupcr_epnames[gupcr_rank * gupcr_epnamelen],
-			      gupcr_epnamelen, gupcr_epnames);
-    if (ret)
-      {
-	gupcr_fatal_error
-	  ("error (%d) reported while exchanging endpoints", ret);
-      }
-    gupcr_log
-      (FC_FABRIC, "exchanged ep names with %d threads", gupcr_rank_cnt);
-    /* Map endpoints.  */
+  /* If scalable endpoints are supported, we create only one endpoint
+     and each sub-system (gmem, locks, ...) creates its own scalable
+     endpoints.  */
+  if (GUPCR_FABRIC_SCALABLE_CTX())
     {
-      int insert_cnt;
-      gupcr_fabric_call_nc
-	(fi_av_insert, insert_cnt,
-	 (gupcr_av, gupcr_epnames, gupcr_rank_cnt, NULL, 0, NULL));
-      if (insert_cnt != gupcr_rank_cnt)
-	gupcr_fatal_error ("cannot av insert %d entries (reported %d)",
-			   gupcr_rank_cnt, insert_cnt);
+      gupcr_ep = gupcr_fabric_endpoint ("fabric", &gupcr_epnames, &gupcr_av);
     }
-  }
-#endif /* GUPCR_FABRIC_SCALABLE_CTX */
 }
 
 /**
@@ -780,6 +742,7 @@ gupcr_fabric_endpoint (const char *name, char **eps, fab_av_t * avs)
      Not supported by all providers.
    */
   av_attr.name = NULL;
+  av_attr.rx_ctx_bits = GUPCR_FABRIC_SCALABLE_CTX() ? GUPCR_SERVICE_BITS : 0;
   gupcr_fabric_call (fi_av_open, (gupcr_fd, &av_attr, &av, NULL));
   gupcr_fabric_call (fi_ep_bind, (ep, &av->fid, 0));
 

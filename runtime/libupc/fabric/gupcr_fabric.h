@@ -104,9 +104,6 @@ extern fab_ep_t gupcr_ep;
 extern fab_info_t gupcr_fi;
 /** Fabric domain */
 extern fab_domain_t gupcr_fd;
-/* TODO: Workaround for multiple endpoints under the same PTE.  */
-extern fab_info_t gupcr_fi_lock;
-extern fab_domain_t gupcr_fd_lock;
 /** Max ordered size - per network interface */
 extern size_t gupcr_max_order_size;
 #define GUPCR_MAX_PUT_ORDERED_SIZE gupcr_max_order_size
@@ -116,6 +113,9 @@ extern size_t gupcr_max_msg_size;
 /** Max size of data that can use optimized put operations */
 extern size_t gupcr_max_optim_size;
 #define GUPCR_MAX_OPTIM_SIZE gupcr_max_optim_size
+/** Support for scalable endpoints */
+extern int gupcr_enable_scalable_ctx;
+#define GUPCR_FABRIC_SCALABLE_CTX() (gupcr_enable_scalable_ctx != 0)
 /** Max time to wait for operation complete (10s) */
 #define GUPCR_TRANSFER_TIMEOUT -1
 

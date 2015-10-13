@@ -53,22 +53,16 @@ static fab_cq_t gupcr_nb_cq;
 
 /** Non-blocking endpoint */
 fab_ep_t gupcr_nb_ep;
-#if !GUPCR_FABRIC_SCALABLE_CTX
 /** Address vector for remote endpoints  */
 fab_av_t gupcr_nb_av;
 /** Non-blocking endpoint names  */
 char *gupcr_nb_epnames;
-#endif
 
-/** Target endpoint */
-#if GUPCR_FABRIC_SCALABLE_CTX
+/** Target address */
 #define GUPCR_TARGET_ADDR(target) \
 	fi_rx_addr ((fi_addr_t)target, \
-	GUPCR_SERVICE_NB, GUPCR_SERVICE_BITS)
-#else
-#define GUPCR_TARGET_ADDR(target) \
-	fi_rx_addr ((fi_addr_t)target, 0, 1)
-#endif
+	GUPCR_FABRIC_SCALABLE_CTX() ? GUPCR_SERVICE_NB : 0, \
+	GUPCR_FABRIC_SCALABLE_CTX() ? GUPCR_SERVICE_BITS : 1)
 
 /** Start of the explicit non-blocking MD */
 /* static char *gupcr_nb_mr_start; */
@@ -546,13 +540,16 @@ gupcr_nb_init (void)
   gupcr_log (FC_NB, "non-blocking transfer init called");
 
   /* Create context endpoints for NB/NBI transfers.  */
-#if GUPCR_FABRIC_SCALABLE_CTX
-  gupcr_nb_ep = gupcr_ep;
-  sep_ctx = GUPCR_SERVICE_NB;
-#else
-  gupcr_nb_ep = gupcr_fabric_endpoint ("nb", &gupcr_nb_epnames, &gupcr_nb_av);
-  sep_ctx = 0;
-#endif
+  if (GUPCR_FABRIC_SCALABLE_CTX())
+    {
+      gupcr_nb_ep = gupcr_ep;
+      sep_ctx = GUPCR_SERVICE_NB;
+    }
+  else
+    {
+      gupcr_nb_ep = gupcr_fabric_endpoint ("nb", &gupcr_nb_epnames, &gupcr_nb_av);
+      sep_ctx = 0;
+    }
   tx_attr.op_flags = FI_DELIVERY_COMPLETE;
   gupcr_fabric_call (fi_tx_context,
 		     (gupcr_nb_ep, sep_ctx, &tx_attr, &gupcr_nb_tx_ep,
@@ -652,11 +649,12 @@ gupcr_nb_fini (void)
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_nb_tx_ep->fid));
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_nbi_tx_ep->fid));
   gupcr_log (FC_NB, "non-blocking transfer fini completed");
-#if !GUPCR_FABRIC_SCALABLE_CTX
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_nb_ep->fid));
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_nb_av->fid));
-  free (gupcr_nb_epnames);
-#endif
+  if (!GUPCR_FABRIC_SCALABLE_CTX())
+    {
+      gupcr_fabric_call_nc (fi_close, status, (&gupcr_nb_ep->fid));
+      gupcr_fabric_call_nc (fi_close, status, (&gupcr_nb_av->fid));
+      free (gupcr_nb_epnames);
+    }
 }
 
 /** @} */

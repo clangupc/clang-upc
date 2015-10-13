@@ -94,9 +94,6 @@
 /* Select LIBFABRIC shared context support. */
 #cmakedefine GUPCR_FABRIC_SHARED_CTX @GUPCR_FABRIC_SHARED_CTX@
 
-/* Select LIBFABRIC shared context support. */
-#cmakedefine GUPCR_FABRIC_SCALABLE_CTX @GUPCR_FABRIC_SCALABLE_CTX@
-
 /* Define to 1 if PMI2 is available and used. */
 #cmakedefine LIBUPC_JOB_PMI2_API 1
 

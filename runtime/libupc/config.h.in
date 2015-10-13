@@ -91,9 +91,6 @@
 /* Select LIBFABRIC shared context support. */
 #undef GUPCR_FABRIC_SHARED_CTX
 
-/* Select LIBFABRIC scalable context support. */
-#undef GUPCR_FABRIC_SCALABLE_CTX
-
 /* Define to 1 if UPC runtime will use PMI2 API. */
 #undef LIBUPC_JOB_PMI2_API
 

@@ -44,21 +44,16 @@ static fab_mr_t gupcr_atomic_lmr;
 #endif
 /** Atomic endpoint */
 fab_ep_t gupcr_atomic_ep;
-#if !GUPCR_FABRIC_SCALABLE_CTX
 /** Address vector for remote endpoints  */
 fab_av_t gupcr_atomic_av;
 /** Atomic endpoint names  */
 char *gupcr_atomic_epnames;
-#endif
-/** Target endpoint */
-#if GUPCR_FABRIC_SCALABLE_CTX
+
+/** Target address */
 #define GUPCR_TARGET_ADDR(target) \
 	fi_rx_addr ((fi_addr_t)target, \
-	GUPCR_SERVICE_ATOMIC, GUPCR_SERVICE_BITS)
-#else
-#define GUPCR_TARGET_ADDR(target) \
-	fi_rx_addr ((fi_addr_t)target, 0, 1)
-#endif
+	GUPCR_FABRIC_SCALABLE_CTX() ? GUPCR_SERVICE_ATOMIC : 0, \
+	GUPCR_FABRIC_SCALABLE_CTX() ? GUPCR_SERVICE_BITS : 1)
 
 /** Index of the local memory location */
 #define GUPCR_LOCAL_INDEX(addr) \
@@ -260,17 +255,18 @@ gupcr_atomic_init (void)
   cq_attr_t cq_attr = { 0 };
   tx_attr_t tx_attr = { 0 };
   rx_attr_t rx_attr = { 0 };
-#if GUPCR_FABRIC_SCALABLE_CTX
-  gupcr_atomic_ep = gupcr_ep;
-  sep_ctx = GUPCR_SERVICE_ATOMIC;
-#else
-  gupcr_atomic_ep = gupcr_fabric_endpoint ("atomic", &gupcr_atomic_epnames,
-					   &gupcr_atomic_av);
-  sep_ctx = 0;
-#endif
-
   gupcr_log (FC_ATOMIC, "atomic init called");
-
+  if (GUPCR_FABRIC_SCALABLE_CTX())
+    {
+      gupcr_atomic_ep = gupcr_ep;
+      sep_ctx = GUPCR_SERVICE_ATOMIC;
+    }
+  else
+    {
+      gupcr_atomic_ep = gupcr_fabric_endpoint ("atomic", &gupcr_atomic_epnames,
+					       &gupcr_atomic_av);
+      sep_ctx = 0;
+    }
   /* Create context endpoints for ATOMIC transfers.  */
   tx_attr.op_flags = FI_DELIVERY_COMPLETE;
   gupcr_fabric_call (fi_tx_context, (gupcr_atomic_ep, sep_ctx,
@@ -344,11 +340,12 @@ gupcr_atomic_fini (void)
   /* NOTE: Do not check for errors.  Fails occasionally.  */
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_atomic_rx_ep->fid));
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_atomic_tx_ep->fid));
-#if !GUPCR_FABRIC_SCALABLE_CTX
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_atomic_ep->fid));
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_atomic_av->fid));
-  free (gupcr_atomic_epnames);
-#endif
+  if (!GUPCR_FABRIC_SCALABLE_CTX())
+    {
+      gupcr_fabric_call_nc (fi_close, status, (&gupcr_atomic_ep->fid));
+      gupcr_fabric_call_nc (fi_close, status, (&gupcr_atomic_av->fid));
+      free (gupcr_atomic_epnames);
+    }
   gupcr_log (FC_ATOMIC, "atomic fini completed");
 }
 

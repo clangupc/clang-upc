@@ -113,27 +113,21 @@ fab_mr_t gupcr_shutdown_lmr;
 #endif
 /** Shutdown endpoint */
 fab_ep_t gupcr_shutdown_ep;
-#if !GUPCR_FABRIC_SCALABLE_CTX
 /** Address vector for remote endpoints  */
 fab_av_t gupcr_shutdown_av;
 /** Shutdown endpoint names  */
 char *gupcr_shutdown_epnames;
-#endif
 
-/** Target endpoint */
-#if GUPCR_FABRIC_SCALABLE_CTX
+/** Target address */
 #define GUPCR_TARGET_ADDR(target) \
 	fi_rx_addr ((fi_addr_t)target, \
-	GUPCR_SERVICE_SHUTDOWN, GUPCR_SERVICE_BITS)
-#else
-#define GUPCR_TARGET_ADDR(target) \
-	fi_rx_addr ((fi_addr_t)target, 0, 1)
-#endif
+	GUPCR_FABRIC_SCALABLE_CTX() ? GUPCR_SERVICE_SHUTDOWN : 0, \
+	GUPCR_FABRIC_SCALABLE_CTX() ? GUPCR_SERVICE_BITS : 1)
 
 /**
  * Send a remote shutdown request to all threads.
  *
- * Wait for the thread's pthread and ACks from sending
+ * Wait for the thread's pthread and ACKs from sending
  * messages to other threads (with timeout).
  *
  * @param [in] status exit code passed to other threads
@@ -284,15 +278,18 @@ gupcr_shutdown_init (void)
   gupcr_log (FC_MISC, "shutdown init called");
 
   /* Create context endpoints for shutdown signalling.  */
-#if GUPCR_FABRIC_SCALABLE_CTX
-  gupcr_shutdown_ep = gupcr_ep;
-  sep_ctx = GUPCR_SERVICE_SHUTDOWN;
-#else
-  gupcr_shutdown_ep =
-    gupcr_fabric_endpoint ("shutdown", &gupcr_shutdown_epnames,
-			   &gupcr_shutdown_av);
-  sep_ctx = 0;
-#endif
+  if (GUPCR_FABRIC_SCALABLE_CTX())
+    {
+      gupcr_shutdown_ep = gupcr_ep;
+      sep_ctx = GUPCR_SERVICE_SHUTDOWN;
+    }
+  else
+    {
+      gupcr_shutdown_ep =
+      gupcr_fabric_endpoint ("shutdown", &gupcr_shutdown_epnames,
+			     &gupcr_shutdown_av);
+      sep_ctx = 0;
+    }
   tx_attr.op_flags = FI_DELIVERY_COMPLETE;
   gupcr_fabric_call (fi_tx_context,
 		     (gupcr_shutdown_ep, sep_ctx, &tx_attr,
@@ -405,11 +402,12 @@ gupcr_shutdown_fini (void)
   /* NOTE: Do not check for errors.  Fails occasionally.  */
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_shutdown_rx_ep->fid));
   gupcr_fabric_call_nc (fi_close, status, (&gupcr_shutdown_tx_ep->fid));
-#if !GUPCR_FABRIC_SCALABLE_CTX
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_shutdown_ep->fid));
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_shutdown_av->fid));
-  free (gupcr_shutdown_epnames);
-#endif
+  if (!GUPCR_FABRIC_SCALABLE_CTX())
+    {
+      gupcr_fabric_call_nc (fi_close, status, (&gupcr_shutdown_ep->fid));
+      gupcr_fabric_call_nc (fi_close, status, (&gupcr_shutdown_av->fid));
+      free (gupcr_shutdown_epnames);
+    }
   gupcr_log (FC_MISC, "shutdown fini completed");
 }
 
