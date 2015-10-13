@@ -622,7 +622,7 @@ gupcr_fabric_init (void)
   if (gupcr_fi->ep_attr->rx_ctx_cnt == ep_attr.rx_ctx_cnt &&
       gupcr_fi->ep_attr->tx_ctx_cnt == ep_attr.tx_ctx_cnt)
     {
-      gupcr_enable_scalable_ctx = 0;
+      gupcr_enable_scalable_ctx = 1;
       gupcr_log
         (FC_FABRIC, "enabled SCALABLE endpoint context");
     }
