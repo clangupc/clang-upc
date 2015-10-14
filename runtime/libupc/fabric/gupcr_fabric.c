@@ -601,8 +601,6 @@ gupcr_fabric_init (void)
     FI_ATOMICS;			/* atomics capability,  */
   ep_attr.type = FI_EP_RDM;	/* Reliable datagram message.  */
   hints->addr_format = FI_FORMAT_UNSPEC;
-  ep_attr.rx_ctx_cnt = GUPCR_SERVICE_COUNT;
-  ep_attr.tx_ctx_cnt = GUPCR_SERVICE_COUNT;
   hints->ep_attr = &ep_attr;
 
   /* Choose provider.  */
@@ -619,8 +617,8 @@ gupcr_fabric_init (void)
   gupcr_fabric_call (fi_getinfo,
 		     (FI_VERSION (1, 0), node, NULL,
 		      FI_SOURCE, hints, &gupcr_fi));
-  if (gupcr_fi->ep_attr->rx_ctx_cnt == ep_attr.rx_ctx_cnt &&
-      gupcr_fi->ep_attr->tx_ctx_cnt == ep_attr.tx_ctx_cnt)
+  if (gupcr_fi->ep_attr->rx_ctx_cnt >= GUPCR_SERVICE_COUNT &&
+      gupcr_fi->ep_attr->tx_ctx_cnt >= GUPCR_SERVICE_COUNT)
     {
       gupcr_enable_scalable_ctx = 1;
       gupcr_log
