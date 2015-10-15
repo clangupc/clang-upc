@@ -60,7 +60,10 @@
 #cmakedefine LIBUPC_JOB_PMI_LIBRARY_DIR "${LIBUPC_JOB_PMI_LIBRARY_DIR}"
 
 /* PMI2 job manager support */                                                    
-#cmakedefine LIBUPC_JOB_PMI2_API "${LIBUPC_JOB__PMI2_API}"
+#cmakedefine LIBUPC_JOB_PMI2_API ${LIBUPC_JOB_PMI2_API}
+
+/* PMI2 job manager library */                                                    
+#cmakedefine HAVE_PMI2_LIB 1
 
 /* Define if we have libxml2 */
 #cmakedefine CLANG_HAVE_LIBXML ${CLANG_HAVE_LIBXML}

@@ -7634,7 +7634,7 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
 #ifdef LIBUPC_JOB_PMI_LIBRARY_DIR
     CmdArgs.push_back("-L" LIBUPC_JOB_PMI_LIBRARY_DIR);
 #endif
-#ifdef LIBUPC_JOB_PMI2_API
+#if LIBUPC_JOB_PMI2_API && HAVE_PMI2_LIB
     CmdArgs.push_back("-lpmi2");
 #endif
     CmdArgs.push_back("-lpmi");
@@ -7646,7 +7646,7 @@ void gnutools::Link::ConstructJob(Compilation &C, const JobAction &JA,
 #ifdef LIBUPC_JOB_PMI_LIBRARY_DIR
     CmdArgs.push_back("-L" LIBUPC_JOB_PMI_LIBRARY_DIR);
 #endif
-#ifdef LIBUPC_JOB_PMI2_API
+#if LIBUPC_JOB_PMI2_API && HAVE_PMI2_LIB
     CmdArgs.push_back("-lpmi2");
 #endif
     CmdArgs.push_back("-lpmi");

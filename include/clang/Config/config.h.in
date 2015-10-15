@@ -65,6 +65,9 @@
 /* PMI2 support */
 #undef LIBUPC_JOB_PMI2_API
 
+/* PMI2 library *
+#undef HAVE_PMI2_LIB
+
 /* Define if we have libxml2 */
 #undef CLANG_HAVE_LIBXML
 
