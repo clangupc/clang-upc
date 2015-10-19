@@ -26,10 +26,8 @@
  */
 
 /** Fabric communications endpoint resources */
-/** RX Endpoint comm resource  */
-static fab_ep_t gupcr_atomic_rx_ep;
-/** TX Endpoint comm resource  */
-static fab_ep_t gupcr_atomic_tx_ep;
+/** Atomic endpoint info */
+gupcr_epinfo_t gupcr_atomic_ep;
 /** Atomic local access MR handle */
 static fab_mr_t gupcr_atomic_mr;
 /** Atomic local access MR counting event handle */
@@ -42,12 +40,6 @@ static size_t gupcr_atomic_mr_count;
 /** Local memory access memory region  */
 static fab_mr_t gupcr_atomic_lmr;
 #endif
-/** Atomic endpoint */
-fab_ep_t gupcr_atomic_ep;
-/** Address vector for remote endpoints  */
-fab_av_t gupcr_atomic_av;
-/** Atomic endpoint names  */
-char *gupcr_atomic_epnames;
 
 /** Target address */
 #define GUPCR_TARGET_ADDR(target) \
@@ -83,11 +75,10 @@ gupcr_atomic_get (size_t dthread, size_t doffset, void *fetch_ptr,
 
   // Atomic GET operation
   gupcr_fabric_call (fi_fetch_atomic,
-		     (gupcr_atomic_tx_ep, NULL,
+		     (gupcr_atomic_ep.tx_ep, NULL,
 		      1, NULL, GUPCR_LOCAL_INDEX (fetch_ptr),
 		      NULL, GUPCR_TARGET_ADDR (dthread),
-		      doffset, GUPCR_MR_ATOMIC, type,
-		      FI_ATOMIC_READ, NULL));
+		      doffset, GUPCR_MR_ATOMIC, type, FI_ATOMIC_READ, NULL));
   gupcr_atomic_mr_count += 1;
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(gupcr_atomic_ct, gupcr_atomic_mr_count,
@@ -122,11 +113,10 @@ gupcr_atomic_set (size_t dthread, size_t doffset, void *fetch_ptr,
 
 
   gupcr_fabric_call (fi_fetch_atomic,
-		     (gupcr_atomic_tx_ep, GUPCR_LOCAL_INDEX (value),
+		     (gupcr_atomic_ep.tx_ep, GUPCR_LOCAL_INDEX (value),
 		      1, NULL, GUPCR_LOCAL_INDEX (atomic_tmp_buf),
 		      NULL, GUPCR_TARGET_ADDR (dthread),
-		      doffset, GUPCR_MR_ATOMIC, type,
-		      FI_ATOMIC_WRITE, NULL));
+		      doffset, GUPCR_MR_ATOMIC, type, FI_ATOMIC_WRITE, NULL));
 
   gupcr_atomic_mr_count += 1;
   gupcr_fabric_call_nc (fi_cntr_wait, status,
@@ -166,12 +156,11 @@ gupcr_atomic_cswap (size_t dthread, size_t doffset, void *fetch_ptr,
 	       gupcr_get_buf_as_hex (tmpbuf, expected, size));
 
   gupcr_fabric_call (fi_compare_atomic,
-		     (gupcr_atomic_tx_ep, GUPCR_LOCAL_INDEX (value),
+		     (gupcr_atomic_ep.tx_ep, GUPCR_LOCAL_INDEX (value),
 		      1, NULL, GUPCR_LOCAL_INDEX (expected),
 		      NULL, GUPCR_LOCAL_INDEX (atomic_tmp_buf),
 		      NULL, GUPCR_TARGET_ADDR (dthread),
-		      doffset, GUPCR_MR_ATOMIC, type,
-		      FI_CSWAP, NULL));
+		      doffset, GUPCR_MR_ATOMIC, type, FI_CSWAP, NULL));
 
   gupcr_atomic_mr_count += 1;
   gupcr_fabric_call_nc (fi_cntr_wait, status,
@@ -214,19 +203,17 @@ gupcr_atomic_op (size_t dthread, size_t doffset, void *fetch_ptr,
   if (fetch_ptr)
     {
       gupcr_fabric_call (fi_fetch_atomic,
-			 (gupcr_atomic_tx_ep, GUPCR_LOCAL_INDEX (value),
-			 1, NULL, GUPCR_LOCAL_INDEX (atomic_tmp_buf),
-			 NULL, GUPCR_TARGET_ADDR (dthread),
-			 doffset, GUPCR_MR_ATOMIC, type,
-			 op, NULL));
+			 (gupcr_atomic_ep.tx_ep, GUPCR_LOCAL_INDEX (value),
+			  1, NULL, GUPCR_LOCAL_INDEX (atomic_tmp_buf),
+			  NULL, GUPCR_TARGET_ADDR (dthread),
+			  doffset, GUPCR_MR_ATOMIC, type, op, NULL));
     }
   else
     {
       gupcr_fabric_call (fi_atomic,
-			 (gupcr_atomic_tx_ep, GUPCR_LOCAL_INDEX (value),
-			 1, NULL, GUPCR_TARGET_ADDR (dthread),
-			 doffset, GUPCR_MR_ATOMIC, type,
-			 op, NULL));
+			 (gupcr_atomic_ep.tx_ep, GUPCR_LOCAL_INDEX (value),
+			  1, NULL, GUPCR_TARGET_ADDR (dthread),
+			  doffset, GUPCR_MR_ATOMIC, type, op, NULL));
     }
   gupcr_atomic_mr_count += 1;
   gupcr_fabric_call_nc (fi_cntr_wait, status,
@@ -250,48 +237,35 @@ gupcr_atomic_op (size_t dthread, size_t doffset, void *fetch_ptr,
 void
 gupcr_atomic_init (void)
 {
-  int sep_ctx;
   cntr_attr_t cntr_attr = { 0 };
   cq_attr_t cq_attr = { 0 };
-  tx_attr_t tx_attr = { 0 };
-  rx_attr_t rx_attr = { 0 };
   gupcr_log (FC_ATOMIC, "atomic init called");
-  if (GUPCR_FABRIC_SCALABLE_CTX())
-    {
-      gupcr_atomic_ep = gupcr_ep;
-      sep_ctx = GUPCR_SERVICE_ATOMIC;
-    }
-  else
-    {
-      gupcr_atomic_ep = gupcr_fabric_endpoint ("atomic", &gupcr_atomic_epnames,
-					       &gupcr_atomic_av);
-      sep_ctx = 0;
-    }
-  /* Create context endpoints for ATOMIC transfers.  */
-  tx_attr.op_flags = FI_DELIVERY_COMPLETE;
-  gupcr_fabric_call (fi_tx_context, (gupcr_atomic_ep, sep_ctx,
-				     &tx_attr, &gupcr_atomic_tx_ep, NULL));
-  gupcr_fabric_call (fi_rx_context, (gupcr_atomic_ep, sep_ctx,
-				     &rx_attr, &gupcr_atomic_rx_ep, NULL));
+
+  /* Create endpoints for atomics.  */
+  gupcr_atomic_ep.name = "atomic";
+  gupcr_atomic_ep.service = GUPCR_SERVICE_ATOMIC;
+  gupcr_fabric_ep_create (&gupcr_atomic_ep);
 
   /* ... and completion cntr/cq for remote read/write.  */
   cntr_attr.events = FI_CNTR_EVENTS_COMP;
   cntr_attr.flags = 0;
   gupcr_fabric_call (fi_cntr_open, (gupcr_fd, &cntr_attr,
 				    &gupcr_atomic_ct, NULL));
-  gupcr_fabric_call (fi_ep_bind, (gupcr_atomic_tx_ep, &gupcr_atomic_ct->fid,
-				  FI_READ | FI_WRITE));
+  gupcr_fabric_call (fi_ep_bind,
+		     (gupcr_atomic_ep.tx_ep, &gupcr_atomic_ct->fid,
+		      FI_READ | FI_WRITE));
   gupcr_atomic_mr_count = 0;
 
   /* ... and completion queue for remote target transfer errors.  */
   cq_attr.size = 1;
   cq_attr.format = FI_CQ_FORMAT_MSG;
   cq_attr.wait_obj = FI_WAIT_NONE;
-  gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_atomic_cq, NULL));
+  gupcr_fabric_call (fi_cq_open,
+		     (gupcr_fd, &cq_attr, &gupcr_atomic_cq, NULL));
   /* Use FI_SELECTIVE_COMPLETION flag to report errors only.  */
-  gupcr_fabric_call (fi_ep_bind, (gupcr_atomic_tx_ep, &gupcr_atomic_cq->fid,
-				  FI_WRITE | FI_READ |
-				  FI_SELECTIVE_COMPLETION));
+  gupcr_fabric_call (fi_ep_bind,
+		     (gupcr_atomic_ep.tx_ep, &gupcr_atomic_cq->fid,
+		      FI_WRITE | FI_READ | FI_SELECTIVE_COMPLETION));
 
 #if LOCAL_MR_NEEDED
   /* NOTE: Create a local memory region before enabling endpoint.  */
@@ -302,22 +276,22 @@ gupcr_atomic_init (void)
   /* NOTE: There is no need to bind local memory region to endpoint.  */
   /*       Hmm ... ? We can probably use only one throughout the runtime,  */
   /*       as counters and events are bound to endpoint.  */
-  gupcr_fabric_call (fi_ep_bind, (gupcr_atomic_tx_ep, &gupcr_atomic_lmr->fid,
-				  FI_READ | FI_WRITE));
+  gupcr_fabric_call (fi_ep_bind,
+		     (gupcr_atomic_ep.tx_ep, &gupcr_atomic_lmr->fid,
+		      FI_READ | FI_WRITE));
 #endif
-
-  /* Enable TX endpoint.  */
-  gupcr_fabric_call (fi_enable, (gupcr_atomic_tx_ep));
 
   /* ... and memory region for remote inbound accesses.  */
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, gupcr_gmem_base, gupcr_gmem_size,
 				 FI_REMOTE_READ | FI_REMOTE_WRITE, 0,
 				 GUPCR_MR_ATOMIC, 0, &gupcr_atomic_mr, NULL));
 
-  /* Enable RX endpoint and bind MR.  */
-  gupcr_fabric_call (fi_enable, (gupcr_atomic_rx_ep));
-  gupcr_fabric_call (fi_ep_bind, (gupcr_atomic_rx_ep, &gupcr_atomic_mr->fid,
-			          FI_REMOTE_READ | FI_REMOTE_WRITE));
+#if TARGET_MR_BIND_NEEDED
+  /* Bind MR for receiving endpoint.  */
+  gupcr_fabric_call (fi_ep_bind,
+		     (gupcr_atomic_ep.rx_ep, &gupcr_atomic_mr->fid,
+		      FI_REMOTE_READ | FI_REMOTE_WRITE));
+#endif
 
   gupcr_log (FC_ATOMIC, "atomic init completed");
 }
@@ -329,7 +303,6 @@ gupcr_atomic_init (void)
 void
 gupcr_atomic_fini (void)
 {
-  int status;
   gupcr_log (FC_ATOMIC, "atomic fini called");
   gupcr_fabric_call (fi_close, (&gupcr_atomic_ct->fid));
   gupcr_fabric_call (fi_close, (&gupcr_atomic_cq->fid));
@@ -337,16 +310,7 @@ gupcr_atomic_fini (void)
 #if LOCAL_MR_NEEDED
   gupcr_fabric_call (fi_close, (&gupcr_atomic_lmr->fid));
 #endif
-  /* NOTE: Do not check for errors.  Fails occasionally.  */
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_atomic_rx_ep->fid));
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_atomic_tx_ep->fid));
-  if (!GUPCR_FABRIC_SCALABLE_CTX())
-    {
-      gupcr_fabric_call_nc (fi_close, status, (&gupcr_atomic_ep->fid));
-      gupcr_fabric_call_nc (fi_close, status, (&gupcr_atomic_av->fid));
-      free (gupcr_atomic_epnames);
-    }
-  gupcr_log (FC_ATOMIC, "atomic fini completed");
+  gupcr_fabric_ep_delete (&gupcr_atomic_ep);
 }
 
 /** @} */

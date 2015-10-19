@@ -396,12 +396,8 @@ __upc_wait (int barrier_id)
 void
 __upc_barrier (int barrier_id)
 {
-#if 0
   __upc_notify (barrier_id);
   __upc_wait (barrier_id);
-#else
-  gupcr_runtime_barrier ();
-#endif
 }
 
 /* This broadcast implementation uses barrier resources

@@ -32,12 +32,10 @@
 	(void *) ((char *) addr - (char *) USER_PROG_MEM_START)
 
 /** Fabric communications endpoint resources */
-/** RX Endpoint comm resource  */
-static fab_ep_t gupcr_nb_rx_ep;
-/** TX Endpoint comm resource for explicit non-blocking  */
-static fab_ep_t gupcr_nb_tx_ep;
-/** TX Endpoint comm resource for implicit non-blocking  */
-static fab_ep_t gupcr_nbi_tx_ep;
+/** Non-blocking endpoint */
+gupcr_epinfo_t gupcr_nb_ep;
+/** Implicit non-blocking endpoint */
+gupcr_epinfo_t gupcr_nbi_ep;
 /** NB transfers MR handle */
 static fab_mr_t gupcr_nb_mr;
 #if MR_LOCAL_NEEDED
@@ -50,13 +48,6 @@ static fab_cntr_t gupcr_nbi_ct;
 static fab_cq_t gupcr_nbi_cq;
 /** NB explicit completion queue */
 static fab_cq_t gupcr_nb_cq;
-
-/** Non-blocking endpoint */
-fab_ep_t gupcr_nb_ep;
-/** Address vector for remote endpoints  */
-fab_av_t gupcr_nb_av;
-/** Non-blocking endpoint names  */
-char *gupcr_nb_epnames;
 
 /** Target address */
 #define GUPCR_TARGET_ADDR(target) \
@@ -229,7 +220,7 @@ gupcr_nb_get (size_t sthread, size_t soffset, char *dst_ptr,
       if (handle)
 	{
 	  gupcr_fabric_size_call (fi_read, rsize,
-				  (gupcr_nb_tx_ep,
+				  (gupcr_nb_ep.tx_ep,
 				   GUPCR_LOCAL_INDEX (dst_ptr), n_xfer, NULL,
 				   GUPCR_TARGET_ADDR (sthread), soffset,
 				   GUPCR_MR_NB, (void *) *handle));
@@ -238,7 +229,7 @@ gupcr_nb_get (size_t sthread, size_t soffset, char *dst_ptr,
       else
 	{
 	  gupcr_fabric_size_call (fi_read, rsize,
-				  (gupcr_nbi_tx_ep,
+				  (gupcr_nbi_ep.tx_ep,
 				   GUPCR_LOCAL_INDEX (dst_ptr), n_xfer, NULL,
 				   GUPCR_TARGET_ADDR (sthread), soffset,
 				   GUPCR_MR_NB, NULL));
@@ -298,7 +289,7 @@ gupcr_nb_put (size_t dthread, size_t doffset, const void *src_ptr,
       if (handle)
 	{
 	  gupcr_fabric_size_call (fi_write, ssize,
-				  (gupcr_nb_tx_ep,
+				  (gupcr_nb_ep.tx_ep,
 				   GUPCR_LOCAL_INDEX (src_ptr), n_xfer, NULL,
 				   GUPCR_TARGET_ADDR (dthread), doffset,
 				   GUPCR_MR_NB, (void *) *handle));
@@ -307,7 +298,7 @@ gupcr_nb_put (size_t dthread, size_t doffset, const void *src_ptr,
       else
 	{
 	  gupcr_fabric_size_call (fi_write, ssize,
-				  (gupcr_nbi_tx_ep,
+				  (gupcr_nbi_ep.tx_ep,
 				   GUPCR_LOCAL_INDEX (src_ptr), n_xfer, NULL,
 				   GUPCR_TARGET_ADDR (dthread), doffset,
 				   GUPCR_MR_NB, NULL));
@@ -392,8 +383,7 @@ gupcr_nb_completed (unsigned long handle)
   do
     {
       struct fi_cq_entry nb_context;
-      gupcr_fabric_call_nc (fi_cq_read, cnt, (gupcr_nb_cq,
-						&nb_context, 1));
+      gupcr_fabric_call_nc (fi_cq_read, cnt, (gupcr_nb_cq, &nb_context, 1));
       switch (cnt)
 	{
 	case 1:
@@ -463,8 +453,7 @@ gupcr_sync (unsigned long handle)
 	{
 	  struct fi_cq_entry nb_context;
 	  gupcr_fabric_call_nc (fi_cq_sread, cnt, (gupcr_nb_cq,
-						   &nb_context, 1, NULL,
-						   0));
+						   &nb_context, 1, NULL, 0));
 	  gupcr_debug (FC_NB, "received count %ld", cnt);
 	  switch (cnt)
 	    {
@@ -531,45 +520,29 @@ gupcr_synci (void)
 void
 gupcr_nb_init (void)
 {
-  int sep_ctx;
   cntr_attr_t cntr_attr = { 0 };
   cq_attr_t cq_attr = { 0 };
-  tx_attr_t tx_attr = { 0 };
-  rx_attr_t rx_attr = { 0 };
 
   gupcr_log (FC_NB, "non-blocking transfer init called");
 
-  /* Create context endpoints for NB/NBI transfers.  */
-  if (GUPCR_FABRIC_SCALABLE_CTX())
-    {
-      gupcr_nb_ep = gupcr_ep;
-      sep_ctx = GUPCR_SERVICE_NB;
-    }
-  else
-    {
-      gupcr_nb_ep = gupcr_fabric_endpoint ("nb", &gupcr_nb_epnames, &gupcr_nb_av);
-      sep_ctx = 0;
-    }
-  tx_attr.op_flags = FI_DELIVERY_COMPLETE;
-  gupcr_fabric_call (fi_tx_context,
-		     (gupcr_nb_ep, sep_ctx, &tx_attr, &gupcr_nb_tx_ep,
-		      NULL));
-  gupcr_fabric_call (fi_tx_context,
-		     (gupcr_nb_ep, sep_ctx, &tx_attr, &gupcr_nbi_tx_ep,
-		      NULL));
-  gupcr_fabric_call (fi_rx_context,
-		     (gupcr_nb_ep, sep_ctx, &rx_attr, &gupcr_nb_rx_ep,
-		      NULL));
+  /* Create endpoints for NB/NBI.  */
+  gupcr_nb_ep.name = "nb";
+  gupcr_nb_ep.service = GUPCR_SERVICE_NB;
+  gupcr_fabric_ep_create (&gupcr_nb_ep);
+  gupcr_nbi_ep.name = "nbi";
+  gupcr_nbi_ep.service = GUPCR_SERVICE_NBI;
+  gupcr_fabric_ep_create (&gupcr_nbi_ep);
 
   /* ... and memory region for remote inbound accesses.  */
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, gupcr_gmem_base, gupcr_gmem_size,
 				 FI_REMOTE_READ | FI_REMOTE_WRITE, 0,
 				 GUPCR_MR_NB, 0, &gupcr_nb_mr, NULL));
 
+#if TARGET_MR_BIND_NEEDED
   /* Enable RX endpoint and bind MR.  */
-  gupcr_fabric_call (fi_enable, (gupcr_nb_rx_ep));
-  gupcr_fabric_call (fi_ep_bind, (gupcr_nb_rx_ep, &gupcr_nb_mr->fid,
+  gupcr_fabric_call (fi_ep_bind, (gupcr_nb_ep.rx_ep, &gupcr_nb_mr->fid,
 				  FI_REMOTE_READ | FI_REMOTE_WRITE));
+#endif
 
   /* ... and completion cq for remote NB read/write.  Completion counter
      is not used for NB explicit transfers.  */
@@ -578,7 +551,7 @@ gupcr_nb_init (void)
   cq_attr.wait_obj = FI_WAIT_NONE;
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_nb_cq, NULL));
   /* Use FI_COMPLETION flag to report all completions by default.  */
-  gupcr_fabric_call (fi_ep_bind, (gupcr_nb_tx_ep, &gupcr_nb_cq->fid,
+  gupcr_fabric_call (fi_ep_bind, (gupcr_nb_ep.tx_ep, &gupcr_nb_cq->fid,
 				  FI_WRITE | FI_READ | FI_COMPLETION));
 
   /* ... and completion cntr/cq for remote NBI read/write.  */
@@ -586,7 +559,7 @@ gupcr_nb_init (void)
   cntr_attr.flags = 0;
   gupcr_fabric_call (fi_cntr_open, (gupcr_fd, &cntr_attr,
 				    &gupcr_nbi_ct, NULL));
-  gupcr_fabric_call (fi_ep_bind, (gupcr_nbi_tx_ep, &gupcr_nbi_ct->fid,
+  gupcr_fabric_call (fi_ep_bind, (gupcr_nbi_ep.tx_ep, &gupcr_nbi_ct->fid,
 				  FI_READ | FI_WRITE));
   /* Reset number of acknowledgments.  */
   gupcr_nbi_count = 0;
@@ -597,7 +570,7 @@ gupcr_nb_init (void)
   cq_attr.wait_obj = FI_WAIT_NONE;
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_nbi_cq, NULL));
   /* Use FI_SELECTIVE_COMPLETION flag to report errors only.  */
-  gupcr_fabric_call (fi_ep_bind, (gupcr_nbi_tx_ep, &gupcr_nbi_cq->fid,
+  gupcr_fabric_call (fi_ep_bind, (gupcr_nbi_ep.tx_ep, &gupcr_nbi_cq->fid,
 				  FI_WRITE | FI_READ |
 				  FI_SELECTIVE_COMPLETION));
 
@@ -610,22 +583,16 @@ gupcr_nb_init (void)
   /* NOTE: There is no need to bind local memory region to endpoint.  */
   /*       Hmm ... ? We can probably use only one throughout the runtime,  */
   /*       as counters and events are bound to endpoint.  */
-  gupcr_fabric_call (fi_ep_bind, (gupcr_nb_tx_ep, &gupcr_nb_lmr->fid,
+  gupcr_fabric_call (fi_ep_bind, (gupcr_nb_ep.tx_ep, &gupcr_nb_lmr->fid,
 				  FI_READ | FI_WRITE));
-  gupcr_fabric_call (fi_ep_bind, (gupcr_nbi_tx_ep, &gupcr_nb_lmr->fid,
+  gupcr_fabric_call (fi_ep_bind, (gupcr_nbi_ep.tx_ep, &gupcr_nb_lmr->fid,
 				  FI_READ | FI_WRITE));
 #endif
-
-  /* Enable TX endpoints.  */
-  gupcr_fabric_call (fi_enable, (gupcr_nb_tx_ep));
-  gupcr_fabric_call (fi_enable, (gupcr_nbi_tx_ep));
 
   /* Initialize NB handle values.  */
   gupcr_nb_handle_next = 1;
   /* Initialize number of outstanding transfers.  */
   gupcr_nb_outstanding = 0;
-
-  gupcr_log (FC_NB, "non-blocking transfer init completed");
 }
 
 /**
@@ -635,7 +602,6 @@ gupcr_nb_init (void)
 void
 gupcr_nb_fini (void)
 {
-  int status;
   gupcr_log (FC_NB, "non-blocking transfer fini called");
   gupcr_fabric_call (fi_close, (&gupcr_nbi_ct->fid));
   gupcr_fabric_call (fi_close, (&gupcr_nbi_cq->fid));
@@ -644,17 +610,8 @@ gupcr_nb_fini (void)
 #if LOCAL_MR_NEEDED
   gupcr_fabric_call (fi_close, (&gupcr_nb_lmr->fid));
 #endif
-  /* NOTE: Do not check for errors.  Fails occasionally.  */
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_nb_rx_ep->fid));
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_nb_tx_ep->fid));
-  gupcr_fabric_call_nc (fi_close, status, (&gupcr_nbi_tx_ep->fid));
-  gupcr_log (FC_NB, "non-blocking transfer fini completed");
-  if (!GUPCR_FABRIC_SCALABLE_CTX())
-    {
-      gupcr_fabric_call_nc (fi_close, status, (&gupcr_nb_ep->fid));
-      gupcr_fabric_call_nc (fi_close, status, (&gupcr_nb_av->fid));
-      free (gupcr_nb_epnames);
-    }
+  gupcr_fabric_ep_delete (&gupcr_nb_ep);
+  gupcr_fabric_ep_delete (&gupcr_nbi_ep);
 }
 
 /** @} */

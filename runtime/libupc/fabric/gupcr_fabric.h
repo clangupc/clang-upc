@@ -48,10 +48,12 @@
 #define	GUPCR_SERVICE_COLL		6
 /** Non-blocking transfers network connection */
 #define	GUPCR_SERVICE_NB		7
+/** Implicit non-blocking transfers network connection */
+#define	GUPCR_SERVICE_NBI		8
 /** Memory atomic functions network connection */
-#define	GUPCR_SERVICE_ATOMIC		8
+#define	GUPCR_SERVICE_ATOMIC		9
 /** Number of services */
-#define	GUPCR_SERVICE_COUNT		9
+#define	GUPCR_SERVICE_COUNT		10
 /** Number of service bits */
 #define	GUPCR_SERVICE_BITS		8
 /** @} */
@@ -89,6 +91,18 @@ typedef struct fi_triggered_context fi_trig_t;
 
 /** Endpoint to/form Rank/Service mapping */
 extern fab_ep_t gupcr_ep;
+/** Service endpoint definition */
+struct gupcr_epinfo
+{
+  const char *name;	/** Name of the service */
+  int service;		/** Service scalable context number */
+  fab_ep_t ep;		/** Service endpoint */
+  fab_ep_t tx_ep;	/** TX context endpoint (scalable) */
+  fab_ep_t rx_ep;	/** RX context endpoint (scalable) */
+  fab_av_t av;		/** Service AV */
+  char *epnames;	/** Service endpoint target names */
+};
+typedef struct gupcr_epinfo gupcr_epinfo_t;
 
 /** Get endpoint for Rank/Service */
 #define GUPCR_GET_EP(rank, service) \
@@ -215,7 +229,8 @@ extern void gupcr_fabric_init (void);
 extern void gupcr_fabric_fini (void);
 extern void gupcr_fabric_ni_init (void);
 extern void gupcr_fabric_ni_fini (void);
-extern fab_ep_t gupcr_fabric_endpoint (const char *, char **, fab_av_t *);
+extern void gupcr_fabric_ep_create (gupcr_epinfo_t * epinfo);
+extern void gupcr_fabric_ep_delete (gupcr_epinfo_t * epinfo);
 extern void gupcr_nodetree_setup (void);
 
 #endif /* gupcr_fabric.h */

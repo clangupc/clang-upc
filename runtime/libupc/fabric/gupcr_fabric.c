@@ -51,10 +51,8 @@ fab_domain_t gupcr_fd;
 /* Support for scalable endpoints */
 /** Endpoint comm resource  */
 fab_ep_t gupcr_ep;
-/** Address vector for remote endpoints  */
-fab_av_t gupcr_av;
-/** All endpoint names in the system */
-static char *gupcr_epnames;
+/** Fabric endpoint - scalable endpoints support */
+static gupcr_epinfo_t gupcr_fabric_ep;
 
 /** Endpoint name length  */
 static size_t gupcr_epnamelen;
@@ -569,9 +567,6 @@ void
 gupcr_fabric_init (void)
 {
   struct fi_info *hints;
-  struct fi_fabric_attr fi_attr = { 0 };
-  struct fi_domain_attr fi_domain_attr = { 0 };
-  ep_attr_t ep_attr = { 0 };
   char node_name[16];
   char *node = NULL;
 
@@ -597,20 +592,18 @@ gupcr_fabric_init (void)
     }
 
   /* Find fabric provider based on the hints.  */
-  hints->caps = FI_RMA |	/* Request RMA capability,  */
-    FI_ATOMICS;			/* atomics capability,  */
-  ep_attr.type = FI_EP_RDM;	/* Reliable datagram message.  */
+  hints->caps = FI_RMA | FI_ATOMICS;	/* Request RMA, atomics.  */
   hints->addr_format = FI_FORMAT_UNSPEC;
-  hints->ep_attr = &ep_attr;
+  hints->ep_attr->type = FI_EP_RDM;	/* Reliable datagram message.  */
+  hints->tx_attr->op_flags = FI_DELIVERY_COMPLETE;
 
   /* Choose provider.  */
-  hints->fabric_attr = &fi_attr;
   hints->fabric_attr->name = strdup (fab_name);
   hints->fabric_attr->prov_name = strdup (fab_prov_name);
 
   /* Set domain requirements.  */
-  fi_domain_attr.mr_mode = FI_MR_SCALABLE;
-  hints->domain_attr = &fi_domain_attr;
+  if (GUPCR_FABRIC_SCALABLE_CTX ())
+    hints->domain_attr->mr_mode = FI_MR_SCALABLE;
 
 #define __GUPCR_STR__(S) #S
 #define __GUPCR_XSTR__(S) __GUPCR_STR__(S)
@@ -621,8 +614,7 @@ gupcr_fabric_init (void)
       gupcr_fi->ep_attr->tx_ctx_cnt >= GUPCR_SERVICE_COUNT)
     {
       gupcr_enable_scalable_ctx = 1;
-      gupcr_log
-        (FC_FABRIC, "enabled SCALABLE endpoint context");
+      gupcr_log (FC_FABRIC, "enabled SCALABLE endpoint context");
     }
 
 #if GUPCR_FABRIC_SHARED_CTX
@@ -637,9 +629,8 @@ gupcr_fabric_init (void)
 			   FI_SOURCE, &hints, &ret_info));
     if (!status && (ret_info->ep_attr->tx_ctx_cnt == FI_SHARED_CONTEXT))
       {
-        gupcr_enable_shared_tx_ctx = 1;
-        gupcr_log
-          (FC_FABRIC, "enabled SHARED TX endpoint");
+	gupcr_enable_shared_tx_ctx = 1;
+	gupcr_log (FC_FABRIC, "enabled SHARED TX endpoint");
       }
     ep_attr.tx_ctx_cnt = 0;
     ep_attr.rx_ctx_cnt = FI_SHARED_CONTEXT;
@@ -648,9 +639,8 @@ gupcr_fabric_init (void)
 			   FI_SOURCE, &hints, &ret_info));
     if (!status && (ret_info->ep_attr->rx_ctx_cnt == FI_SHARED_CONTEXT))
       {
-        gupcr_enable_shared_rx_ctx = 1;
-        gupcr_log
-          (FC_FABRIC, "enabled SHARED RX endpoint");
+	gupcr_enable_shared_rx_ctx = 1;
+	gupcr_log (FC_FABRIC, "enabled SHARED RX endpoint");
       }
   }
 #endif
@@ -668,9 +658,11 @@ gupcr_fabric_init (void)
   /* If scalable endpoints are supported, we create only one endpoint
      and each sub-system (gmem, locks, ...) creates its own scalable
      endpoints.  */
-  if (GUPCR_FABRIC_SCALABLE_CTX())
+  if (GUPCR_FABRIC_SCALABLE_CTX ())
     {
-      gupcr_ep = gupcr_fabric_endpoint ("fabric", &gupcr_epnames, &gupcr_av);
+      gupcr_fabric_ep.name = "fabric";
+      gupcr_fabric_ep.service = 0;
+      gupcr_fabric_ep_create (&gupcr_fabric_ep);
     }
 }
 
@@ -680,11 +672,12 @@ gupcr_fabric_init (void)
 void
 gupcr_fabric_fini (void)
 {
-#if GUPCR_FABRIC_SCALABLE_CTX
-  gupcr_fabric_call (fi_close, (&gupcr_ep->fid));
-  gupcr_fabric_call (fi_close, (&gupcr_av->fid));
-  free (gupcr_epnames);
-#endif
+  if (GUPCR_FABRIC_SCALABLE_CTX())
+    {
+      gupcr_fabric_call (fi_close, (&gupcr_fabric_ep.ep->fid));
+      gupcr_fabric_call (fi_close, (&gupcr_fabric_ep.av->fid));
+      free (gupcr_fabric_ep.epnames);
+    }
   gupcr_fabric_call (fi_close, (&gupcr_fab->fid));
 }
 
@@ -717,10 +710,10 @@ gupcr_fabric_ni_fini (void)
 }
 
 /**
- * Create fabric endpoint.
+ * Create service endpoints.
  */
-fab_ep_t
-gupcr_fabric_endpoint (const char *name, char **eps, fab_av_t * avs)
+void
+gupcr_fabric_ep_create (gupcr_epinfo_t * epinfo)
 {
   fab_ep_t ep;
   av_attr_t av_attr = { 0 };
@@ -728,7 +721,32 @@ gupcr_fabric_endpoint (const char *name, char **eps, fab_av_t * avs)
   char *epnames;
   int status;
 
-  gupcr_fabric_call (fi_scalable_ep, (gupcr_fd, gupcr_fi, &ep, NULL));
+  if (GUPCR_FABRIC_SCALABLE_CTX () && epinfo->service)
+    {
+      /* In case of scalable endpoints, the main endpoint has been already
+         created.  Just create TX/RX and RX context.  */
+      gupcr_fabric_call (fi_tx_context,
+			 (gupcr_fabric_ep.ep, epinfo->service,
+			  NULL, &epinfo->tx_ep, NULL));
+      gupcr_fabric_call (fi_enable, (epinfo->tx_ep));
+      gupcr_fabric_call (fi_rx_context,
+			 (gupcr_fabric_ep.ep, epinfo->service,
+			  NULL, &epinfo->rx_ep, NULL));
+      gupcr_fabric_call (fi_enable, (epinfo->rx_ep));
+      return;
+    }
+  if (GUPCR_FABRIC_SCALABLE_CTX ())
+    {
+      /* Create the main scalable endpoint.  */
+      gupcr_fabric_call (fi_scalable_ep, (gupcr_fd, gupcr_fi, &ep, NULL));
+      epinfo->ep = ep;
+      gupcr_ep = ep;
+    }
+  else
+    {
+      gupcr_fabric_call (fi_endpoint, (gupcr_fd, gupcr_fi, &ep, NULL));
+      epinfo->ep = epinfo->tx_ep = epinfo->rx_ep = ep;
+    }
 
   /* Other threads' endpoints are mapped via address vector table with
      each threads' endpoint indexed by the thread number.  */
@@ -740,7 +758,7 @@ gupcr_fabric_endpoint (const char *name, char **eps, fab_av_t * avs)
      Not supported by all providers.
    */
   av_attr.name = NULL;
-  av_attr.rx_ctx_bits = GUPCR_FABRIC_SCALABLE_CTX() ? GUPCR_SERVICE_BITS : 0;
+  av_attr.rx_ctx_bits = GUPCR_FABRIC_SCALABLE_CTX ()? GUPCR_SERVICE_BITS : 0;
   gupcr_fabric_call (fi_av_open, (gupcr_fd, &av_attr, &av, NULL));
   gupcr_fabric_call (fi_ep_bind, (ep, &av->fid, 0));
 
@@ -763,13 +781,15 @@ gupcr_fabric_endpoint (const char *name, char **eps, fab_av_t * avs)
 				  &gupcr_epnamelen));
   {
     int ret =
-      gupcr_runtime_exchange (name, &epnames[gupcr_rank * gupcr_epnamelen],
+      gupcr_runtime_exchange (epinfo->name,
+			      &epnames[gupcr_rank * gupcr_epnamelen],
 			      gupcr_epnamelen, epnames);
     if (ret)
       gupcr_fatal_error
-	("error (%d) reported while exchanging \"%s\" endpoints", ret, name);
-    gupcr_log
-      (FC_FABRIC, "exchanged ep names with %d threads", gupcr_rank_cnt);
+	("error (%d) reported while exchanging \"%s\" endpoints", ret,
+	 epinfo->name);
+    gupcr_log (FC_FABRIC, "exchanged ep names with %d threads",
+	       gupcr_rank_cnt);
   }
   /* Map endpoints.  */
   {
@@ -781,9 +801,29 @@ gupcr_fabric_endpoint (const char *name, char **eps, fab_av_t * avs)
       gupcr_fatal_error ("cannot av insert %d entries (reported %d)",
 			 gupcr_rank_cnt, insert_cnt);
   }
-  *avs = av;
-  *eps = epnames;
-  return ep;
+  epinfo->av = av;
+  epinfo->epnames = epnames;
+}
+
+/**
+ * Delete service endpoints.
+ */
+void
+gupcr_fabric_ep_delete (gupcr_epinfo_t * epinfo)
+{
+  int status;
+  if (GUPCR_FABRIC_SCALABLE_CTX ())
+    {
+      gupcr_fabric_call_nc (fi_close, status, (&epinfo->tx_ep->fid));
+      gupcr_fabric_call_nc (fi_close, status, (&epinfo->rx_ep->fid));
+
+    }
+  else
+    {
+      gupcr_fabric_call_nc (fi_close, status, (&epinfo->ep->fid));
+      gupcr_fabric_call_nc (fi_close, status, (&epinfo->av->fid));
+      free (epinfo->epnames);
+    }
 }
 
 /**
