@@ -68,6 +68,8 @@ int gupcr_enable_shared_tx_ctx = 0;
 int gupcr_enable_shared_rx_ctx = 0;
 /** Libfabric scalable context (disabled by default) */
 int gupcr_enable_scalable_ctx = 0;
+/** Libfabric supports FI_TARGET_WRITE/READ notifications */
+int gupcr_enable_rma_event = 1;
 /** Interface IPv4 address */
 in_addr_t net_addr;
 /** IPv4 addresses for all ranks */
@@ -616,6 +618,21 @@ gupcr_fabric_init (void)
       gupcr_enable_scalable_ctx = 1;
       gupcr_log (FC_FABRIC, "enabled SCALABLE endpoint context");
     }
+
+  /* Check if FI_RMA_EVENT is supported (ability to receive events
+     (CT/CQ) after remote write into local MR).  This feature is
+     required for effective lock/barrier/shutdown implementation.  */
+  {
+    int status;
+    fab_info_t ret_info;
+    hints->caps |= FI_RMA_EVENT;
+    gupcr_fabric_call_nc (fi_getinfo, status,
+			  (FI_VERSION (1, 0), node, NULL,
+			   FI_SOURCE, hints, &ret_info));
+    if (status || !(ret_info->caps & FI_RMA_EVENT))
+      gupcr_enable_rma_event = 0;
+    hints->caps ^= FI_RMA_EVENT;
+  }
 
 #if GUPCR_FABRIC_SHARED_CTX
   /* Check for shared context support.  In order to save TX/RX resources

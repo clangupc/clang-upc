@@ -37,9 +37,9 @@
 /** Memory put/get functions network connection */
 #define	GUPCR_SERVICE_GMEM		1
 /** Barrier messages to parent node network connection */
-#define	GUPCR_SERVICE_BARRIER_UP	2
-/** Barrier messages from parent node network connection */
-#define	GUPCR_SERVICE_BARRIER_DOWN	3
+#define	GUPCR_SERVICE_BARRIER		2
+/** Reserved */
+#define	GUPCR_SERVICE_RESERVED_3	3
 /** Lock signaling network connection */
 #define	GUPCR_SERVICE_LOCK		4
 /** Shutdown service signaling network connection */
@@ -60,13 +60,15 @@
 
 /* GUPCR Memory Regions keys */
 #define	GUPCR_MR_GMEM		1
-#define	GUPCR_MR_BARRIER_UP	2
-#define	GUPCR_MR_BARRIER_DOWN	3
-#define	GUPCR_MR_LOCK		4
-#define	GUPCR_MR_SHUTDOWN	5
-#define	GUPCR_MR_COLL		6
-#define	GUPCR_MR_NB		7
-#define	GUPCR_MR_ATOMIC		8
+#define	GUPCR_MR_BARRIER_NOTIFY	2
+#define	GUPCR_MR_BARRIER_WAIT	3
+#define	GUPCR_MR_BARRIER_SIGNAL	4
+#define	GUPCR_MR_LOCK		5
+#define	GUPCR_MR_SHUTDOWN	6
+#define	GUPCR_MR_COLL		7
+#define	GUPCR_MR_COLL_SIGNAL	8
+#define	GUPCR_MR_NB		9
+#define	GUPCR_MR_ATOMIC		10
 
 //begin lib_fabric
 
@@ -130,6 +132,9 @@ extern size_t gupcr_max_optim_size;
 /** Support for scalable endpoints */
 extern int gupcr_enable_scalable_ctx;
 #define GUPCR_FABRIC_SCALABLE_CTX() (gupcr_enable_scalable_ctx != 0)
+/** Support for target MR notifications (FI_RMA_EVENT) */
+extern int gupcr_enable_rma_event;
+#define GUPCR_FABRIC_RMA_EVENT() (gupcr_enable_rma_event != 0)
 /** Max time to wait for operation complete (10s) */
 #define GUPCR_TRANSFER_TIMEOUT -1
 

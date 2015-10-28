@@ -19,23 +19,17 @@
  * @{
  */
 
-/* Barrier direction (up or down).  */
-enum barrier_dir
-{ BARRIER_UP, BARRIER_DOWN };
-
 /* Barrier support functions.  */
 
-extern void gupcr_barrier_sup_init (void);
+extern void gupcr_barrier_sup_init (void *bbase, int bsize);
 extern void gupcr_barrier_sup_fini (void);
 
-extern void gupcr_barrier_put (enum barrier_dir, void *, int, void *, size_t);
-extern void gupcr_barrier_put_wait (enum barrier_dir, size_t);
-extern void gupcr_barrier_tr_put (enum barrier_dir, void *, int, void *,
-				  size_t, enum barrier_dir, size_t, int);
-extern void gupcr_barrier_atomic (int *, int, int *);
-extern void gupcr_barrier_tr_atomic (int *, int, int *, size_t, int);
-extern void gupcr_barrier_wait_up (size_t);
-extern void gupcr_barrier_wait_down (void);
-extern void gupcr_barrier_wait_delivery (size_t);
+extern void gupcr_barrier_wait_put (void *, int, void *, size_t);
+extern void gupcr_barrier_wait_put_completion (void);
+extern void gupcr_barrier_wait_event (void);
+extern void gupcr_barrier_notify_put (void *, int, void *);
+extern void gupcr_barrier_notify_event (size_t);
+extern void gupcr_barrier_tr_put (void *, int, void *, size_t, size_t, int);
+extern void gupcr_barrier_notify_tr_put (void *, int, void *, size_t);
 /** @} */
 #endif /* gupcr_barrier_sup.h */

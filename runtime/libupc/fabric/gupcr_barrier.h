@@ -19,9 +19,6 @@
  * @{
  */
 
-enum barrier_dir
-{ BARRIER_UP, BARRIER_DOWN };
-
 extern void gupcr_barrier_init (void);
 extern void gupcr_barrier_fini (void);
 

@@ -100,7 +100,7 @@ upc_all_broadcast (shared void *dst, shared const void *src,
 	      soffset += blk_cnt * GUPCR_MAX_MSG_SIZE;
 	      gupcr_coll_put (dthread, doffset, soffset, blk_size);
 	    }
-	  gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	  gupcr_coll_ack_wait ();
 	}
       ++blk_cnt;
     }

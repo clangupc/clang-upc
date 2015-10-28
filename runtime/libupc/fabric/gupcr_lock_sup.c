@@ -227,12 +227,19 @@ void
 gupcr_lock_wait (void)
 {
   int status;
-  gupcr_debug (FC_LOCK, "");
-  gupcr_lock_mr_count++;
-  gupcr_fabric_call_nc (fi_cntr_wait, status,
-			(gupcr_lock_ct, gupcr_lock_mr_count,
-			 GUPCR_TRANSFER_TIMEOUT));
-  GUPCR_CNT_ERROR_CHECK (status, "lock_wait", gupcr_lock_cq);
+  if (GUPCR_FABRIC_RMA_EVENT ())
+    {
+      gupcr_debug (FC_LOCK, "");
+      gupcr_lock_mr_count++;
+      gupcr_fabric_call_nc (fi_cntr_wait, status,
+			    (gupcr_lock_ct, gupcr_lock_mr_count,
+			    GUPCR_TRANSFER_TIMEOUT));
+      GUPCR_CNT_ERROR_CHECK (status, "lock_wait", gupcr_lock_cq);
+    }
+  else
+    {
+      gupcr_yield_cpu ();
+    }
 }
 
 /**
@@ -292,21 +299,24 @@ gupcr_lock_init (void)
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, gupcr_gmem_base, gupcr_gmem_size,
 				 FI_REMOTE_READ | FI_REMOTE_WRITE, 0,
 				 GUPCR_MR_LOCK, 0, &gupcr_lock_mr, NULL));
-  /* ... and counter for remote inbound writes.  */
-  cntr_attr.events = FI_CNTR_EVENTS_COMP;
-  cntr_attr.flags = 0;
-  gupcr_fabric_call (fi_cntr_open, (gupcr_fd, &cntr_attr,
+  if (GUPCR_FABRIC_RMA_EVENT ())
+    {
+      /* ... and counter for remote inbound writes.  */
+      cntr_attr.events = FI_CNTR_EVENTS_COMP;
+      cntr_attr.flags = 0;
+      gupcr_fabric_call (fi_cntr_open, (gupcr_fd, &cntr_attr,
 				    &gupcr_lock_ct, NULL));
-  gupcr_fabric_call (fi_mr_bind, (gupcr_lock_mr, &gupcr_lock_ct->fid,
-				  FI_REMOTE_WRITE));
+      gupcr_fabric_call (fi_mr_bind, (gupcr_lock_mr, &gupcr_lock_ct->fid,
+				      FI_REMOTE_WRITE));
+      /* ... and completion queue for remote inbound errors.  */
+      cq_attr.size = 1;
+      cq_attr.format = FI_CQ_FORMAT_MSG;
+      cq_attr.wait_obj = FI_WAIT_NONE;
+      gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_lock_cq, NULL));
+      gupcr_fabric_call (fi_mr_bind, (gupcr_lock_mr, &gupcr_lock_cq->fid,
+				      FI_REMOTE_WRITE | FI_SELECTIVE_COMPLETION));
+    }
 
-  /* ... and completion queue for remote inbound errors.  */
-  cq_attr.size = 1;
-  cq_attr.format = FI_CQ_FORMAT_MSG;
-  cq_attr.wait_obj = FI_WAIT_NONE;
-  gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_lock_cq, NULL));
-  gupcr_fabric_call (fi_mr_bind, (gupcr_lock_mr, &gupcr_lock_cq->fid,
-				  FI_REMOTE_WRITE | FI_SELECTIVE_COMPLETION));
   /* Enable RX endpoint and bind MR.  */
   gupcr_fabric_call (fi_enable, (gupcr_lock_ep.rx_ep));
 #if TARGET_MR_BIND_NEEDED
@@ -331,9 +341,12 @@ void
 gupcr_lock_fini (void)
 {
   gupcr_log (FC_LOCK, "lock fini called");
-  gupcr_fabric_call (fi_close, (&gupcr_lock_ct->fid));
   gupcr_fabric_call (fi_close, (&gupcr_lock_lct->fid));
-  gupcr_fabric_call (fi_close, (&gupcr_lock_cq->fid));
+  if (GUPCR_FABRIC_RMA_EVENT ())
+    {
+      gupcr_fabric_call (fi_close, (&gupcr_lock_ct->fid));
+      gupcr_fabric_call (fi_close, (&gupcr_lock_cq->fid));
+    }
   gupcr_fabric_call (fi_close, (&gupcr_lock_mr->fid));
 #if LOCAL_MR_NEEDED
   gupcr_fabric_call (fi_close, (&gupcr_lock_lmr->fid));

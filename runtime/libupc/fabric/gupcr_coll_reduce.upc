@@ -312,7 +312,7 @@ void upc_all_reduceC
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
@@ -355,7 +355,7 @@ void upc_all_reduceC
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
@@ -382,7 +382,7 @@ void upc_all_reduceC
 				  sizeof (signed char));
 		}
 	      /* Wait for our value to go up the tree.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
       else
@@ -420,7 +420,7 @@ void upc_all_reduceC
 	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
 	      /* Wait for our value to leave.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
 #else /* NO TRIGGERED OPS */
@@ -439,7 +439,7 @@ void upc_all_reduceC
 					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
-	  gupcr_coll_ack_wait (wait_cnt);
+	  gupcr_coll_ack_wait ();
 
 	  /* Wait for children to report their local reduced values and
 	     parent to report it is ready to receive the reduced value.  */
@@ -497,7 +497,7 @@ void upc_all_reduceC
 				     gupcr_fabric_reduce_op (op),
 				     UPC_COLL_TO_COM_CHAR);
 	    }
-	  gupcr_coll_ack_wait (1);
+	  gupcr_coll_ack_wait ();
 	}
 #endif /* GUPCR_USE_TRIGGERED_OPS */
 
@@ -745,7 +745,7 @@ void upc_all_reduceUC
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
@@ -788,7 +788,7 @@ void upc_all_reduceUC
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
@@ -815,7 +815,7 @@ void upc_all_reduceUC
 				  sizeof (unsigned char));
 		}
 	      /* Wait for our value to go up the tree.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
       else
@@ -853,7 +853,7 @@ void upc_all_reduceUC
 	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
 	      /* Wait for our value to leave.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
 #else /* NO TRIGGERED OPS */
@@ -872,7 +872,7 @@ void upc_all_reduceUC
 					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
-	  gupcr_coll_ack_wait (wait_cnt);
+	  gupcr_coll_ack_wait ();
 
 	  /* Wait for children to report their local reduced values and
 	     parent to report it is ready to receive the reduced value.  */
@@ -930,7 +930,7 @@ void upc_all_reduceUC
 				     gupcr_fabric_reduce_op (op),
 				     UPC_COLL_TO_COM_UCHAR);
 	    }
-	  gupcr_coll_ack_wait (1);
+	  gupcr_coll_ack_wait ();
 	}
 #endif /* GUPCR_USE_TRIGGERED_OPS */
 
@@ -1178,7 +1178,7 @@ void upc_all_reduceS
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
@@ -1221,7 +1221,7 @@ void upc_all_reduceS
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
@@ -1248,7 +1248,7 @@ void upc_all_reduceS
 				  sizeof (signed short));
 		}
 	      /* Wait for our value to go up the tree.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
       else
@@ -1286,7 +1286,7 @@ void upc_all_reduceS
 	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
 	      /* Wait for our value to leave.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
 #else /* NO TRIGGERED OPS */
@@ -1305,7 +1305,7 @@ void upc_all_reduceS
 					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
-	  gupcr_coll_ack_wait (wait_cnt);
+	  gupcr_coll_ack_wait ();
 
 	  /* Wait for children to report their local reduced values and
 	     parent to report it is ready to receive the reduced value.  */
@@ -1363,7 +1363,7 @@ void upc_all_reduceS
 				     gupcr_fabric_reduce_op (op),
 				     UPC_COLL_TO_COM_SHORT);
 	    }
-	  gupcr_coll_ack_wait (1);
+	  gupcr_coll_ack_wait ();
 	}
 #endif /* GUPCR_USE_TRIGGERED_OPS */
 
@@ -1611,7 +1611,7 @@ void upc_all_reduceUS
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
@@ -1654,7 +1654,7 @@ void upc_all_reduceUS
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
@@ -1681,7 +1681,7 @@ void upc_all_reduceUS
 				  sizeof (unsigned short));
 		}
 	      /* Wait for our value to go up the tree.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
       else
@@ -1719,7 +1719,7 @@ void upc_all_reduceUS
 	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
 	      /* Wait for our value to leave.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
 #else /* NO TRIGGERED OPS */
@@ -1738,7 +1738,7 @@ void upc_all_reduceUS
 					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
-	  gupcr_coll_ack_wait (wait_cnt);
+	  gupcr_coll_ack_wait ();
 
 	  /* Wait for children to report their local reduced values and
 	     parent to report it is ready to receive the reduced value.  */
@@ -1796,7 +1796,7 @@ void upc_all_reduceUS
 				     gupcr_fabric_reduce_op (op),
 				     UPC_COLL_TO_COM_USHORT);
 	    }
-	  gupcr_coll_ack_wait (1);
+	  gupcr_coll_ack_wait ();
 	}
 #endif /* GUPCR_USE_TRIGGERED_OPS */
 
@@ -2044,7 +2044,7 @@ void upc_all_reduceI
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
@@ -2087,7 +2087,7 @@ void upc_all_reduceI
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
@@ -2114,7 +2114,7 @@ void upc_all_reduceI
 				  sizeof (signed int));
 		}
 	      /* Wait for our value to go up the tree.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
       else
@@ -2152,7 +2152,7 @@ void upc_all_reduceI
 	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
 	      /* Wait for our value to leave.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
 #else /* NO TRIGGERED OPS */
@@ -2171,7 +2171,7 @@ void upc_all_reduceI
 					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
-	  gupcr_coll_ack_wait (wait_cnt);
+	  gupcr_coll_ack_wait ();
 
 	  /* Wait for children to report their local reduced values and
 	     parent to report it is ready to receive the reduced value.  */
@@ -2229,7 +2229,7 @@ void upc_all_reduceI
 				     gupcr_fabric_reduce_op (op),
 				     UPC_COLL_TO_COM_INT);
 	    }
-	  gupcr_coll_ack_wait (1);
+	  gupcr_coll_ack_wait ();
 	}
 #endif /* GUPCR_USE_TRIGGERED_OPS */
 
@@ -2477,7 +2477,7 @@ void upc_all_reduceUI
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
@@ -2520,7 +2520,7 @@ void upc_all_reduceUI
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
@@ -2547,7 +2547,7 @@ void upc_all_reduceUI
 				  sizeof (unsigned int));
 		}
 	      /* Wait for our value to go up the tree.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
       else
@@ -2585,7 +2585,7 @@ void upc_all_reduceUI
 	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
 	      /* Wait for our value to leave.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
 #else /* NO TRIGGERED OPS */
@@ -2604,7 +2604,7 @@ void upc_all_reduceUI
 					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
-	  gupcr_coll_ack_wait (wait_cnt);
+	  gupcr_coll_ack_wait ();
 
 	  /* Wait for children to report their local reduced values and
 	     parent to report it is ready to receive the reduced value.  */
@@ -2662,7 +2662,7 @@ void upc_all_reduceUI
 				     gupcr_fabric_reduce_op (op),
 				     UPC_COLL_TO_COM_UINT);
 	    }
-	  gupcr_coll_ack_wait (1);
+	  gupcr_coll_ack_wait ();
 	}
 #endif /* GUPCR_USE_TRIGGERED_OPS */
 
@@ -2910,7 +2910,7 @@ void upc_all_reduceL
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
@@ -2953,7 +2953,7 @@ void upc_all_reduceL
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
@@ -2980,7 +2980,7 @@ void upc_all_reduceL
 				  sizeof (signed long));
 		}
 	      /* Wait for our value to go up the tree.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
       else
@@ -3018,7 +3018,7 @@ void upc_all_reduceL
 	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
 	      /* Wait for our value to leave.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
 #else /* NO TRIGGERED OPS */
@@ -3037,7 +3037,7 @@ void upc_all_reduceL
 					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
-	  gupcr_coll_ack_wait (wait_cnt);
+	  gupcr_coll_ack_wait ();
 
 	  /* Wait for children to report their local reduced values and
 	     parent to report it is ready to receive the reduced value.  */
@@ -3095,7 +3095,7 @@ void upc_all_reduceL
 				     gupcr_fabric_reduce_op (op),
 				     UPC_COLL_TO_COM_LONG);
 	    }
-	  gupcr_coll_ack_wait (1);
+	  gupcr_coll_ack_wait ();
 	}
 #endif /* GUPCR_USE_TRIGGERED_OPS */
 
@@ -3343,7 +3343,7 @@ void upc_all_reduceUL
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
@@ -3386,7 +3386,7 @@ void upc_all_reduceUL
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
@@ -3413,7 +3413,7 @@ void upc_all_reduceUL
 				  sizeof (unsigned long));
 		}
 	      /* Wait for our value to go up the tree.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
       else
@@ -3451,7 +3451,7 @@ void upc_all_reduceUL
 	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
 	      /* Wait for our value to leave.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
 #else /* NO TRIGGERED OPS */
@@ -3470,7 +3470,7 @@ void upc_all_reduceUL
 					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
-	  gupcr_coll_ack_wait (wait_cnt);
+	  gupcr_coll_ack_wait ();
 
 	  /* Wait for children to report their local reduced values and
 	     parent to report it is ready to receive the reduced value.  */
@@ -3528,7 +3528,7 @@ void upc_all_reduceUL
 				     gupcr_fabric_reduce_op (op),
 				     UPC_COLL_TO_COM_ULONG);
 	    }
-	  gupcr_coll_ack_wait (1);
+	  gupcr_coll_ack_wait ();
 	}
 #endif /* GUPCR_USE_TRIGGERED_OPS */
 
@@ -3791,7 +3791,7 @@ void upc_all_reduceF
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
@@ -3834,7 +3834,7 @@ void upc_all_reduceF
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
@@ -3861,7 +3861,7 @@ void upc_all_reduceF
 				  sizeof (float));
 		}
 	      /* Wait for our value to go up the tree.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
       else
@@ -3899,7 +3899,7 @@ void upc_all_reduceF
 	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
 	      /* Wait for our value to leave.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
 #else /* NO TRIGGERED OPS */
@@ -3918,7 +3918,7 @@ void upc_all_reduceF
 					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
-	  gupcr_coll_ack_wait (wait_cnt);
+	  gupcr_coll_ack_wait ();
 
 	  /* Wait for children to report their local reduced values and
 	     parent to report it is ready to receive the reduced value.  */
@@ -3976,7 +3976,7 @@ void upc_all_reduceF
 				     gupcr_fabric_reduce_op (op),
 				     UPC_COLL_TO_COM_FLOAT);
 	    }
-	  gupcr_coll_ack_wait (1);
+	  gupcr_coll_ack_wait ();
 	}
 #endif /* GUPCR_USE_TRIGGERED_OPS */
 
@@ -4239,7 +4239,7 @@ void upc_all_reduceD
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
@@ -4282,7 +4282,7 @@ void upc_all_reduceD
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
@@ -4309,7 +4309,7 @@ void upc_all_reduceD
 				  sizeof (double));
 		}
 	      /* Wait for our value to go up the tree.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
       else
@@ -4347,7 +4347,7 @@ void upc_all_reduceD
 	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
 	      /* Wait for our value to leave.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
 #else /* NO TRIGGERED OPS */
@@ -4366,7 +4366,7 @@ void upc_all_reduceD
 					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
-	  gupcr_coll_ack_wait (wait_cnt);
+	  gupcr_coll_ack_wait ();
 
 	  /* Wait for children to report their local reduced values and
 	     parent to report it is ready to receive the reduced value.  */
@@ -4424,7 +4424,7 @@ void upc_all_reduceD
 				     gupcr_fabric_reduce_op (op),
 				     UPC_COLL_TO_COM_DOUBLE);
 	    }
-	  gupcr_coll_ack_wait (1);
+	  gupcr_coll_ack_wait ();
 	}
 #endif /* GUPCR_USE_TRIGGERED_OPS */
 
@@ -4687,7 +4687,7 @@ void upc_all_reduceLD
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for children to report their values.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt);
@@ -4730,7 +4730,7 @@ void upc_all_reduceLD
 						   [MYTHREAD].signal));
 		  gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 		}
-	      gupcr_coll_ack_wait (gupcr_coll_child_cnt);
+	      gupcr_coll_ack_wait ();
 
 	      /* Wait for completion, children and parent are ready.  */
 	      gupcr_coll_signal_wait (gupcr_coll_child_cnt + 1);
@@ -4757,7 +4757,7 @@ void upc_all_reduceLD
 				  sizeof (long double));
 		}
 	      /* Wait for our value to go up the tree.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
       else
@@ -4795,7 +4795,7 @@ void upc_all_reduceLD
 	      /* Wait for parent to be ready.  */
 	      gupcr_coll_signal_wait (1);
 	      /* Wait for our value to leave.  */
-	      gupcr_coll_ack_wait (1);
+	      gupcr_coll_ack_wait ();
 	    }
 	}
 #else /* NO TRIGGERED OPS */
@@ -4814,7 +4814,7 @@ void upc_all_reduceLD
 					       [MYTHREAD].signal));
 	      gupcr_coll_put (gupcr_coll_child[i], offset, offset, 1);
 	    }
-	  gupcr_coll_ack_wait (wait_cnt);
+	  gupcr_coll_ack_wait ();
 
 	  /* Wait for children to report their local reduced values and
 	     parent to report it is ready to receive the reduced value.  */
@@ -4872,7 +4872,7 @@ void upc_all_reduceLD
 				     gupcr_fabric_reduce_op (op),
 				     UPC_COLL_TO_COM_LONG_DOUBLE);
 	    }
-	  gupcr_coll_ack_wait (1);
+	  gupcr_coll_ack_wait ();
 	}
 #endif /* GUPCR_USE_TRIGGERED_OPS */
 

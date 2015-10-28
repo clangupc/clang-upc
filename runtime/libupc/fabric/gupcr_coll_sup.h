@@ -79,7 +79,7 @@ void gupcr_coll_put_atomic (size_t dthread, size_t doffset, size_t soffset,
 void gupcr_coll_trigput_atomic (size_t dthread, size_t doffset,
 				size_t soffset, size_t nbytes, enum fi_op op,
 				enum fi_datatype datatype, size_t cnt);
-void gupcr_coll_ack_wait (size_t cnt);
+void gupcr_coll_ack_wait (void);
 void gupcr_coll_signal_wait (size_t cnt);
 
 void gupcr_coll_init (void);
