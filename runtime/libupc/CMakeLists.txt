@@ -231,6 +231,7 @@ if (LIBUPC_RUNTIME_MODEL STREQUAL portals4 OR
   endif()
 
   # Check for PMI.  Default to SLURM on x86_64 linux.
+  set(LIBUPC_JOB_PMI_LIBRARY_DIR /usr/lib64 CACHE PATH "select PMI library (default=/usr/lib64).")
   set(LIBUPC_JOB_PMI_INCLUDE_DIR /usr/include/slurm CACHE PATH "select PMI include (default=/usr/include/slurm).")
   set(LIBUPC_JOB_PMI2_API FALSE CACHE BOOL "enable PMI2 API.")
   if(EXISTS ${LIBUPC_JOB_PMI_INCLUDE_DIR})
@@ -245,6 +246,7 @@ if (LIBUPC_RUNTIME_MODEL STREQUAL portals4 OR
   if (NOT (HAVE_PMI2_H OR HAVE_PMI_H))
     message(fatal_error "pmi.h/pmi2.h not found or wrong LIBUPC_JOB_PMI_INCLUDE_DIR(${LIBUPC_JOB_PMI_INCLUDE_DIR}) specified")
   endif()
+  CHECK_LIBRARY_EXISTS(pmi PMI_Allgather ${LIBUPC_JOB_PMI_LIBRARY_DIR} HAVE_CRAY_PMI)
 
   set(LIBUPC_GLOBAL_EXIT_TIMEOUT 2 CACHE STRING "Select upc_global_exit() timeout in seconds (default=2).")
   set(GUPCR_GLOBAL_EXIT_TIMEOUT ${LIBUPC_GLOBAL_EXIT_TIMEOUT})

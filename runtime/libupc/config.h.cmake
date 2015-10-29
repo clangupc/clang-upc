@@ -149,6 +149,9 @@
 /* Define to 1 if PMI is available. */
 #cmakedefine HAVE_PMI_H 1
 
+/* Define to 1 if Cray PMI is available. */
+#cmakedefine HAVE_CRAY_PMI 1
+
 #ifndef ARG_UNUSED
 # define ARG_UNUSED(NAME) NAME __attribute__ ((__unused__))
 #endif

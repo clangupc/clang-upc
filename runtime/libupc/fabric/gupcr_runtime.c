@@ -66,6 +66,10 @@
 static int rank = -1;
 /** Number of processes */
 static int size = 0;
+#if HAVE_CRAY_PMI
+/** Thread order for PMI_Allgather */
+static int *rank_vec;
+#endif
 
 static int max_name_len, max_key_len, max_val_len;
 static char *kvs_name, *kvs_key, *kvs_val;
@@ -164,6 +168,16 @@ gupcr_runtime_init (void)
   status = PMI_KVS_Get_my_name (kvs_name, max_name_len);
   CHECK_PMI (status);
 #endif
+#if HAVE_CRAY_PMI
+  /* Use Cray's allgather function to exchange data. */
+  /* Cray does not guarantee that data is being returned in the
+     thread order.  Determine the order now.  */
+  rank_vec = (int *) malloc (sizeof(int) * size);
+  if (!rank_vec)
+    return 1;
+  status = PMI_Allgather (&rank, rank_vec, sizeof (int));
+    CHECK_PMI (status);
+#endif
   return 0;
 }
 
@@ -229,8 +243,22 @@ int
 gupcr_runtime_exchange (const char *key, void *val, size_t len, void *res)
 {
   int i, status;
-  char *dst;
+  char *out_ptr = res;
 
+#if HAVE_CRAY_PMI
+  /* Use Cray's allgather function to exchange data. */
+  {
+    char *tmp;
+    tmp = malloc (size * len);
+    if (!tmp)
+      return 1;
+    status = PMI_Allgather (val, tmp, len);
+    CHECK_PMI (status);
+    for (i = 0; i < size; ++i)
+      memcpy (&out_ptr[len * rank_vec[i]], &tmp[len * i], len);
+    free (tmp);
+  }
+#else
   if (gupcr_runtime_put (key, val, len))
     return 1;
 
@@ -246,14 +274,13 @@ gupcr_runtime_exchange (const char *key, void *val, size_t len, void *res)
 #endif
 
   /* Collect info on other threads.  */
-  dst = res;
   for (i = 0; i < size; ++i)
     {
       if (i != rank)
-        if (gupcr_runtime_get (i, key, dst, len))
+        if (gupcr_runtime_get (i, key, &out_ptr[len *i], len))
 	  return status;
-      dst += len;
     }
+#endif
   return 0;
 }
 

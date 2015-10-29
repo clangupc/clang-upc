@@ -91,6 +91,9 @@
 /* Select LIBFABRIC shared context support. */
 #undef GUPCR_FABRIC_SHARED_CTX
 
+/* Define to 1 if UPC runtime can use Cray PMI API. */
+#undef HAVE_CRAY_PMI
+
 /* Define to 1 if UPC runtime will use PMI2 API. */
 #undef LIBUPC_JOB_PMI2_API
 
