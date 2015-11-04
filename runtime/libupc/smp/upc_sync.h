@@ -56,6 +56,9 @@ PA-RISC		SYNC			none reqd. */
 #elif defined (hppa)
 #define GUPCR_WRITE_FENCE() asm __volatile__ ("SYNC":::"memory")
 #define GUPCR_READ_FENCE() asm __volatile__ ("":::"memory")
+#elif defined (__aarch64__)
+#define GUPCR_WRITE_FENCE() asm __volatile__ ("dmb ishst":::"memory")
+#define GUPCR_READ_FENCE() asm __volatile__ ("dmb ishld":::"memory")
 #else
 # error "No memory fence  operations provided for this cpu."
 #endif
