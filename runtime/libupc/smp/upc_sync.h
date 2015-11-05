@@ -15,7 +15,7 @@
 
 /*
 
-The following table is excerpted from
+The following table (up to PA-RISC) is excerpted from
 "Implementing the UPC memory consistency model for
 shared-memory architectures", Dan Bonachea et al.
 
@@ -28,7 +28,11 @@ Athlon/Opteron	mfence			none reqd.
 Itanium		mf			none reqd.
 SPARC		stbar			none reqd.
 MIPS		sync			none reqd.
-PA-RISC		SYNC			none reqd. */
+PA-RISC		SYNC			none reqd.
+--
+AARCH64         dmb ishst               dmb ishld
+
+*/
 
 #define GUPCR_FENCE() { GUPCR_READ_FENCE (); GUPCR_WRITE_FENCE (); }
 
