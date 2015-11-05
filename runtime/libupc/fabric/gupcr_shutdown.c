@@ -74,13 +74,14 @@
 #define SHUTDOWN_MICROSEC_WAIT 100000L
 
 /** Index of the local memory location */
-#define GUPCR_REMOTE_INDEX(addr) \
-	(void *) ((char *) addr - (char *) &gupcr_shutdown_memory)
+#define GUPCR_REMOTE_OFFSET(addr) \
+	(uint64_t)((char *) addr - (char *) &gupcr_shutdown_memory)
 
 /** Shutdown memory region */
-struct {
-  int status;	/* Global exit status if signaled from other threads.  */
-  int signal;   /* Global exit signal if FI_RMA_EVENT is not supported.  */
+struct
+{
+  int status;			/* Global exit status if signaled from other threads.  */
+  int signal;			/* Global exit signal if FI_RMA_EVENT is not supported.  */
 } gupcr_shutdown_memory;
 
 /** Shutdown pthread ID */
@@ -110,6 +111,9 @@ static fab_mr_t gupcr_shutdown_mr;
 /** Local memory access memory region  */
 static fab_mr_t gupcr_shutdown_lmr;
 #endif
+
+/** Target memory regions */
+static gupcr_memreg_t * gupcr_shutdown_mr_keys;
 
 /** Target address */
 #define GUPCR_TARGET_ADDR(target) \
@@ -146,19 +150,23 @@ gupcr_signal_exit (int status)
 			  &gupcr_shutdown_memory.status,
 			  sizeof (gupcr_shutdown_memory.status),
 			  NULL, GUPCR_TARGET_ADDR (thread),
-			  (uint64_t)
-			  GUPCR_REMOTE_INDEX (&gupcr_shutdown_memory.status),
-			  GUPCR_MR_SHUTDOWN, NULL));
-      
+			  GUPCR_REMOTE_MR_ADDR (shutdown, thread,
+						GUPCR_REMOTE_OFFSET
+						(&gupcr_shutdown_memory.status)),
+			  GUPCR_REMOTE_MR_KEY (shutdown, thread),
+			  NULL));
+
       if (!GUPCR_FABRIC_RMA_EVENT ())
 	gupcr_fabric_call (fi_write,
 			   (gupcr_shutdown_ep.tx_ep,
 			    &gupcr_shutdown_memory.signal,
 			    sizeof (gupcr_shutdown_memory.signal),
 			    NULL, GUPCR_TARGET_ADDR (thread),
-			    (uint64_t)
-			    GUPCR_REMOTE_INDEX (&gupcr_shutdown_memory.signal),
-			    GUPCR_MR_SHUTDOWN, NULL));
+			    GUPCR_REMOTE_MR_ADDR (shutdown, thread,
+						  GUPCR_REMOTE_OFFSET
+						  (&gupcr_shutdown_memory.signal)),
+			    GUPCR_REMOTE_MR_KEY (shutdown, thread),
+			    NULL));
     }
   /* It is NOT ok to call finalize routines as there might
      be outstanding transactions.  */
@@ -174,7 +182,8 @@ gupcr_signal_exit (int status)
       gupcr_fabric_call_nc (fi_cntr_read, cnt, (gupcr_shutdown_lct));
       // Check that we received all acks
       gupcr_log (FC_MISC, "Shutdown cnt: %d", (int) cnt);
-      if (cnt >= (uint64_t) (GUPCR_FABRIC_RMA_EVENT () ? THREADS : 2 * THREADS))
+      if (cnt >=
+	  (uint64_t) (GUPCR_FABRIC_RMA_EVENT ()? THREADS : 2 * THREADS))
 	done = 1;
       else
 	gupcr_cpu_delay (SHUTDOWN_MICROSEC_WAIT);
@@ -202,9 +211,11 @@ gupcr_shutdown_terminate_pthread (void)
 		      &gupcr_shutdown_memory.status,
 		      sizeof (gupcr_shutdown_memory.status),
 		      NULL, GUPCR_TARGET_ADDR (MYTHREAD),
-		      (uint64_t)
-		      GUPCR_REMOTE_INDEX (&gupcr_shutdown_memory.status),
-		      GUPCR_MR_SHUTDOWN, NULL));
+		      GUPCR_REMOTE_MR_ADDR (shutdown, MYTHREAD,
+					    GUPCR_REMOTE_OFFSET
+					    (&gupcr_shutdown_memory.status)),
+		      GUPCR_REMOTE_MR_KEY (shutdown, MYTHREAD),
+		      NULL));
   gupcr_shutdown_memory.signal = 1;
   gupcr_shutdown_lmr_count += 1;
   pthread_join (gupcr_shutdown_pthread_id, NULL);
@@ -332,12 +343,15 @@ gupcr_shutdown_init (void)
   gupcr_fabric_call (fi_enable, (gupcr_shutdown_ep.rx_ep));
 
   /* ... and memory region for remote inbound accesses.  */
-  gupcr_shutdown_memory.status =0;
-  gupcr_shutdown_memory.signal =0;
-  gupcr_fabric_call (fi_mr_reg, (gupcr_fd, &gupcr_shutdown_memory, sizeof (gupcr_shutdown_memory),
-				 FI_REMOTE_READ | FI_REMOTE_WRITE, 0,
-				 GUPCR_MR_SHUTDOWN, 0, &gupcr_shutdown_mr,
-				 NULL));
+  gupcr_shutdown_memory.status = 0;
+  gupcr_shutdown_memory.signal = 0;
+  gupcr_fabric_call (fi_mr_reg,
+		     (gupcr_fd, &gupcr_shutdown_memory,
+		      sizeof (gupcr_shutdown_memory),
+		      FI_REMOTE_READ | FI_REMOTE_WRITE, 0, GUPCR_MR_SHUTDOWN,
+		      0, &gupcr_shutdown_mr, NULL));
+  GUPCR_GATHER_MR_KEYS (shutdown, gupcr_shutdown_mr, &gupcr_shutdown_memory);
+
   /* ... and counter for remote inbound writes.  */
   cntr_attr.events = FI_CNTR_EVENTS_COMP;
   cntr_attr.flags = 0;
@@ -403,6 +417,7 @@ gupcr_shutdown_fini (void)
   gupcr_fabric_call (fi_close, (&gupcr_shutdown_lmr->fid));
 #endif
   gupcr_fabric_ep_delete (&gupcr_shutdown_ep);
+  free (gupcr_shutdown_mr_keys);
 }
 
 /** @} */

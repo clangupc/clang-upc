@@ -40,6 +40,8 @@ static size_t gupcr_atomic_mr_count;
 /** Local memory access memory region  */
 static fab_mr_t gupcr_atomic_lmr;
 #endif
+/** Target memory regions */
+static gupcr_memreg_t * gupcr_atomic_mr_keys;
 
 /** Target address */
 #define GUPCR_TARGET_ADDR(target) \
@@ -78,7 +80,9 @@ gupcr_atomic_get (size_t dthread, size_t doffset, void *fetch_ptr,
 		     (gupcr_atomic_ep.tx_ep, NULL,
 		      1, NULL, GUPCR_LOCAL_INDEX (fetch_ptr),
 		      NULL, GUPCR_TARGET_ADDR (dthread),
-		      doffset, GUPCR_MR_ATOMIC, type, FI_ATOMIC_READ, NULL));
+  		      GUPCR_REMOTE_MR_ADDR (atomic, dthread, doffset),
+		      GUPCR_REMOTE_MR_KEY (atomic, dthread),
+		      type, FI_ATOMIC_READ, NULL));
   gupcr_atomic_mr_count += 1;
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(gupcr_atomic_ct, gupcr_atomic_mr_count,
@@ -111,12 +115,13 @@ gupcr_atomic_set (size_t dthread, size_t doffset, void *fetch_ptr,
   gupcr_debug (FC_ATOMIC, "%lu:0x%lx v(%s)", dthread, doffset,
 	       gupcr_get_buf_as_hex (tmpbuf, value, size));
 
-
   gupcr_fabric_call (fi_fetch_atomic,
 		     (gupcr_atomic_ep.tx_ep, GUPCR_LOCAL_INDEX (value),
 		      1, NULL, GUPCR_LOCAL_INDEX (atomic_tmp_buf),
 		      NULL, GUPCR_TARGET_ADDR (dthread),
-		      doffset, GUPCR_MR_ATOMIC, type, FI_ATOMIC_WRITE, NULL));
+  		      GUPCR_REMOTE_MR_ADDR (atomic, dthread, doffset),
+		      GUPCR_REMOTE_MR_KEY (atomic, dthread),
+		      type, FI_ATOMIC_WRITE, NULL));
 
   gupcr_atomic_mr_count += 1;
   gupcr_fabric_call_nc (fi_cntr_wait, status,
@@ -160,7 +165,9 @@ gupcr_atomic_cswap (size_t dthread, size_t doffset, void *fetch_ptr,
 		      1, NULL, GUPCR_LOCAL_INDEX (expected),
 		      NULL, GUPCR_LOCAL_INDEX (atomic_tmp_buf),
 		      NULL, GUPCR_TARGET_ADDR (dthread),
-		      doffset, GUPCR_MR_ATOMIC, type, FI_CSWAP, NULL));
+  		      GUPCR_REMOTE_MR_ADDR (atomic, dthread, doffset),
+		      GUPCR_REMOTE_MR_KEY (atomic, dthread),
+		      type, FI_CSWAP, NULL));
 
   gupcr_atomic_mr_count += 1;
   gupcr_fabric_call_nc (fi_cntr_wait, status,
@@ -206,14 +213,18 @@ gupcr_atomic_op (size_t dthread, size_t doffset, void *fetch_ptr,
 			 (gupcr_atomic_ep.tx_ep, GUPCR_LOCAL_INDEX (value),
 			  1, NULL, GUPCR_LOCAL_INDEX (atomic_tmp_buf),
 			  NULL, GUPCR_TARGET_ADDR (dthread),
-			  doffset, GUPCR_MR_ATOMIC, type, op, NULL));
+  			  GUPCR_REMOTE_MR_ADDR (atomic, dthread, doffset),
+			  GUPCR_REMOTE_MR_KEY (atomic, dthread),
+			  type, op, NULL));
     }
   else
     {
       gupcr_fabric_call (fi_atomic,
 			 (gupcr_atomic_ep.tx_ep, GUPCR_LOCAL_INDEX (value),
 			  1, NULL, GUPCR_TARGET_ADDR (dthread),
-			  doffset, GUPCR_MR_ATOMIC, type, op, NULL));
+  			  GUPCR_REMOTE_MR_ADDR (atomic, dthread, doffset),
+			  GUPCR_REMOTE_MR_KEY (atomic, dthread),
+			  type, op, NULL));
     }
   gupcr_atomic_mr_count += 1;
   gupcr_fabric_call_nc (fi_cntr_wait, status,
@@ -285,6 +296,7 @@ gupcr_atomic_init (void)
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, gupcr_gmem_base, gupcr_gmem_size,
 				 FI_REMOTE_READ | FI_REMOTE_WRITE, 0,
 				 GUPCR_MR_ATOMIC, 0, &gupcr_atomic_mr, NULL));
+  GUPCR_GATHER_MR_KEYS (atomic, gupcr_atomic_mr, gupcr_gmem_base);
 
 #if TARGET_MR_BIND_NEEDED
   /* Bind MR for receiving endpoint.  */
@@ -311,6 +323,7 @@ gupcr_atomic_fini (void)
   gupcr_fabric_call (fi_close, (&gupcr_atomic_lmr->fid));
 #endif
   gupcr_fabric_ep_delete (&gupcr_atomic_ep);
+  free (gupcr_atomic_mr_keys);
 }
 
 /** @} */

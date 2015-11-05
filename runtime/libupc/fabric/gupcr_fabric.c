@@ -56,6 +56,8 @@ static gupcr_epinfo_t gupcr_fabric_ep;
 
 /** Endpoint name length  */
 static size_t gupcr_epnamelen;
+/** Target memory regions */
+struct gupcr_memreg *gupcr_mr_keys[GUPCR_MR_COUNT];
 
 /** Infiniband interface.  */
 static const char *ifname = GUPCR_FABRIC_DEVICE;
@@ -69,7 +71,9 @@ int gupcr_enable_shared_rx_ctx = 0;
 /** Libfabric scalable context (disabled by default) */
 int gupcr_enable_scalable_ctx = 0;
 /** Libfabric supports FI_TARGET_WRITE/READ notifications */
-int gupcr_enable_rma_event = 1;
+int gupcr_enable_rma_event = 0;
+/** Libfabric supports scalable memory region - FI_MR_SCALABLE */
+int gupcr_enable_mr_scalable = 0;
 /** Interface IPv4 address */
 in_addr_t net_addr;
 /** IPv4 addresses for all ranks */
@@ -603,12 +607,6 @@ gupcr_fabric_init (void)
   hints->fabric_attr->name = strdup (fab_name);
   hints->fabric_attr->prov_name = strdup (fab_prov_name);
 
-  /* Set domain requirements.  */
-  if (GUPCR_FABRIC_SCALABLE_CTX ())
-    hints->domain_attr->mr_mode = FI_MR_SCALABLE;
-
-#define __GUPCR_STR__(S) #S
-#define __GUPCR_XSTR__(S) __GUPCR_STR__(S)
   gupcr_fabric_call (fi_getinfo,
 		     (FI_VERSION (1, 0), node, NULL,
 		      FI_SOURCE, hints, &gupcr_fi));
@@ -629,38 +627,63 @@ gupcr_fabric_init (void)
     gupcr_fabric_call_nc (fi_getinfo, status,
 			  (FI_VERSION (1, 0), node, NULL,
 			   FI_SOURCE, hints, &ret_info));
-    if (status || !(ret_info->caps & FI_RMA_EVENT))
-      gupcr_enable_rma_event = 0;
+    if (!status && (ret_info->caps & FI_RMA_EVENT))
+      {
+        gupcr_enable_rma_event = 1;
+        gupcr_log (FC_FABRIC, "enabled RMA events");
+      }
     hints->caps ^= FI_RMA_EVENT;
   }
 
-#if GUPCR_FABRIC_SHARED_CTX
-  /* Check for shared context support.  In order to save TX/RX resources
-     endpoints can share TX/RX contexts.  */
+  /* Check if scalable MR is supported.  */
   {
     int status;
     fab_info_t ret_info;
-    ep_attr.tx_ctx_cnt = FI_SHARED_CONTEXT;
+    hints->domain_attr->mr_mode = FI_MR_SCALABLE;
     gupcr_fabric_call_nc (fi_getinfo, status,
 			  (FI_VERSION (1, 0), node, NULL,
-			   FI_SOURCE, &hints, &ret_info));
+			   FI_SOURCE, hints, &ret_info));
+    if (!status)
+      {
+        gupcr_fi->domain_attr->mr_mode = FI_MR_SCALABLE;
+        gupcr_enable_mr_scalable = 1;
+        gupcr_log (FC_FABRIC, "enabled scalable MR");
+      }
+  }
+
+#if GUPCR_FABRIC_SHARED_CTX
+  /* Check for shared context support in order to save TX/RX resources.  */
+  /* TODO - ? difference between scalable RX/MR v. shared RX/MR.  If we use
+              MR keys to target particular MR we do not need scalable RX.
+            ? sharing on TX side might be resource benerficial.  */
+  {
+    int status;
+    fab_info_t ret_info;
+    hints->ep_attr->tx_ctx_cnt = FI_SHARED_CONTEXT;
+    gupcr_fabric_call_nc (fi_getinfo, status,
+			  (FI_VERSION (1, 0), node, NULL,
+			   FI_SOURCE, hints, &ret_info));
     if (!status && (ret_info->ep_attr->tx_ctx_cnt == FI_SHARED_CONTEXT))
       {
 	gupcr_enable_shared_tx_ctx = 1;
+        gupcr_fi->ep_attr->tx_ctx_cnt = FI_SHARED_CONTEXT;
 	gupcr_log (FC_FABRIC, "enabled SHARED TX endpoint");
       }
-    ep_attr.tx_ctx_cnt = 0;
-    ep_attr.rx_ctx_cnt = FI_SHARED_CONTEXT;
+    hints->ep_attr->tx_ctx_cnt = 0;
+    hints->ep_attr->rx_ctx_cnt = FI_SHARED_CONTEXT;
     gupcr_fabric_call_nc (fi_getinfo, status,
 			  (FI_VERSION (1, 0), node, NULL,
-			   FI_SOURCE, &hints, &ret_info));
+			   FI_SOURCE, hints, &ret_info));
     if (!status && (ret_info->ep_attr->rx_ctx_cnt == FI_SHARED_CONTEXT))
       {
 	gupcr_enable_shared_rx_ctx = 1;
+        gupcr_fi->ep_attr->rx_ctx_cnt = FI_SHARED_CONTEXT;
 	gupcr_log (FC_FABRIC, "enabled SHARED RX endpoint");
       }
+    hints->ep_attr->rx_ctx_cnt = 0;
   }
 #endif
+
   gupcr_fabric_call (fi_fabric, (gupcr_fi->fabric_attr, &gupcr_fab, NULL));
   gupcr_fabric_call (fi_domain, (gupcr_fab, gupcr_fi, &gupcr_fd, NULL));
 
@@ -735,7 +758,7 @@ gupcr_fabric_ep_create (gupcr_epinfo_t * epinfo)
   fab_ep_t ep;
   av_attr_t av_attr = { 0 };
   fab_av_t av;
-  char *epnames;
+  char *epnames, *myepname;
   int status;
 
   if (GUPCR_FABRIC_SCALABLE_CTX () && epinfo->service)
@@ -789,18 +812,18 @@ gupcr_fabric_ep_create (gupcr_epinfo_t * epinfo)
       gupcr_fabric_call_nc (fi_getname, status, (&ep->fid, NULL,
 						 &gupcr_epnamelen));
     }
+  myepname = calloc (gupcr_epnamelen, 1);
+  if (!myepname)
+    gupcr_fatal_error ("cannot allocate %ld for myepname", gupcr_epnamelen);
   epnames = calloc (gupcr_rank_cnt * gupcr_epnamelen, 1);
   if (!epnames)
     gupcr_fatal_error ("cannot allocate %ld for epnames",
 		       gupcr_rank_cnt * gupcr_epnamelen);
-  gupcr_fabric_call (fi_getname, (&ep->fid,
-				  &epnames[gupcr_rank * gupcr_epnamelen],
-				  &gupcr_epnamelen));
+  gupcr_fabric_call (fi_getname, (&ep->fid, myepname, &gupcr_epnamelen));
   {
     int ret =
-      gupcr_runtime_exchange (epinfo->name,
-			      &epnames[gupcr_rank * gupcr_epnamelen],
-			      gupcr_epnamelen, epnames);
+      gupcr_runtime_exchange (epinfo->name, myepname, gupcr_epnamelen,
+			      epnames);
     if (ret)
       gupcr_fatal_error
 	("error (%d) reported while exchanging \"%s\" endpoints", ret,
@@ -865,6 +888,23 @@ gupcr_nodetree_setup (void)
     gupcr_parent_thread = ROOT_PARENT;
   else
     gupcr_parent_thread = (MYTHREAD - 1) / GUPCR_TREE_FANOUT;
+}
+
+/**
+ * Memory registration support
+ *
+ * Both FI_MR_BASIC and FI_MR_SCALABLE registration are supported
+ * (domain wide). For particular index (e.g. GUPCR_MR_GMEM) provide the
+ * MR key and the starting address of the memory region.  Exchange this
+ * info with other threads and organize this information into double
+ * indexed array for later use in RMA calls. 
+ */
+void
+gupcr_fabric_mr_exchg (const char *name, gupcr_memreg_t *keys, uint64_t mr_key, char *addr)
+{
+  struct gupcr_memreg mrkey = {addr, mr_key};;
+  if (gupcr_runtime_exchange (name, &mrkey, sizeof (struct gupcr_memreg), keys))
+    gupcr_fatal_error ("cannot exchange memory registration for remote MRs");
 }
 
 /** @} */

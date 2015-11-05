@@ -78,6 +78,8 @@ static fab_mr_t gupcr_gmem_mr;
 /** Local memory access memory region  */
 static fab_mr_t gupcr_gmem_lmr;
 #endif
+/** Target memory regions */
+static gupcr_memreg_t * gupcr_gmem_mr_keys;
 
 /** GMEM fabric endpoints */
 static gupcr_epinfo_t gupcr_gmem_ep;
@@ -193,8 +195,8 @@ void
 gupcr_gmem_get (void *dest, int thread, size_t offset, size_t n)
 {
   char *loc_addr = (char *) dest - (size_t) USER_PROG_MEM_START;
-  size_t dest_offset = offset;
   size_t n_rem = n;
+  size_t dest_offset = offset;
 
   gupcr_debug (FC_MEM, "%d:0x%lx 0x%lx",
 	       thread, (long unsigned) offset, (long unsigned) dest);
@@ -206,7 +208,8 @@ gupcr_gmem_get (void *dest, int thread, size_t offset, size_t n)
       gupcr_fabric_call (fi_read,
 			 (gupcr_gmem_ep.tx_ep, loc_addr, n_xfer, NULL,
 			  GUPCR_TARGET_ADDR (thread),
-			  dest_offset, GUPCR_MR_GMEM, NULL));
+			  GUPCR_REMOTE_MR_ADDR (gmem, thread, dest_offset),
+			  GUPCR_REMOTE_MR_KEY (gmem, thread), NULL));
       n_rem -= n_xfer;
       loc_addr += n_xfer;
       dest_offset += n_xfer;
@@ -234,6 +237,8 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
   int must_sync = (n > GUPCR_GMEM_MAX_SAFE_PUT_SIZE);
   char *src_addr = (char *) src;
   size_t n_rem = n;
+  size_t dest_offset = offset;
+
   gupcr_debug (FC_MEM, "0x%lx %d:0x%lx",
 	       (long unsigned) src, thread, (long unsigned) offset);
   /* Large puts must be synchronous, to ensure that it is
@@ -249,8 +254,9 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 	  gupcr_fabric_call (fi_inject_write,
 			     (gupcr_gmem_ep.tx_ep,
 			      GUPCR_LOCAL_INDEX (src_addr), n_xfer,
-			      GUPCR_TARGET_ADDR (thread), offset,
-			      GUPCR_MR_GMEM));
+			      GUPCR_TARGET_ADDR (thread),
+			      GUPCR_REMOTE_MR_ADDR (gmem, thread, dest_offset),
+			      GUPCR_REMOTE_MR_KEY (gmem, thread)));
 	}
       else
 	{
@@ -274,11 +280,14 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 	  gupcr_fabric_call (fi_write,
 			     (gupcr_gmem_ep.tx_ep,
 			      GUPCR_LOCAL_INDEX (local_offset), n_xfer, NULL,
-			      GUPCR_TARGET_ADDR (thread), offset,
-			      GUPCR_MR_GMEM, NULL));
+			      GUPCR_TARGET_ADDR (thread),
+			      GUPCR_REMOTE_MR_ADDR (gmem, thread, dest_offset),
+			      GUPCR_REMOTE_MR_KEY (gmem, thread),
+			      NULL));
 	}
       n_rem -= n_xfer;
       src_addr += n_xfer;
+      dest_offset += n_xfer;
       ++gupcr_gmem_puts.num_pending;
       if (gupcr_gmem_puts.num_pending == gupcr_gmem_high_mark_puts)
 	{
@@ -318,7 +327,7 @@ gupcr_gmem_copy (int dthread, size_t doffset,
 		 int sthread, size_t soffset, size_t n)
 {
   size_t n_rem = n;
-  size_t dest_addr = doffset;
+  size_t dest_offset = doffset;
   size_t src_addr = soffset;
   gupcr_debug (FC_MEM, "%d:0x%lx %d:0x%lx %lu",
 	       sthread, (long unsigned) soffset,
@@ -343,11 +352,14 @@ gupcr_gmem_copy (int dthread, size_t doffset,
       gupcr_fabric_call (fi_write,
 			 (gupcr_gmem_ep.tx_ep,
 			  GUPCR_LOCAL_INDEX (local_offset), n_xfer, NULL,
-			  GUPCR_TARGET_ADDR (dthread), dest_addr,
-			  GUPCR_MR_GMEM, NULL));
+			  GUPCR_TARGET_ADDR (dthread),
+			  GUPCR_REMOTE_MR_ADDR (gmem, dthread,
+						dest_offset),
+			  GUPCR_REMOTE_MR_KEY (gmem, dthread),
+			  NULL));
       n_rem -= n_xfer;
       src_addr += n_xfer;
-      dest_addr += n_xfer;
+      dest_offset += n_xfer;
     }
 }
 
@@ -370,7 +382,7 @@ gupcr_gmem_set (int thread, size_t offset, int c, size_t n)
 {
   size_t n_rem = n;
   int already_filled = 0;
-  size_t dest_addr = offset;
+  size_t dest_offset = offset;
   gupcr_debug (FC_MEM, "0x%x %d:0x%lx %lu", c, thread,
 	       (long unsigned) offset, (long unsigned) n);
   while (n_rem > 0)
@@ -397,10 +409,12 @@ gupcr_gmem_set (int thread, size_t offset, int c, size_t n)
       gupcr_fabric_call (fi_write,
 			 (gupcr_gmem_ep.tx_ep,
 			  GUPCR_LOCAL_INDEX (local_offset), n_xfer, NULL,
-			  GUPCR_TARGET_ADDR (thread), dest_addr,
-			  GUPCR_MR_GMEM, NULL));
+			  GUPCR_TARGET_ADDR (thread),
+			  GUPCR_REMOTE_MR_ADDR (gmem, thread, dest_offset),
+			  GUPCR_REMOTE_MR_KEY (gmem, thread),
+			  NULL));
       n_rem -= n_xfer;
-      dest_addr += n_xfer;
+      dest_offset += n_xfer;
     }
 }
 
@@ -477,6 +491,8 @@ gupcr_gmem_init (void)
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, gupcr_gmem_base, gupcr_gmem_size,
 				 FI_REMOTE_READ | FI_REMOTE_WRITE, 0,
 				 GUPCR_MR_GMEM, 0, &gupcr_gmem_mr, NULL));
+  GUPCR_GATHER_MR_KEYS (gmem, gupcr_gmem_mr, gupcr_gmem_base);
+
 #if TARGET_MR_BIND_NEEDED
   gupcr_fabric_call (fi_ep_bind, (gupcr_gmem_ep.rx_ep,
 				  &gupcr_gmem_mr->fid,
@@ -501,6 +517,7 @@ gupcr_gmem_fini (void)
   gupcr_fabric_call (fi_close, (&gupcr_gmem_lmr->fid));
 #endif
   gupcr_fabric_ep_delete (&gupcr_gmem_ep);
+  free (gupcr_gmem_mr_keys);
 }
 
 /** @} */

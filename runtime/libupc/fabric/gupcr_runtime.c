@@ -128,7 +128,7 @@ int
 gupcr_runtime_init (void)
 {
   int initialized;
-  int __attribute__((unused)) appnum;
+  int __attribute__ ((unused)) appnum;
   int status;
 
 #if LIBUPC_JOB_PMI2_API
@@ -172,11 +172,11 @@ gupcr_runtime_init (void)
   /* Use Cray's allgather function to exchange data. */
   /* Cray does not guarantee that data is being returned in the
      thread order.  Determine the order now.  */
-  rank_vec = (int *) malloc (sizeof(int) * size);
+  rank_vec = (int *) malloc (sizeof (int) * size);
   if (!rank_vec)
     return 1;
   status = PMI_Allgather (&rank, rank_vec, sizeof (int));
-    CHECK_PMI (status);
+  CHECK_PMI (status);
 #endif
   return 0;
 }
@@ -206,12 +206,13 @@ gupcr_runtime_put (const char *key, void *val, size_t len)
   if (encode (val, len, kvs_val, max_val_len))
     return 1;
 #if LIBUPC_JOB_PMI2_API
-  status = PMI2_KVS_Put(kvs_key, kvs_val);
+  status = PMI2_KVS_Put (kvs_key, kvs_val);
 #else
-  status = PMI_KVS_Put(kvs_name, kvs_key, kvs_val);
+  status = PMI_KVS_Put (kvs_name, kvs_key, kvs_val);
 #endif
   CHECK_PMI (status);
-  gupcr_log (FC_SYSTEM, "[%d] PMI put key: %s val: %s", rank, kvs_key, kvs_val);
+  gupcr_log (FC_SYSTEM, "[%d] PMI put key: %s val: %s", rank, kvs_key,
+	     kvs_val);
   return 0;
 }
 
@@ -221,18 +222,19 @@ gupcr_runtime_put (const char *key, void *val, size_t len)
 int
 gupcr_runtime_get (int trank, const char *key, void *val, size_t len)
 {
-  int __attribute__((unused)) keylen;
+  int __attribute__ ((unused)) keylen;
   int status;
-  snprintf(kvs_key, max_key_len, "gupcr-%s-%lu", key, (long unsigned) trank);
+  snprintf (kvs_key, max_key_len, "gupcr-%s-%lu", key, (long unsigned) trank);
 #if LIBUPC_JOB_PMI2_API
-  status = PMI2_KVS_Get(kvs_name, PMI2_ID_NULL, kvs_key, kvs_val,
-			max_val_len, &keylen);
+  status = PMI2_KVS_Get (kvs_name, PMI2_ID_NULL, kvs_key, kvs_val,
+			 max_val_len, &keylen);
 #else
-  status = PMI_KVS_Get(kvs_name, kvs_key, kvs_val, max_val_len);
+  status = PMI_KVS_Get (kvs_name, kvs_key, kvs_val, max_val_len);
 #endif
   CHECK_PMI (status);
-  gupcr_log (FC_SYSTEM, "[%d] PMI get key: %s val: %s", rank, kvs_key, kvs_val);
-  status = decode(kvs_val, val, len);
+  gupcr_log (FC_SYSTEM, "[%d] PMI get key: %s val: %s", rank, kvs_key,
+	     kvs_val);
+  status = decode (kvs_val, val, len);
   return status;
 }
 
@@ -276,17 +278,15 @@ gupcr_runtime_exchange (const char *key, void *val, size_t len, void *res)
   /* Collect info on other threads.  */
   for (i = 0; i < size; ++i)
     {
-      if (i != rank)
-        if (gupcr_runtime_get (i, key, &out_ptr[len *i], len))
-	  return status;
+      if (gupcr_runtime_get (i, key, &out_ptr[len * i], len))
+	return status;
     }
 #endif
   return 0;
 }
 
 void
-gupcr_runtime_get_ni_mapping 
-(char *key, void *val, size_t len, void *res)
+  gupcr_runtime_get_ni_mapping (char *key, void *val, size_t len, void *res)
 {
 }
 

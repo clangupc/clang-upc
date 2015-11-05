@@ -26,6 +26,9 @@
  * GUPC Libfabric Global Definitions.
  */
 
+#define __GUPCR_STR__(S) #S
+#define __GUPCR_XSTR__(S) __GUPCR_STR__(S)
+
 /**
  * @addtogroup CONFIG GUPCR Configuration
  * @{
@@ -69,6 +72,7 @@
 #define	GUPCR_MR_COLL_SIGNAL	8
 #define	GUPCR_MR_NB		9
 #define	GUPCR_MR_ATOMIC		10
+#define	GUPCR_MR_COUNT		11
 
 //begin lib_fabric
 
@@ -106,16 +110,6 @@ struct gupcr_epinfo
 };
 typedef struct gupcr_epinfo gupcr_epinfo_t;
 
-/** Get endpoint for Rank/Service */
-#define GUPCR_GET_EP(rank, service) \
-	gupcr_assert (gupcr_ep); \
-	&gupcr_ep[rank][service]
-/** Set endpoint for Rank/Service */
-#define GUPCR_SET_EP(rank, service, ep) \
-	gupcr_assert (gupcr_ep); \
-	gupcr_assert (ep); \
-	memcpy (&gupcr_ep[rank][service], ep, sizeof (struct fid_ep));
-
 /** Fabric info */
 extern fab_info_t gupcr_fi;
 /** Fabric domain */
@@ -135,6 +129,9 @@ extern int gupcr_enable_scalable_ctx;
 /** Support for target MR notifications (FI_RMA_EVENT) */
 extern int gupcr_enable_rma_event;
 #define GUPCR_FABRIC_RMA_EVENT() (gupcr_enable_rma_event != 0)
+/** Support for scalable MR (FI_MR_SCALABLE) */
+extern int gupcr_enable_mr_scalable;
+#define GUPCR_FABRIC_MR_SCALABLE() (gupcr_enable_mr_scalable != 0)
 /** Max time to wait for operation complete (10s) */
 #define GUPCR_TRANSFER_TIMEOUT -1
 
@@ -215,6 +212,55 @@ extern int gupcr_child_cnt;
     The tree root thread has a parent ID of -1.  */
 extern int gupcr_parent_thread;
 
+/* Support for target memory regions types.  If scalable
+ * memory regions are supported then offset into the memory
+ * region is being passed as the target address for all RMA
+ * calls.  Otherwise, an actual target virtual address is used.
+ *
+ * "gupcr_mr_keys" holds information on all MR keys in the
+ * system.  Information on MR keys and virtual addresses is
+ * exchanged when each of the subsystems is initialized.
+ * All of this is important if FI_MR_BASIC type of memory
+ * regions are used: (1) a memory key cannot be specified by the
+ * user, and (2) UPC shared memory is allocated with shmem or
+ * mmap calls (there are now guaranties that allocated memory will
+ * have the same base address).
+ */
+
+/** Remote Memory Region Information */
+struct gupcr_memreg
+{
+  char *addr;
+  uint64_t key;
+};
+typedef struct gupcr_memreg gupcr_memreg_t;
+
+/** Gather remote memory region keys */
+#define GUPCR_GATHER_MR_KEYS(name,mr_handle,mr_base) \
+  { \
+    uint64_t mr_key; \
+    gupcr_fabric_call_nc (fi_mr_key, mr_key, (mr_handle)); \
+    gupcr_##name##_mr_keys = malloc (sizeof (gupcr_memreg_t) * THREADS); \
+    if (!gupcr_##name##_mr_keys) \
+      gupcr_fatal_error ("cannot allocate memory for MR key exchange"); \
+    gupcr_fabric_mr_exchg (__GUPCR_XSTR__(name)"_mr", gupcr_##name##_mr_keys, mr_key, \
+			 (char *) mr_base); \
+  }
+
+/**
+ * Get the remote memory region key.
+ */
+#define GUPCR_REMOTE_MR_KEY(mrkeys,thread) \
+  gupcr_##mrkeys##_mr_keys[thread].key
+
+/**
+ *  Calculate the remote memory region address.
+ */
+#define GUPCR_REMOTE_MR_ADDR(mrkeys,thread,offset) \
+  GUPCR_FABRIC_MR_SCALABLE() ? \
+    offset : \
+    offset + (uint64_t) gupcr_##mrkeys##_mr_keys[thread].addr
+
 /** @} */
 
 extern const char *gupcr_strfaberror (int);
@@ -237,5 +283,7 @@ extern void gupcr_fabric_ni_fini (void);
 extern void gupcr_fabric_ep_create (gupcr_epinfo_t * epinfo);
 extern void gupcr_fabric_ep_delete (gupcr_epinfo_t * epinfo);
 extern void gupcr_nodetree_setup (void);
+extern void gupcr_fabric_mr_exchg (const char *, gupcr_memreg_t *, uint64_t,
+				   char *);
 
 #endif /* gupcr_fabric.h */

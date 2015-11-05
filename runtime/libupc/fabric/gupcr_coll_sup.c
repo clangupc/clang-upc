@@ -71,9 +71,9 @@ int gupcr_coll_child[GUPCR_TREE_FANOUT];
 
 /** Collectives signaling if RMA_EVENT not supported */
 static struct coll_signal
-  {
-    int notify;
-    int wait;
+{
+  int notify;
+  int wait;
 } gupcr_coll_signal;
 /** Collectives signaling value */
 static int gupcr_coll_one;
@@ -82,6 +82,9 @@ static fab_mr_t gupcr_coll_signal_mr;
 /** Collectives signaling memory region offset */
 #define GUPCR_SIGNAL_INDEX(addr) \
   (uint64_t) ((char *) addr - (char *) &gupcr_coll_signal)
+/** Target memory regions */
+static gupcr_memreg_t * gupcr_coll_mr_keys;
+static gupcr_memreg_t * gupcr_coll_signal_mr_keys;
 
 /**
  * Initialize collectives thread tree.
@@ -180,7 +183,9 @@ gupcr_coll_put (size_t dthread, size_t doffset, size_t soffset, size_t nbytes)
 			      (gupcr_coll_ep.tx_ep,
 			       GUPCR_LOCAL_INDEX (gupcr_gmem_base + soffset),
 			       nbytes, GUPCR_TARGET_ADDR (dthread),
-			       doffset, GUPCR_MR_COLL));
+			       GUPCR_REMOTE_MR_ADDR (coll, dthread,
+						       doffset),
+			       GUPCR_REMOTE_MR_KEY (coll, dthread)));
     }
   else
     {
@@ -188,10 +193,13 @@ gupcr_coll_put (size_t dthread, size_t doffset, size_t soffset, size_t nbytes)
 			      (gupcr_coll_ep.tx_ep,
 			       GUPCR_LOCAL_INDEX (gupcr_gmem_base + soffset),
 			       nbytes, NULL, GUPCR_TARGET_ADDR (dthread),
-			       doffset, GUPCR_MR_COLL, NULL));
+			       GUPCR_REMOTE_MR_ADDR (coll, dthread,
+						       doffset),
+			       GUPCR_REMOTE_MR_KEY (coll, dthread),
+			       NULL));
     }
   gupcr_coll_ack_cnt++;
-  if (!GUPCR_FABRIC_RMA_EVENT())
+  if (!GUPCR_FABRIC_RMA_EVENT ())
     {
       /* Must wait for completion before signaling.  */
       gupcr_coll_ack_wait ();
@@ -199,8 +207,11 @@ gupcr_coll_put (size_t dthread, size_t doffset, size_t soffset, size_t nbytes)
       gupcr_fabric_call (fi_atomic,
 			 (gupcr_coll_ep.tx_ep, &gupcr_coll_one,
 			  1, NULL, GUPCR_TARGET_ADDR (dthread),
-			  GUPCR_SIGNAL_INDEX (&gupcr_coll_signal.notify),
-			  GUPCR_MR_COLL_SIGNAL, FI_UINT32, FI_SUM, NULL));
+			  GUPCR_REMOTE_MR_ADDR (coll_signal, dthread,
+						GUPCR_SIGNAL_INDEX
+						(&gupcr_coll_signal.notify)),
+			  GUPCR_REMOTE_MR_KEY (coll_signal, dthread),
+			  FI_UINT32, FI_SUM, NULL));
       gupcr_coll_ack_cnt++;
     }
 }
@@ -254,7 +265,9 @@ gupcr_coll_put_atomic (size_t dthread, size_t doffset, size_t soffset,
 		     (gupcr_coll_ep.tx_ep,
 		      GUPCR_LOCAL_INDEX (gupcr_gmem_base + soffset),
 		      1, NULL, GUPCR_TARGET_ADDR (dthread),
-		      doffset, GUPCR_MR_COLL, datatype, op, NULL));
+		      GUPCR_REMOTE_MR_ADDR (coll, dthread, doffset),
+		      GUPCR_REMOTE_MR_KEY (coll, dthread), datatype,
+		      op, NULL));
   gupcr_coll_ack_cnt++;
   if (!GUPCR_FABRIC_RMA_EVENT ())
     {
@@ -264,8 +277,11 @@ gupcr_coll_put_atomic (size_t dthread, size_t doffset, size_t soffset,
       gupcr_fabric_call (fi_atomic,
 			 (gupcr_coll_ep.tx_ep, &gupcr_coll_one,
 			  1, NULL, GUPCR_TARGET_ADDR (dthread),
-			  GUPCR_SIGNAL_INDEX (&gupcr_coll_signal.notify),
-			  GUPCR_MR_COLL_SIGNAL, FI_UINT32, FI_SUM, NULL));
+			  GUPCR_REMOTE_MR_ADDR (coll_signal, dthread,
+						GUPCR_SIGNAL_INDEX
+						(&gupcr_coll_signal.notify)),
+			  GUPCR_REMOTE_MR_KEY (coll_signal, dthread),
+			  FI_UINT32, FI_SUM, NULL));
       gupcr_coll_ack_cnt++;
     }
 }
@@ -413,6 +429,7 @@ gupcr_coll_init (void)
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, gupcr_gmem_base, gupcr_gmem_size,
 				 FI_REMOTE_READ | FI_REMOTE_WRITE, 0,
 				 GUPCR_MR_COLL, 0, &gupcr_coll_mr, NULL));
+  GUPCR_GATHER_MR_KEYS (coll, gupcr_coll_mr, gupcr_gmem_base);
   if (GUPCR_FABRIC_RMA_EVENT ())
     {
       /* ... and counter for remote inbound writes.  */
@@ -442,6 +459,7 @@ gupcr_coll_init (void)
 				     sizeof (gupcr_coll_signal),
 				     FI_REMOTE_WRITE, 0, GUPCR_MR_COLL_SIGNAL,
 				     0, &gupcr_coll_signal_mr, NULL));
+      GUPCR_GATHER_MR_KEYS (coll_signal, gupcr_coll_signal_mr, &gupcr_coll_signal);
     }
   /* Enable RX endpoint and bind MR.  */
   gupcr_fabric_call (fi_enable, (gupcr_coll_ep.rx_ep));
@@ -475,6 +493,8 @@ gupcr_coll_fini (void)
   gupcr_fabric_call (fi_close, (&gupcr_coll_lmr->fid));
 #endif
   gupcr_fabric_ep_delete (&gupcr_coll_ep);
+  free (gupcr_coll_mr_keys);
+  free (gupcr_coll_signal_mr_keys);
 }
 
 /** @} */

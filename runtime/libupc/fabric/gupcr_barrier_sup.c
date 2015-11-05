@@ -27,12 +27,11 @@
 #include "gupcr_runtime.h"
 #include "gupcr_barrier_sup.h"
 
-
 /** Index of the local memory location */
-#define GUPCR_LOCAL_INDEX(addr) \
+#define GUPCR_LOCAL_OFFSET(addr) \
 	(void *) ((char *) addr - (char *) USER_PROG_MEM_START)
 /** Index of the target memory  */
-#define GUPCR_REMOTE_INDEX(addr) \
+#define GUPCR_REMOTE_OFFSET(addr) \
 	(uint64_t) ((char *) addr - (char *) gupcr_bbase)
 
 /* For barrier purpose we create two endpoints (UP/DOWN) and
@@ -75,10 +74,10 @@ static int ctx_index = 0;
    progress.  */
 /** Data structure used for remote signaling */
 static struct bar_signal
-  {
-    int notify;	/* Barrier notify signal.  */
-    int wait;	/* Barrier wait signal.  */
-  } gupcr_bar_signal;
+{
+  int notify;			/* Barrier notify signal.  */
+  int wait;			/* Barrier wait signal.  */
+} gupcr_bar_signal;
 /** Barrier signaling constant */
 static int gupcr_bar_one;
 /** Barrier signaling memory region */
@@ -86,6 +85,10 @@ static fab_mr_t gupcr_bar_signal_mr;
 /** Barrier signal memory region index */
 #define GUPCR_SIGNAL_INDEX(addr) \
   (uint64_t)((char *)addr - (char *)&gupcr_bar_signal)
+/** Target memory regions */
+static gupcr_memreg_t *gupcr_notify_mr_keys;
+static gupcr_memreg_t *gupcr_wait_mr_keys;
+static gupcr_memreg_t *gupcr_bar_signal_mr_keys;
 
 /** Send data to remote thread in down phase.
  *
@@ -98,23 +101,25 @@ void
 gupcr_barrier_wait_put (void *src, int thread, void *dst, size_t count)
 {
   gupcr_debug (FC_BARRIER, "%lx -> %d:%lx (%ld)", (unsigned long) src,
-	       thread, GUPCR_REMOTE_INDEX (dst),
-	       (unsigned long) count);
+	       thread, GUPCR_REMOTE_OFFSET (dst), (unsigned long) count);
 
   if (sizeof (int) <= GUPCR_MAX_OPTIM_SIZE)
     {
       gupcr_fabric_call (fi_inject_write,
 			 (gupcr_barrier_ep.tx_ep, (const void *) src, count,
-			  GUPCR_TARGET_ADDR (thread), GUPCR_REMOTE_INDEX (dst),
-			  GUPCR_MR_BARRIER_WAIT));
+			  GUPCR_TARGET_ADDR (thread),
+			  GUPCR_REMOTE_MR_ADDR (wait, thread,
+						GUPCR_REMOTE_OFFSET (dst)),
+			  GUPCR_REMOTE_MR_KEY (wait, thread)));
     }
   else
     {
       gupcr_fabric_call (fi_write,
-			 (gupcr_barrier_ep.tx_ep, (const void *) src, count, NULL,
-			  GUPCR_TARGET_ADDR (thread),
-                          GUPCR_REMOTE_INDEX (dst),
-			  GUPCR_MR_BARRIER_WAIT, NULL));
+			 (gupcr_barrier_ep.tx_ep, (const void *) src, count,
+			  NULL, GUPCR_TARGET_ADDR (thread),
+			  GUPCR_REMOTE_MR_ADDR (wait, thread,
+						GUPCR_REMOTE_OFFSET (dst)),
+			  GUPCR_REMOTE_MR_KEY (wait, thread), NULL));
     }
   gupcr_barrier_tx_put_count++;
   if (!GUPCR_FABRIC_RMA_EVENT ())
@@ -133,8 +138,10 @@ gupcr_barrier_wait_put (void *src, int thread, void *dst, size_t count)
 			 (gupcr_barrier_ep.tx_ep, &gupcr_bar_one,
 			  1, NULL,
 			  GUPCR_TARGET_ADDR (thread),
-			  GUPCR_SIGNAL_INDEX (&gupcr_bar_signal.wait),
-			  GUPCR_MR_BARRIER_SIGNAL, NULL));
+			  GUPCR_REMOTE_MR_ADDR (bar_signal, thread,
+						GUPCR_SIGNAL_INDEX
+						(&gupcr_bar_signal.wait)),
+			  GUPCR_REMOTE_MR_KEY (bar_signal, thread), NULL));
       gupcr_barrier_tx_put_count++;
     }
 }
@@ -151,15 +158,16 @@ gupcr_barrier_wait_event (void)
       gupcr_barrier_wait_count++;
       gupcr_fabric_call_nc (fi_cntr_wait, status,
 			    (gupcr_barrier_wait_ct, gupcr_barrier_wait_count,
-			    GUPCR_TRANSFER_TIMEOUT));
-      GUPCR_CNT_ERROR_CHECK (status, "barrier wait down", gupcr_barrier_event_cq);
+			     GUPCR_TRANSFER_TIMEOUT));
+      GUPCR_CNT_ERROR_CHECK (status, "barrier wait down",
+			     gupcr_barrier_event_cq);
     }
   else
     {
       /* Verify that parent signaled the wait.
          Atomic CSWAP might be better.  */
       while (gupcr_bar_signal.wait != 1)
-        gupcr_yield_cpu ();
+	gupcr_yield_cpu ();
       gupcr_bar_signal.wait = 0;
     }
 }
@@ -196,24 +204,28 @@ gupcr_barrier_wait_put_completion (void)
 void
 gupcr_barrier_notify_put (void *src, int thread, void *dst)
 {
-  gupcr_debug (FC_BARRIER, "%lx -> %d:%lx", (unsigned long) src,
-	       thread, GUPCR_REMOTE_INDEX (dst));
+  gupcr_debug (FC_BARRIER, "%lx -> %d:%lx", (unsigned long) src, thread,
+	       GUPCR_REMOTE_OFFSET (dst));
 
   if (sizeof (int) <= GUPCR_MAX_OPTIM_SIZE)
     {
       gupcr_fabric_call (fi_inject_atomic,
 			 (gupcr_barrier_ep.tx_ep, (const void *) src, 1,
 			  GUPCR_TARGET_ADDR (thread),
-			  GUPCR_REMOTE_INDEX (dst),
-			  GUPCR_MR_BARRIER_NOTIFY, FI_UINT32, FI_MIN));
+			  GUPCR_REMOTE_MR_ADDR (notify, thread,
+						GUPCR_REMOTE_OFFSET (dst)),
+			  GUPCR_REMOTE_MR_KEY (notify, thread),
+			  FI_UINT32, FI_MIN));
     }
   else
     {
       gupcr_fabric_call (fi_atomic,
 			 (gupcr_barrier_ep.tx_ep, (const void *) src, 1, NULL,
 			  GUPCR_TARGET_ADDR (thread),
-			  GUPCR_REMOTE_INDEX (dst),
-			  GUPCR_MR_BARRIER_NOTIFY, FI_UINT32, FI_MIN, NULL));
+			  GUPCR_REMOTE_MR_ADDR (notify, thread,
+						GUPCR_REMOTE_OFFSET (dst)),
+			  GUPCR_REMOTE_MR_KEY (notify, thread),
+			  FI_UINT32, FI_MIN, NULL));
     }
   gupcr_barrier_tx_put_count++;
   if (!GUPCR_FABRIC_RMA_EVENT ())
@@ -224,14 +236,18 @@ gupcr_barrier_notify_put (void *src, int thread, void *dst)
 			    (gupcr_barrier_tx_put_ct,
 			     gupcr_barrier_tx_put_count,
 			     GUPCR_TRANSFER_TIMEOUT));
-      GUPCR_CNT_ERROR_CHECK (status, "barrier wait up", gupcr_barrier_tx_put_cq);
+      GUPCR_CNT_ERROR_CHECK (status, "barrier wait up",
+			     gupcr_barrier_tx_put_cq);
 
       /* We also need to signal to target side.  */
       gupcr_fabric_call (fi_atomic,
 			 (gupcr_barrier_ep.tx_ep, &gupcr_bar_one,
 			  1, NULL, GUPCR_TARGET_ADDR (thread),
-			  GUPCR_SIGNAL_INDEX (&gupcr_bar_signal.notify),
-			  GUPCR_MR_BARRIER_SIGNAL, FI_UINT32, FI_SUM, NULL));
+			  GUPCR_REMOTE_MR_ADDR (bar_signal, thread,
+						GUPCR_SIGNAL_INDEX
+						(&gupcr_bar_signal.notify)),
+			  GUPCR_REMOTE_MR_KEY (bar_signal, thread),
+			  FI_UINT32, FI_SUM, NULL));
       gupcr_barrier_tx_put_count++;
     }
 }
@@ -252,14 +268,15 @@ gupcr_barrier_notify_event (size_t count)
 			    (gupcr_barrier_notify_ct,
 			     gupcr_barrier_notify_count,
 			     GUPCR_TRANSFER_TIMEOUT));
-      GUPCR_CNT_ERROR_CHECK (status, "barrier wait up", gupcr_barrier_event_cq);
+      GUPCR_CNT_ERROR_CHECK (status, "barrier wait up",
+			     gupcr_barrier_event_cq);
     }
   else
     {
       /* Verify that children + parent signaled.
          Atomic CSWAp might be better.  */
       while (gupcr_bar_signal.notify != (int) count)
-        gupcr_yield_cpu ();
+	gupcr_yield_cpu ();
       gupcr_bar_signal.notify = 0;
     }
 }
@@ -291,25 +308,31 @@ gupcr_barrier_tr_put (void *src, int thread, void *dst, size_t count,
     {
       gupcr_barrier_wait_count += trig;
       trig_ctx[ctx_index].trigger.threshold.cntr = gupcr_barrier_wait_ct;
-      trig_ctx[ctx_index].trigger.threshold.threshold = gupcr_barrier_wait_count;
-      endpt.key = GUPCR_MR_BARRIER_WAIT;
+      trig_ctx[ctx_index].trigger.threshold.threshold =
+	gupcr_barrier_wait_count;
+      endpt.key = GUPCR_REMOTE_MR_KEY (wait, thread);
     }
   else
     {
       gupcr_barrier_notify_count += trig;
       trig_ctx[ctx_index].trigger.threshold.cntr = gupcr_barrier_notify_ct;
-      trig_ctx[ctx_index].trigger.threshold.threshold = gupcr_barrier_notify_count;
-      endpt.key = GUPCR_MR_BARRIER_NOTIFY;
+      trig_ctx[ctx_index].trigger.threshold.threshold =
+	gupcr_barrier_notify_count;
+      endpt.key = GUPCR_REMOTE_MR_KEY (notify, thread);
     }
   msg.iov_base = src;
   msg.iov_len = count;
-  endpt.addr = GUPCR_REMOTE_INDEX (dst);
+  endpt.addr =
+    wait_phase ?
+    GUPCR_REMOTE_MR_ADDR (wait, thread, GUPCR_REMOTE_OFFSET (dst)) :
+    GUPCR_REMOTE_MR_ADDR (notify, thread, GUPCR_REMOTE_OFFSET (dst));
   endpt.len = count;
   msg_rma.msg_iov = &msg;
   msg_rma.addr = GUPCR_TARGET_ADDR (thread);
   msg_rma.rma_iov = &endpt;
   msg_rma.context = &trig_ctx[ctx_index];
-  gupcr_fabric_call (fi_writemsg, (gupcr_barrier_ep.tx_ep, &msg_rma, FI_TRIGGER));
+  gupcr_fabric_call (fi_writemsg,
+		     (gupcr_barrier_ep.tx_ep, &msg_rma, FI_TRIGGER));
   ctx_index++;
 }
 
@@ -333,12 +356,14 @@ gupcr_barrier_notify_tr_put (void *src, int thread, void *dst, size_t trig)
   trig_ctx[ctx_index].event_type = FI_TRIGGER_THRESHOLD;
   gupcr_barrier_notify_count += trig;
   trig_ctx[ctx_index].trigger.threshold.cntr = gupcr_barrier_notify_ct;
-  trig_ctx[ctx_index].trigger.threshold.threshold = gupcr_barrier_notify_count;
+  trig_ctx[ctx_index].trigger.threshold.threshold =
+    gupcr_barrier_notify_count;
   msg.addr = src;
   msg.count = 1;
-  endpt.addr = GUPCR_REMOTE_INDEX (dst);
+  endpt.addr =
+    GUPCR_REMOTE_MR_ADDR (notify, thread, GUPCR_REMOTE_OFFSET (dst));
   endpt.count = 1;
-  endpt.key = GUPCR_MR_BARRIER_NOTIFY;
+  endpt.key = GUPCR_REMOTE_MR_KEY (notify, thread);
   msg_atomic.msg_iov = &msg;
   msg_atomic.addr = GUPCR_TARGET_ADDR (thread);
   msg_atomic.rma_iov = &endpt;
@@ -407,9 +432,11 @@ gupcr_barrier_sup_init (void *bbase, int bsize)
 				    &gupcr_barrier_##phase##_ct->fid, \
 				    FI_REMOTE_WRITE));
   CREATE_BARRIER_TARGET_MR (notify, GUPCR_MR_BARRIER_NOTIFY);
+  GUPCR_GATHER_MR_KEYS (notify, gupcr_barrier_notify_mr, &gupcr_bbase);
   CREATE_BARRIER_TARGET_MR (wait, GUPCR_MR_BARRIER_WAIT);
+  GUPCR_GATHER_MR_KEYS (wait, gupcr_barrier_wait_mr, &gupcr_bbase);
 
-  /* There is only one completion queue for errors.  */ 
+  /* There is only one completion queue for errors.  */
   cq_attr.size = 1;
   cq_attr.format = FI_CQ_FORMAT_MSG;
   cq_attr.wait_obj = FI_WAIT_NONE;
@@ -436,6 +463,8 @@ gupcr_barrier_sup_init (void *bbase, int bsize)
 			  FI_REMOTE_READ | FI_REMOTE_WRITE, 0,
 			  GUPCR_MR_BARRIER_SIGNAL, 0,
 			  &gupcr_bar_signal_mr, NULL));
+      GUPCR_GATHER_MR_KEYS (bar_signal, gupcr_bar_signal_mr,
+			    &gupcr_bar_signal);
     }
 
 #if TARGET_MR_BIND_NEEDED
@@ -465,6 +494,9 @@ gupcr_barrier_sup_fini (void)
   gupcr_fabric_call (fi_close, (&gupcr_barrier_wait_ct->fid));
   gupcr_fabric_call (fi_close, (&gupcr_barrier_wait_mr->fid));
   gupcr_fabric_ep_delete (&gupcr_barrier_ep);
+  free (gupcr_notify_mr_keys);
+  free (gupcr_wait_mr_keys);
+  free (gupcr_bar_signal_mr_keys);
 }
 
 /** @} */

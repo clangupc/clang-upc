@@ -48,6 +48,8 @@ static fab_cntr_t gupcr_nbi_ct;
 static fab_cq_t gupcr_nbi_cq;
 /** NB explicit completion queue */
 static fab_cq_t gupcr_nb_cq;
+/** Target memory regions */
+static gupcr_memreg_t * gupcr_nb_mr_keys;
 
 /** Target address */
 #define GUPCR_TARGET_ADDR(target) \
@@ -222,8 +224,10 @@ gupcr_nb_get (size_t sthread, size_t soffset, char *dst_ptr,
 	  gupcr_fabric_size_call (fi_read, rsize,
 				  (gupcr_nb_ep.tx_ep,
 				   GUPCR_LOCAL_INDEX (dst_ptr), n_xfer, NULL,
-				   GUPCR_TARGET_ADDR (sthread), soffset,
-				   GUPCR_MR_NB, (void *) *handle));
+				   GUPCR_TARGET_ADDR (sthread),
+				   GUPCR_REMOTE_MR_ADDR (nb, sthread, soffset),
+				   GUPCR_REMOTE_MR_KEY (nb, sthread),
+				   (void *) *handle));
 	  gupcr_nb_outstanding += 1;
 	}
       else
@@ -231,12 +235,15 @@ gupcr_nb_get (size_t sthread, size_t soffset, char *dst_ptr,
 	  gupcr_fabric_size_call (fi_read, rsize,
 				  (gupcr_nbi_ep.tx_ep,
 				   GUPCR_LOCAL_INDEX (dst_ptr), n_xfer, NULL,
-				   GUPCR_TARGET_ADDR (sthread), soffset,
-				   GUPCR_MR_NB, NULL));
+				   GUPCR_TARGET_ADDR (sthread),
+				   GUPCR_REMOTE_MR_ADDR (nb, sthread, soffset),
+				   GUPCR_REMOTE_MR_KEY (nb, sthread),
+				   NULL));
 	  gupcr_nbi_count += 1;
 	}
       n_rem -= n_xfer;
       local_offset += n_xfer;
+      soffset += n_xfer;
       if (n_rem)
 	{
 	  /* Unfortunately, there are more data to transfer, we have to
@@ -291,8 +298,10 @@ gupcr_nb_put (size_t dthread, size_t doffset, const void *src_ptr,
 	  gupcr_fabric_size_call (fi_write, ssize,
 				  (gupcr_nb_ep.tx_ep,
 				   GUPCR_LOCAL_INDEX (src_ptr), n_xfer, NULL,
-				   GUPCR_TARGET_ADDR (dthread), doffset,
-				   GUPCR_MR_NB, (void *) *handle));
+				   GUPCR_TARGET_ADDR (dthread),
+				   GUPCR_REMOTE_MR_ADDR (nb, dthread, doffset),
+				   GUPCR_REMOTE_MR_KEY (nb, dthread),
+				   (void *) *handle));
 	  gupcr_nb_outstanding += 1;
 	}
       else
@@ -300,8 +309,10 @@ gupcr_nb_put (size_t dthread, size_t doffset, const void *src_ptr,
 	  gupcr_fabric_size_call (fi_write, ssize,
 				  (gupcr_nbi_ep.tx_ep,
 				   GUPCR_LOCAL_INDEX (src_ptr), n_xfer, NULL,
-				   GUPCR_TARGET_ADDR (dthread), doffset,
-				   GUPCR_MR_NB, NULL));
+				   GUPCR_TARGET_ADDR (dthread),
+				   GUPCR_REMOTE_MR_ADDR (nb, dthread, doffset),
+				   GUPCR_REMOTE_MR_KEY (nb, dthread),
+				   NULL));
 	  gupcr_nbi_count += 1;
 	}
       n_rem -= n_xfer;
@@ -537,7 +548,7 @@ gupcr_nb_init (void)
   gupcr_fabric_call (fi_mr_reg, (gupcr_fd, gupcr_gmem_base, gupcr_gmem_size,
 				 FI_REMOTE_READ | FI_REMOTE_WRITE, 0,
 				 GUPCR_MR_NB, 0, &gupcr_nb_mr, NULL));
-
+  GUPCR_GATHER_MR_KEYS (nb, gupcr_nb_mr, gupcr_gmem_base);
 #if TARGET_MR_BIND_NEEDED
   /* Enable RX endpoint and bind MR.  */
   gupcr_fabric_call (fi_ep_bind, (gupcr_nb_ep.rx_ep, &gupcr_nb_mr->fid,
@@ -612,6 +623,7 @@ gupcr_nb_fini (void)
 #endif
   gupcr_fabric_ep_delete (&gupcr_nb_ep);
   gupcr_fabric_ep_delete (&gupcr_nbi_ep);
+  free (gupcr_nb_mr_keys);
 }
 
 /** @} */
