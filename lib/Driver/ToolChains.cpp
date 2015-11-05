@@ -1122,8 +1122,8 @@ Generic_GCC::GCCVersion Linux::GCCVersion::Parse(StringRef VersionText) {
       GoodVersion.Major < 0)
     return BadVersion;
   GoodVersion.MajorStr = First.first.str();
-  if (Second.first.getAsInteger(10, GoodVersion.Minor) ||
-      GoodVersion.Minor < 0)
+  if (!Second.first.str().empty() &&
+      (Second.first.getAsInteger(10, GoodVersion.Minor) || GoodVersion.Minor < 0))
     return BadVersion;
   GoodVersion.MinorStr = Second.first.str();
 
