@@ -182,16 +182,17 @@ gupcr_barrier_wait_put_completion (void)
   gupcr_fabric_call_nc (fi_cntr_wait, status,
 			(gupcr_barrier_tx_put_ct, gupcr_barrier_tx_put_count,
 			 GUPCR_TRANSFER_TIMEOUT));
-  if (status)
+  switch (status)
     {
-      if (status == FI_ETIMEDOUT)
-	gupcr_fatal_error ("Timeout on barrier down wait");
-      else
-	{
-	  gupcr_process_fail_events (status, "barrier down",
-				     gupcr_barrier_tx_put_cq);
-	  gupcr_abort ();
-	}
+    case FI_SUCCESS:
+      break;
+    case -FI_ETIMEDOUT:
+      gupcr_fatal_error ("Timeout on barrier down wait");
+      break;
+    default:
+      gupcr_process_fail_events (status, "barrier down",
+				 gupcr_barrier_tx_put_cq);
+      gupcr_abort ();
     }
 }
 

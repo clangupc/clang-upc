@@ -174,17 +174,16 @@ extern int gupcr_enable_mr_scalable;
 /** Check for counter error code */
 #define GUPCR_CNT_ERROR_CHECK(status, msg, queue) 			\
     {									\
-      int errcode = -(int)status;					\
-      if (errcode)							\
+      if (status)							\
       {									\
-        switch (errcode)						\
+        switch (status)							\
 	  {								\
-	    case FI_ETIMEDOUT:						\
+	    case -FI_ETIMEDOUT:						\
 	      gupcr_fatal_error ("[%d] TIMEOUT: %s", gupcr_get_rank(),	\
 				  msg);					\
 	      break;							\
 	    default:							\
-	      gupcr_process_fail_events (errcode, msg, queue);		\
+	      gupcr_process_fail_events (status, msg, queue);		\
 	      gupcr_abort ();						\
 	  }								\
       }									\

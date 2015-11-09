@@ -480,7 +480,7 @@ gupcr_get_atomic_size (enum fi_datatype type)
  * only failure events.  This procedure is called only if any of the
  * counting events reported a failure.
  *
- * @param [in] status Function return code
+ * @param [in] status Failed function return code
  * @param [in] msg Caller message
  * @param [in] eq Completion Queue ID
  */
@@ -488,23 +488,22 @@ void
 gupcr_process_fail_events (int status, const char *msg, fab_cq_t cq)
 {
   int ret;
-  struct fi_cq_msg_entry cq_entry;
-  gupcr_fabric_call_nc (fi_cq_read, ret, (cq, (void *) &cq_entry,
-					  sizeof (cq_entry)));
-  if (ret < 0)
+  struct fi_cq_err_entry cq_error;
+
+  gupcr_fabric_call_nc (fi_cq_readerr, ret, (cq, (void *) &cq_error, 0));
+  if (status == -FI_EAVAIL && !ret)
     {
       char buf[256];
-      const char *errstr;
-      struct fi_cq_err_entry cq_error;
-      gupcr_fabric_call_nc (fi_cq_readerr, ret, (cq, (void *) &cq_error, 0));
-      gupcr_fabric_call_nc (fi_cq_strerror, errstr,
-			    (cq, cq_error.err, cq_error.err_data,
-			     buf, sizeof (buf)));
-      gupcr_error ("err code: %s, msg: %s, error string: %s",
-		   gupcr_strfaberror (status), msg, buf);
+      const char *errstr = "";
+      if (cq_error.prov_errno)
+	gupcr_fabric_call_nc (fi_cq_strerror, errstr,
+			      (cq, cq_error.prov_errno, cq_error.err_data,
+			       buf, sizeof (buf)));
+      gupcr_error ("err code: %s, msg: %s, prov error string: %s",
+		   gupcr_strfaberror (cq_error.err), msg, errstr);
     }
   else
-    gupcr_fatal_error ("err code: %s, msg: %s, error string: none",
+    gupcr_fatal_error ("err code: %s, msg: %s",
 		       gupcr_strfaberror (status), msg);
 }
 
@@ -629,8 +628,8 @@ gupcr_fabric_init (void)
 			   FI_SOURCE, hints, &ret_info));
     if (!status && (ret_info->caps & FI_RMA_EVENT))
       {
-        gupcr_enable_rma_event = 1;
-        gupcr_log (FC_FABRIC, "enabled RMA events");
+	gupcr_enable_rma_event = 1;
+	gupcr_log (FC_FABRIC, "enabled RMA events");
       }
     hints->caps ^= FI_RMA_EVENT;
   }
@@ -645,17 +644,17 @@ gupcr_fabric_init (void)
 			   FI_SOURCE, hints, &ret_info));
     if (!status)
       {
-        gupcr_fi->domain_attr->mr_mode = FI_MR_SCALABLE;
-        gupcr_enable_mr_scalable = 1;
-        gupcr_log (FC_FABRIC, "enabled scalable MR");
+	gupcr_fi->domain_attr->mr_mode = FI_MR_SCALABLE;
+	gupcr_enable_mr_scalable = 1;
+	gupcr_log (FC_FABRIC, "enabled scalable MR");
       }
   }
 
 #if GUPCR_FABRIC_SHARED_CTX
   /* Check for shared context support in order to save TX/RX resources.  */
   /* TODO - ? difference between scalable RX/MR v. shared RX/MR.  If we use
-              MR keys to target particular MR we do not need scalable RX.
-            ? sharing on TX side might be resource benerficial.  */
+     MR keys to target particular MR we do not need scalable RX.
+     ? sharing on TX side might be resource benerficial.  */
   {
     int status;
     fab_info_t ret_info;
@@ -666,7 +665,7 @@ gupcr_fabric_init (void)
     if (!status && (ret_info->ep_attr->tx_ctx_cnt == FI_SHARED_CONTEXT))
       {
 	gupcr_enable_shared_tx_ctx = 1;
-        gupcr_fi->ep_attr->tx_ctx_cnt = FI_SHARED_CONTEXT;
+	gupcr_fi->ep_attr->tx_ctx_cnt = FI_SHARED_CONTEXT;
 	gupcr_log (FC_FABRIC, "enabled SHARED TX endpoint");
       }
     hints->ep_attr->tx_ctx_cnt = 0;
@@ -677,7 +676,7 @@ gupcr_fabric_init (void)
     if (!status && (ret_info->ep_attr->rx_ctx_cnt == FI_SHARED_CONTEXT))
       {
 	gupcr_enable_shared_rx_ctx = 1;
-        gupcr_fi->ep_attr->rx_ctx_cnt = FI_SHARED_CONTEXT;
+	gupcr_fi->ep_attr->rx_ctx_cnt = FI_SHARED_CONTEXT;
 	gupcr_log (FC_FABRIC, "enabled SHARED RX endpoint");
       }
     hints->ep_attr->rx_ctx_cnt = 0;
@@ -712,7 +711,7 @@ gupcr_fabric_init (void)
 void
 gupcr_fabric_fini (void)
 {
-  if (GUPCR_FABRIC_SCALABLE_CTX())
+  if (GUPCR_FABRIC_SCALABLE_CTX ())
     {
       gupcr_fabric_call (fi_close, (&gupcr_fabric_ep.ep->fid));
       gupcr_fabric_call (fi_close, (&gupcr_fabric_ep.av->fid));
@@ -821,9 +820,8 @@ gupcr_fabric_ep_create (gupcr_epinfo_t * epinfo)
 		       gupcr_rank_cnt * gupcr_epnamelen);
   gupcr_fabric_call (fi_getname, (&ep->fid, myepname, &gupcr_epnamelen));
   {
-    int ret =
-      gupcr_runtime_exchange (epinfo->name, myepname, gupcr_epnamelen,
-			      epnames);
+    int ret = gupcr_runtime_exchange (epinfo->name, myepname, gupcr_epnamelen,
+				      epnames);
     if (ret)
       gupcr_fatal_error
 	("error (%d) reported while exchanging \"%s\" endpoints", ret,
@@ -900,10 +898,12 @@ gupcr_nodetree_setup (void)
  * indexed array for later use in RMA calls. 
  */
 void
-gupcr_fabric_mr_exchg (const char *name, gupcr_memreg_t *keys, uint64_t mr_key, char *addr)
+gupcr_fabric_mr_exchg (const char *name, gupcr_memreg_t * keys,
+		       uint64_t mr_key, char *addr)
 {
-  struct gupcr_memreg mrkey = {addr, mr_key};;
-  if (gupcr_runtime_exchange (name, &mrkey, sizeof (struct gupcr_memreg), keys))
+  struct gupcr_memreg mrkey = { addr, mr_key };;
+  if (gupcr_runtime_exchange
+      (name, &mrkey, sizeof (struct gupcr_memreg), keys))
     gupcr_fatal_error ("cannot exchange memory registration for remote MRs");
 }
 
