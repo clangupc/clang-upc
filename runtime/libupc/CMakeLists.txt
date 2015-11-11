@@ -248,6 +248,9 @@ if (LIBUPC_RUNTIME_MODEL STREQUAL portals4 OR
   endif()
   CHECK_LIBRARY_EXISTS(pmi PMI_Allgather ${LIBUPC_JOB_PMI_LIBRARY_DIR} HAVE_CRAY_PMI)
 
+  set(LIBUPC_MEMORY_ALIGNMENT 4 CACHE STRING "Select alignment for put/get data buffers (default=4).")
+  set(GUPCR_MEMORY_ALIGNMENT ${LIBUPC_MEMORY_ALIGNMENT})
+
   set(LIBUPC_GLOBAL_EXIT_TIMEOUT 2 CACHE STRING "Select upc_global_exit() timeout in seconds (default=2).")
   set(GUPCR_GLOBAL_EXIT_TIMEOUT ${LIBUPC_GLOBAL_EXIT_TIMEOUT})
 endif()

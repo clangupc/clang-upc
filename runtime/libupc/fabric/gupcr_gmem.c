@@ -79,10 +79,25 @@ static fab_mr_t gupcr_gmem_mr;
 static fab_mr_t gupcr_gmem_lmr;
 #endif
 /** Target memory regions */
-static gupcr_memreg_t * gupcr_gmem_mr_keys;
+static gupcr_memreg_t *gupcr_gmem_mr_keys;
 
 /** GMEM fabric endpoints */
 static gupcr_epinfo_t gupcr_gmem_ep;
+
+/* GET Bounce buffer.  Used in cases where local destination is not
+   properly aligned.  */
+/** GET "bounce buffer" size */
+#define GUPCR_GET_BOUNCE_BUFFER_SIZE 32*1024
+/** GET "bounce buffer" type */
+char gupcr_gmem_get_bb[GUPCR_GET_BOUNCE_BUFFER_SIZE]
+  __attribute__ ((aligned (16)));
+/** Check for address alignment */
+#define GUPCR_DATA_ALIGNED(addr) \
+  ((size_t) addr & (GUPCR_FABRIC_ALIGNMENT - 1)) == 0
+/** Align address/index */
+#define GUPCR_DATA_ALIGN(addr) \
+  (addr + GUPCR_FABRIC_ALIGNMENT - 1) & \
+  ~ (GUPCR_FABRIC_ALIGNMENT - 1)
 
 /**
  * Allocate memory for this thread's shared space contribution.
@@ -184,7 +199,8 @@ gupcr_gmem_sync (void)
  *
  * A GET request is broken into multiple GET requests
  * if the number of requested bytes is greater then
- * the configuration limited maximum message size.
+ * the configuration limited maximum message size.  Get bounce
+ * buffer is used if local address is not properly aligned.
  *
  * @param [in] dest Local memory to receive remote data
  * @param [in] thread Remote thread to request data from
@@ -194,22 +210,33 @@ gupcr_gmem_sync (void)
 void
 gupcr_gmem_get (void *dest, int thread, size_t offset, size_t n)
 {
-  char *loc_addr = (char *) dest - (size_t) USER_PROG_MEM_START;
+  char *loc_addr = GUPCR_LOCAL_INDEX (dest);
+  char *in_addr = gupcr_gmem_get_bb;
   size_t n_rem = n;
   size_t dest_offset = offset;
+  int dest_aligned = GUPCR_DATA_ALIGNED (dest);
+  size_t dest_size =
+    dest_aligned ? GUPCR_MAX_MSG_SIZE : GUPCR_GET_BOUNCE_BUFFER_SIZE;
 
   gupcr_debug (FC_MEM, "%d:0x%lx 0x%lx",
 	       thread, (long unsigned) offset, (long unsigned) dest);
   while (n_rem > 0)
     {
-      size_t n_xfer;
-      n_xfer = GUPCR_MIN (n_rem, GUPCR_MAX_MSG_SIZE);
+      size_t n_xfer = GUPCR_MIN (n_rem, dest_size);
+      if (dest_aligned)
+	in_addr = loc_addr;
       ++gupcr_gmem_gets.num_pending;
       gupcr_fabric_call (fi_read,
-			 (gupcr_gmem_ep.tx_ep, loc_addr, n_xfer, NULL,
-			  GUPCR_TARGET_ADDR (thread),
+			 (gupcr_gmem_ep.tx_ep, GUPCR_LOCAL_INDEX (in_addr),
+			  n_xfer, NULL, GUPCR_TARGET_ADDR (thread),
 			  GUPCR_REMOTE_MR_ADDR (gmem, thread, dest_offset),
 			  GUPCR_REMOTE_MR_KEY (gmem, thread), NULL));
+      /* Complete unaligned gets right away.  */
+      if (!dest_aligned)
+	{
+	  gupcr_gmem_sync_gets ();
+	  memcpy (loc_addr, in_addr, n_xfer);
+	}
       n_rem -= n_xfer;
       loc_addr += n_xfer;
       dest_offset += n_xfer;
@@ -225,6 +252,9 @@ gupcr_gmem_get (void *dest, int thread, size_t offset, size_t n)
  * the caller's use of the source data buffer.
  * Otherwise,  a synchronous operation is performed
  * and this function returns to the caller after the operation completes.
+ * . Bounce buffer respects the configured alignment
+ * . Large requests with non-aligned source address must
+ *   go through the bounce buffer
  *
  * @param [in] thread Destination thread
  * @param [in] offset Destination offset
@@ -234,74 +264,75 @@ gupcr_gmem_get (void *dest, int thread, size_t offset, size_t n)
 void
 gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 {
-  int must_sync = (n > GUPCR_GMEM_MAX_SAFE_PUT_SIZE);
   char *src_addr = (char *) src;
   size_t n_rem = n;
   size_t dest_offset = offset;
+  int src_aligned = GUPCR_DATA_ALIGNED (src);
+  int must_sync = (n > GUPCR_GMEM_MAX_SAFE_PUT_SIZE && src_aligned);
 
   gupcr_debug (FC_MEM, "0x%lx %d:0x%lx",
 	       (long unsigned) src, thread, (long unsigned) offset);
-  /* Large puts must be synchronous, to ensure that it is
-     safe to re-use the source buffer upon return.  */
-  while (n_rem > 0)
+  if (n <= GUPCR_MAX_OPTIM_SIZE && src_aligned)
     {
-      size_t n_xfer;
-      size_t local_offset;
-      n_xfer = GUPCR_MIN (n_rem, GUPCR_MAX_MSG_SIZE);
-      if (n_xfer <= GUPCR_MAX_OPTIM_SIZE)
+      /* Fast track, no need for bounce buffer.  */
+      gupcr_fabric_call (fi_inject_write,
+			 (gupcr_gmem_ep.tx_ep,
+			  GUPCR_LOCAL_INDEX (src_addr), n,
+			  GUPCR_TARGET_ADDR (thread),
+			  GUPCR_REMOTE_MR_ADDR (gmem, thread, dest_offset),
+			  GUPCR_REMOTE_MR_KEY (gmem, thread)));
+      ++gupcr_gmem_puts.num_pending;
+    }
+  else
+    {
+      /* Large puts must be synchronous, to ensure that it is
+         safe to re-use the source buffer upon return.  */
+      while (n_rem > 0)
 	{
-	  /* Use optimized version of RMA write.  */
-	  gupcr_fabric_call (fi_inject_write,
-			     (gupcr_gmem_ep.tx_ep,
-			      GUPCR_LOCAL_INDEX (src_addr), n_xfer,
-			      GUPCR_TARGET_ADDR (thread),
-			      GUPCR_REMOTE_MR_ADDR (gmem, thread, dest_offset),
-			      GUPCR_REMOTE_MR_KEY (gmem, thread)));
-	}
-      else
-	{
+	  size_t n_xfer;
+	  char *local_addr;
 	  if (must_sync)
 	    {
-	      local_offset = src_addr - (char *) USER_PROG_MEM_START;
+	      n_xfer = GUPCR_MIN (n_rem, GUPCR_MAX_MSG_SIZE);
+	      local_addr = src_addr;
 	    }
 	  else
 	    {
-	      char *bounce_buf;
+	      n_xfer = GUPCR_MIN (n_rem, GUPCR_BOUNCE_BUFFER_SIZE);
 	      /* If this transfer will overflow the bounce buffer,
 	         then first wait for all outstanding puts to complete.  */
 	      if ((gupcr_gmem_put_bb_used + n_xfer) >
 		  GUPCR_BOUNCE_BUFFER_SIZE)
 		gupcr_gmem_sync_puts ();
-	      bounce_buf = &gupcr_gmem_put_bb[gupcr_gmem_put_bb_used];
-	      memcpy (bounce_buf, src_addr, n_xfer);
-	      local_offset = (size_t) bounce_buf;
+	      local_addr = &gupcr_gmem_put_bb[gupcr_gmem_put_bb_used];
+	      memcpy (local_addr, src_addr, n_xfer);
 	      gupcr_gmem_put_bb_used += n_xfer;
+	      gupcr_gmem_put_bb_used = GUPCR_DATA_ALIGN (gupcr_gmem_put_bb_used);
 	    }
 	  gupcr_fabric_call (fi_write,
 			     (gupcr_gmem_ep.tx_ep,
-			      GUPCR_LOCAL_INDEX (local_offset), n_xfer, NULL,
-			      GUPCR_TARGET_ADDR (thread),
-			      GUPCR_REMOTE_MR_ADDR (gmem, thread, dest_offset),
-			      GUPCR_REMOTE_MR_KEY (gmem, thread),
-			      NULL));
+			      GUPCR_LOCAL_INDEX (local_addr), n_xfer,
+			      NULL, GUPCR_TARGET_ADDR (thread),
+			      GUPCR_REMOTE_MR_ADDR (gmem, thread,
+						    dest_offset),
+			      GUPCR_REMOTE_MR_KEY (gmem, thread), NULL));
+	  n_rem -= n_xfer;
+	  src_addr += n_xfer;
+	  dest_offset += n_xfer;
+	  ++gupcr_gmem_puts.num_pending;
 	}
-      n_rem -= n_xfer;
-      src_addr += n_xfer;
-      dest_offset += n_xfer;
-      ++gupcr_gmem_puts.num_pending;
-      if (gupcr_gmem_puts.num_pending == gupcr_gmem_high_mark_puts)
-	{
-	  int status;
-	  size_t wait_cnt = gupcr_gmem_puts.num_completed
-	    + gupcr_gmem_puts.num_pending - gupcr_gmem_low_mark_puts;
-	  gupcr_fabric_call_nc (fi_cntr_wait, status,
-				(gupcr_gmem_puts.ct_handle, wait_cnt,
-				 GUPCR_TRANSFER_TIMEOUT));
-	  GUPCR_CNT_ERROR_CHECK (status, "gmem put", gupcr_gmem_cq);
-	  gupcr_gmem_puts.num_pending -= wait_cnt -
-	    gupcr_gmem_puts.num_completed;
-	  gupcr_gmem_puts.num_completed = wait_cnt;
-	}
+    }
+  if (gupcr_gmem_puts.num_pending == gupcr_gmem_high_mark_puts)
+    {
+      int status;
+      size_t wait_cnt = gupcr_gmem_puts.num_completed
+	+ gupcr_gmem_puts.num_pending - gupcr_gmem_low_mark_puts;
+      gupcr_fabric_call_nc (fi_cntr_wait, status,
+			    (gupcr_gmem_puts.ct_handle, wait_cnt,
+			     GUPCR_TRANSFER_TIMEOUT));
+      GUPCR_CNT_ERROR_CHECK (status, "gmem put", gupcr_gmem_cq);
+      gupcr_gmem_puts.num_pending -= wait_cnt - gupcr_gmem_puts.num_completed;
+      gupcr_gmem_puts.num_completed = wait_cnt;
     }
   if (must_sync)
     gupcr_gmem_sync_puts ();
@@ -335,28 +366,26 @@ gupcr_gmem_copy (int dthread, size_t doffset,
   while (n_rem > 0)
     {
       size_t n_xfer;
-      char *bounce_buf;
-      size_t local_offset;
+      char *local_addr;
       /* Use the entire put "bounce buffer" if the transfer
          count is sufficiently large.  */
       n_xfer = GUPCR_MIN (n_rem, GUPCR_BOUNCE_BUFFER_SIZE);
       if ((gupcr_gmem_put_bb_used + n_xfer) > GUPCR_BOUNCE_BUFFER_SIZE)
 	gupcr_gmem_sync_puts ();
-      bounce_buf = &gupcr_gmem_put_bb[gupcr_gmem_put_bb_used];
-      gupcr_gmem_put_bb_used += n_xfer;
+      local_addr = &gupcr_gmem_put_bb[gupcr_gmem_put_bb_used];
+      gupcr_gmem_put_bb_used = GUPCR_DATA_ALIGN (gupcr_gmem_put_bb_used +
+						 n_xfer);
       /* Read the source data into the bounce buffer.  */
-      gupcr_gmem_get (bounce_buf, sthread, src_addr, n_xfer);
+      gupcr_gmem_get (local_addr, sthread, src_addr, n_xfer);
       gupcr_gmem_sync_gets ();
-      local_offset = (size_t) bounce_buf;
       ++gupcr_gmem_puts.num_pending;
       gupcr_fabric_call (fi_write,
 			 (gupcr_gmem_ep.tx_ep,
-			  GUPCR_LOCAL_INDEX (local_offset), n_xfer, NULL,
+			  GUPCR_LOCAL_INDEX (local_addr), n_xfer, NULL,
 			  GUPCR_TARGET_ADDR (dthread),
 			  GUPCR_REMOTE_MR_ADDR (gmem, dthread,
 						dest_offset),
-			  GUPCR_REMOTE_MR_KEY (gmem, dthread),
-			  NULL));
+			  GUPCR_REMOTE_MR_KEY (gmem, dthread), NULL));
       n_rem -= n_xfer;
       src_addr += n_xfer;
       dest_offset += n_xfer;
@@ -388,33 +417,31 @@ gupcr_gmem_set (int thread, size_t offset, int c, size_t n)
   while (n_rem > 0)
     {
       size_t n_xfer;
-      char *bounce_buf;
-      size_t local_offset;
+      char *local_addr;
       /* Use the entire put "bounce buffer" if the transfer
          count is sufficiently large.  */
       n_xfer = GUPCR_MIN (n_rem, (size_t) GUPCR_BOUNCE_BUFFER_SIZE);
       if ((gupcr_gmem_put_bb_used + n_xfer) > GUPCR_BOUNCE_BUFFER_SIZE)
 	gupcr_gmem_sync_puts ();
-      bounce_buf = &gupcr_gmem_put_bb[gupcr_gmem_put_bb_used];
-      gupcr_gmem_put_bb_used += n_xfer;
+      local_addr = &gupcr_gmem_put_bb[gupcr_gmem_put_bb_used];
+      gupcr_gmem_put_bb_used = GUPCR_DATA_ALIGN (gupcr_gmem_put_bb_used +
+						 n_xfer);
       /* Fill the bounce buffer, if we haven't already.  */
       if (!already_filled)
 	{
-	  memset (bounce_buf, c, n_xfer);
-	  already_filled = (bounce_buf == gupcr_gmem_put_bb
+	  memset (local_addr, c, n_xfer);
+	  already_filled = (local_addr == gupcr_gmem_put_bb
 			    && n_xfer == GUPCR_BOUNCE_BUFFER_SIZE);
 	}
-      local_offset = (size_t) bounce_buf;
-      ++gupcr_gmem_puts.num_pending;
       gupcr_fabric_call (fi_write,
 			 (gupcr_gmem_ep.tx_ep,
-			  GUPCR_LOCAL_INDEX (local_offset), n_xfer, NULL,
+			  GUPCR_LOCAL_INDEX (local_addr), n_xfer, NULL,
 			  GUPCR_TARGET_ADDR (thread),
 			  GUPCR_REMOTE_MR_ADDR (gmem, thread, dest_offset),
-			  GUPCR_REMOTE_MR_KEY (gmem, thread),
-			  NULL));
+			  GUPCR_REMOTE_MR_KEY (gmem, thread), NULL));
       n_rem -= n_xfer;
       dest_offset += n_xfer;
+      ++gupcr_gmem_puts.num_pending;
     }
 }
 

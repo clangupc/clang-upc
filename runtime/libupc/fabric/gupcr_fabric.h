@@ -123,6 +123,9 @@ extern size_t gupcr_max_msg_size;
 /** Max size of data that can use optimized put operations */
 extern size_t gupcr_max_optim_size;
 #define GUPCR_MAX_OPTIM_SIZE gupcr_max_optim_size
+/** Local buffer alignment for RMA/... */
+extern size_t gupcr_fabric_alignment;
+#define GUPCR_FABRIC_ALIGNMENT gupcr_fabric_alignment
 /** Support for scalable endpoints */
 extern int gupcr_enable_scalable_ctx;
 #define GUPCR_FABRIC_SCALABLE_CTX() (gupcr_enable_scalable_ctx != 0)
@@ -139,17 +142,19 @@ extern int gupcr_enable_mr_scalable;
 
 /** Execute fabric call and abort if error */
 #define gupcr_fabric_call(fabric_func, args)				\
-    do									\
-      {									\
-        int pstatus;							\
-        pstatus = fabric_func args;					\
-	if (pstatus)							\
-	  gupcr_fatal_error ("UPC runtime fabric call "			\
+    {									\
+      int pstatus;							\
+      do								\
+        {								\
+          pstatus = fabric_func args;					\
+	  if (pstatus && pstatus != -FI_EAGAIN)				\
+	    gupcr_fatal_error ("UPC runtime fabric call "		\
 	                     "`%s' on thread %d failed: %s\n", 		\
 			     __STRING(fabric_func), gupcr_get_rank (),	\
 	                     gupcr_strfaberror (-pstatus));		\
-      }									\
-    while (0)
+        }								\
+      while (pstatus == -FI_EAGAIN);					\
+    }
 /** Execute fabric RMA call and abort if error */
 #define gupcr_fabric_size_call(fabric_func, size, args)			\
     do									\

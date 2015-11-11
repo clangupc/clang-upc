@@ -40,7 +40,8 @@ int gupcr_parent_thread;
 size_t gupcr_max_order_size;
 size_t gupcr_max_msg_size;
 size_t gupcr_max_optim_size;
-
+size_t gupcr_fabric_alignment;
+	
 /** Fabric */
 static fab_t gupcr_fab;
 /** Fabric info */
@@ -605,6 +606,10 @@ gupcr_fabric_init (void)
   /* Choose provider.  */
   hints->fabric_attr->name = strdup (fab_name);
   hints->fabric_attr->prov_name = strdup (fab_prov_name);
+
+  /* Default buffer alignment.  Set the configured one as fabric
+     providers do not provide info on optimal alignment.  */
+  gupcr_fabric_alignment = GUPCR_MEMORY_ALIGNMENT;
 
   gupcr_fabric_call (fi_getinfo,
 		     (FI_VERSION (1, 0), node, NULL,

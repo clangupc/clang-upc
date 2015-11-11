@@ -97,6 +97,9 @@
 /* Define to 1 if PMI2 is available and used. */
 #cmakedefine LIBUPC_JOB_PMI2_API 1
 
+/* Select data alignment for put/get operations. */
+#cmakedefine GUPCR_MEMORY_ALIGNMENT 4
+
 //end gupcr_config_h
 
 /* Define to 1 if you have the `clock_gettime' function. */

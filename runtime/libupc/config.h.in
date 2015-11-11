@@ -91,6 +91,9 @@
 /* Select LIBFABRIC shared context support. */
 #undef GUPCR_FABRIC_SHARED_CTX
 
+/* Default data alignment. */
+#undef GUPCR_MEMORY_ALIGNMENT
+
 /* Define to 1 if UPC runtime can use Cray PMI API. */
 #undef HAVE_CRAY_PMI
 
