@@ -137,6 +137,8 @@ extern int gupcr_enable_mr_scalable;
 #define GUPCR_FABRIC_MR_SCALABLE() (gupcr_enable_mr_scalable != 0)
 /** Max time to wait for operation complete (10s) */
 #define GUPCR_TRANSFER_TIMEOUT -1
+/** Default size for the error CW */
+#define GUPCR_CQ_ERROR_SIZE 10
 
 //end lib_fabric
 
@@ -151,12 +153,12 @@ extern int gupcr_enable_mr_scalable;
 	    gupcr_fatal_error ("UPC runtime fabric call "		\
 	                     "`%s' on thread %d failed: %s\n", 		\
 			     __STRING(fabric_func), gupcr_get_rank (),	\
-	                     gupcr_strfaberror (-pstatus));		\
+	                     fi_strerror (-pstatus));			\
         }								\
       while (pstatus == -FI_EAGAIN);					\
     }
-/** Execute fabric RMA call and abort if error */
-#define gupcr_fabric_size_call(fabric_func, size, args)			\
+/** Execute fabric calls that return size  and abort if error */
+#define gupcr_fabric_call_size(fabric_func, size, args)			\
     do									\
       {									\
         size = fabric_func args;					\
@@ -164,7 +166,7 @@ extern int gupcr_enable_mr_scalable;
 	  gupcr_fatal_error ("UPC runtime fabric call "			\
 	                     "`%s' on thread %d failed: %s\n", 		\
 			     __STRING(fabric_func), gupcr_get_rank (),	\
-	                     gupcr_strfaberror (-size));		\
+	                     fi_strerror (-size));			\
       }									\
     while (size == -FI_EAGAIN)
 
@@ -176,13 +178,16 @@ extern int gupcr_enable_mr_scalable;
       }									\
     while (0)
 
-/** Check for counter error code */
-#define GUPCR_CNT_ERROR_CHECK(status, msg, queue) 			\
-    {									\
-      if (status)							\
+/** Execute fabric counter wait and process errors */
+#define gupcr_fabric_call_cntr_wait(args, msg, queue)			\
+    do									\
       {									\
+	int status;							\
+        status = fi_cntr_wait args;					\
         switch (status)							\
 	  {								\
+	    case FI_SUCCESS:						\
+	      break;							\
 	    case -FI_ETIMEDOUT:						\
 	      gupcr_fatal_error ("[%d] TIMEOUT: %s", gupcr_get_rank(),	\
 				  msg);					\
@@ -191,8 +196,7 @@ extern int gupcr_enable_mr_scalable;
 	      gupcr_process_fail_events (status, msg, queue);		\
 	      gupcr_abort ();						\
 	  }								\
-      }									\
-    }
+      } while (0);
 
 /**
  * @addtogroup GLOBAL GUPCR Global Variables
@@ -267,7 +271,6 @@ typedef struct gupcr_memreg gupcr_memreg_t;
 
 /** @} */
 
-extern const char *gupcr_strfaberror (int);
 extern const char *gupcr_streqtype (uint64_t);
 extern const char *gupcr_strop (enum fi_op);
 extern const char *gupcr_strdatatype (enum fi_datatype);

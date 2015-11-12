@@ -286,7 +286,7 @@ gupcr_runtime_exchange (const char *key, void *val, size_t len, void *res)
 }
 
 void
-  gupcr_runtime_get_ni_mapping (char *key, void *val, size_t len, void *res)
+gupcr_runtime_get_ni_mapping (char *key, void *val, size_t len, void *res)
 {
 }
 

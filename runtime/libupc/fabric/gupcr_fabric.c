@@ -41,7 +41,7 @@ size_t gupcr_max_order_size;
 size_t gupcr_max_msg_size;
 size_t gupcr_max_optim_size;
 size_t gupcr_fabric_alignment;
-	
+
 /** Fabric */
 static fab_t gupcr_fab;
 /** Fabric info */
@@ -110,167 +110,6 @@ check_ip_address (const char *ifname)
     addr = INADDR_ANY;
   close (fd);
   return addr;
-}
-
-/**
- * Return Libfabric error description string.
- *
- * @param [in] errnum Libfabric error number
- * @retval Error description string
- */
-const char *
-gupcr_strfaberror (int errnum)
-{
-  static char gupcr_strfaberror_buf[64];
-  switch (errnum)
-    {
-    case FI_SUCCESS:
-      return "Sucess";
-      break;
-    case FI_ENOENT:
-      return "No such file or directory";
-      break;
-    case FI_EIO:
-      return "IO error";
-      break;
-    case FI_E2BIG:
-      return "Argument list too long";
-      break;
-    case FI_EBADF:
-      return "Bad file number";
-      break;
-    case FI_EAGAIN:
-      return "Try again";
-      break;
-    case FI_ENOMEM:
-      return "Out of memory";
-      break;
-    case FI_EACCES:
-      return "Permission denied";
-      break;
-    case FI_EBUSY:
-      return "Device or resource busy";
-      break;
-    case FI_ENODEV:
-      return "No such device";
-      break;
-    case FI_EINVAL:
-      return "Invalid argument";
-      break;
-    case FI_EMFILE:
-      return "Too many open files";
-      break;
-    case FI_ENOSPC:
-      return "No space left on device";
-      break;
-    case FI_ENOSYS:
-      return "Function not implemented";
-      break;
-    case FI_ENOMSG:
-      return "No message of desired type";
-      break;
-    case FI_ENODATA:
-      return "No data available";
-      break;
-    case FI_EMSGSIZE:
-      return "Message too long";
-      break;
-    case FI_ENOPROTOOPT:
-      return "Protocol not available";
-      break;
-    case FI_EOPNOTSUPP:
-      return "Operation not supported on transport endpoint";
-      break;
-    case FI_EADDRINUSE:
-      return "Address already in use";
-      break;
-    case FI_EADDRNOTAVAIL:
-      return "Cannot assign requested address";
-      break;
-    case FI_ENETDOWN:
-      return "Network is down";
-      break;
-    case FI_ENETUNREACH:
-      return "Network is unreachable";
-      break;
-    case FI_ECONNABORTED:
-      return "DSoftware caused connection abort";
-      break;
-    case FI_ECONNRESET:
-      return "Connection reset by peer";
-      break;
-    case FI_EISCONN:
-      return "Transport endpoint is already connected";
-      break;
-    case FI_ENOTCONN:
-      return "Transport endpoint is not connected";
-      break;
-    case FI_ESHUTDOWN:
-      return "Cannot send after transport endpoint shutdown";
-      break;
-    case FI_ETIMEDOUT:
-      return "Connection timed out";
-      break;
-    case FI_ECONNREFUSED:
-      return "Connection refused";
-      break;
-    case FI_EHOSTUNREACH:
-      return "No route to host";
-      break;
-    case FI_EALREADY:
-      return "Operation already in progress";
-      break;
-    case FI_EINPROGRESS:
-      return "Operation now in progress";
-      break;
-    case FI_EREMOTEIO:
-      return "Remote IO error/";
-      break;
-    case FI_ECANCELED:
-      return "Operation Canceled";
-      break;
-    case FI_EKEYREJECTED:
-      return "Key was rejected by service";
-      break;
-    case FI_EOTHER:
-      return "Unspecified error";
-      break;
-    case FI_ETOOSMALL:
-      return "Provided buffer is too small";
-      break;
-    case FI_EOPBADSTATE:
-      return "Operation not permitted in current state";
-      break;
-    case FI_EAVAIL:
-      return "Error available";
-      break;
-    case FI_EBADFLAGS:
-      return "Flags not supported";
-      break;
-    case FI_ENOEQ:
-      return "Missing or unavailable event queue";
-      break;
-    case FI_EDOMAIN:
-      return "Invalid resource domain";
-      break;
-    case FI_ENOCQ:
-      return "Missing or unavailable completion queue";
-      break;
-    case FI_ECRC:
-      return "CRC error";
-      break;
-    case FI_ETRUNC:
-      return "Truncation error";
-      break;
-    case FI_ENOKEY:
-      return "Required key not available";
-      break;
-
-    default:
-      break;
-    }
-  sprintf (gupcr_strfaberror_buf, "unknown fabric status code: %d", errnum);
-  return gupcr_strfaberror_buf;
 }
 
 /**
@@ -488,11 +327,11 @@ gupcr_get_atomic_size (enum fi_datatype type)
 void
 gupcr_process_fail_events (int status, const char *msg, fab_cq_t cq)
 {
-  int ret;
+  ssize_t ret;
   struct fi_cq_err_entry cq_error;
 
-  gupcr_fabric_call_nc (fi_cq_readerr, ret, (cq, (void *) &cq_error, 0));
-  if (status == -FI_EAVAIL && !ret)
+  gupcr_fabric_call_size (fi_cq_readerr, ret, (cq, (void *) &cq_error, 0));
+  if (ret > 0)
     {
       char buf[256];
       const char *errstr = "";
@@ -500,12 +339,12 @@ gupcr_process_fail_events (int status, const char *msg, fab_cq_t cq)
 	gupcr_fabric_call_nc (fi_cq_strerror, errstr,
 			      (cq, cq_error.prov_errno, cq_error.err_data,
 			       buf, sizeof (buf)));
-      gupcr_error ("err code: %s, msg: %s, prov error string: %s",
-		   gupcr_strfaberror (cq_error.err), msg, errstr);
+      gupcr_error ("from %s error (%s), provider error (%s)",
+		   msg, fi_strerror (cq_error.err), errstr);
     }
   else
     gupcr_fatal_error ("err code: %s, msg: %s",
-		       gupcr_strfaberror (status), msg);
+		       fi_strerror (-status), msg);
 }
 
 /**
@@ -582,7 +421,7 @@ gupcr_fabric_init (void)
       gupcr_fatal_error ("UPC runtime fabric call "
 			 "fi_allocinfo on thread %d failed: %s\n",
 			 gupcr_get_rank (),
-			 gupcr_strfaberror (-(long) hints));
+			 fi_strerror (-(long) hints));
     }
   if (!strcmp (fab_prov_name, "sockets"))
     {

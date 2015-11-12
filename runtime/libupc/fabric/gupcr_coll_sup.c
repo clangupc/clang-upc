@@ -83,8 +83,8 @@ static fab_mr_t gupcr_coll_signal_mr;
 #define GUPCR_SIGNAL_INDEX(addr) \
   (uint64_t) ((char *) addr - (char *) &gupcr_coll_signal)
 /** Target memory regions */
-static gupcr_memreg_t * gupcr_coll_mr_keys;
-static gupcr_memreg_t * gupcr_coll_signal_mr_keys;
+static gupcr_memreg_t *gupcr_coll_mr_keys;
+static gupcr_memreg_t *gupcr_coll_signal_mr_keys;
 
 /**
  * Initialize collectives thread tree.
@@ -172,31 +172,30 @@ gupcr_coll_tree_setup (size_t newroot, size_t start, int nthreads)
 void
 gupcr_coll_put (size_t dthread, size_t doffset, size_t soffset, size_t nbytes)
 {
-  ssize_t csize;
+  ssize_t ret;
   gupcr_debug (FC_COLL, "%d:0x%lx %lu:0x%lx %lu",
 	       MYTHREAD, (long unsigned) soffset,
 	       (long unsigned) dthread, (long unsigned) doffset,
 	       (long unsigned) nbytes);
   if (nbytes <= GUPCR_MAX_OPTIM_SIZE)
     {
-      gupcr_fabric_size_call (fi_inject_write, csize,
+      gupcr_fabric_call_size (fi_inject_write, ret,
 			      (gupcr_coll_ep.tx_ep,
 			       GUPCR_LOCAL_INDEX (gupcr_gmem_base + soffset),
 			       nbytes, GUPCR_TARGET_ADDR (dthread),
 			       GUPCR_REMOTE_MR_ADDR (coll, dthread,
-						       doffset),
+						     doffset),
 			       GUPCR_REMOTE_MR_KEY (coll, dthread)));
     }
   else
     {
-      gupcr_fabric_size_call (fi_write, csize,
+      gupcr_fabric_call_size (fi_write, ret,
 			      (gupcr_coll_ep.tx_ep,
 			       GUPCR_LOCAL_INDEX (gupcr_gmem_base + soffset),
 			       nbytes, NULL, GUPCR_TARGET_ADDR (dthread),
 			       GUPCR_REMOTE_MR_ADDR (coll, dthread,
-						       doffset),
-			       GUPCR_REMOTE_MR_KEY (coll, dthread),
-			       NULL));
+						     doffset),
+			       GUPCR_REMOTE_MR_KEY (coll, dthread), NULL));
     }
   gupcr_coll_ack_cnt++;
   if (!GUPCR_FABRIC_RMA_EVENT ())
@@ -204,14 +203,15 @@ gupcr_coll_put (size_t dthread, size_t doffset, size_t soffset, size_t nbytes)
       /* Must wait for completion before signaling.  */
       gupcr_coll_ack_wait ();
       /* ... signal to the target side.  */
-      gupcr_fabric_call (fi_atomic,
-			 (gupcr_coll_ep.tx_ep, &gupcr_coll_one,
-			  1, NULL, GUPCR_TARGET_ADDR (dthread),
-			  GUPCR_REMOTE_MR_ADDR (coll_signal, dthread,
-						GUPCR_SIGNAL_INDEX
-						(&gupcr_coll_signal.notify)),
-			  GUPCR_REMOTE_MR_KEY (coll_signal, dthread),
-			  FI_UINT32, FI_SUM, NULL));
+      gupcr_fabric_call_size (fi_atomic, ret,
+			      (gupcr_coll_ep.tx_ep, &gupcr_coll_one,
+			       1, NULL, GUPCR_TARGET_ADDR (dthread),
+			       GUPCR_REMOTE_MR_ADDR (coll_signal, dthread,
+						     GUPCR_SIGNAL_INDEX
+						     (&gupcr_coll_signal.
+						      notify)),
+			       GUPCR_REMOTE_MR_KEY (coll_signal, dthread),
+			       FI_UINT32, FI_SUM, NULL));
       gupcr_coll_ack_cnt++;
     }
 }
@@ -322,12 +322,10 @@ gupcr_coll_trigput_atomic (size_t dthread, size_t doffset, size_t soffset,
 void
 gupcr_coll_ack_wait (void)
 {
-  int status;
   gupcr_debug (FC_COLL, "wait for %ld", gupcr_coll_ack_cnt);
-  gupcr_fabric_call_nc (fi_cntr_wait, status,
-			(gupcr_coll_lct, gupcr_coll_ack_cnt,
-			 GUPCR_TRANSFER_TIMEOUT));
-  GUPCR_CNT_ERROR_CHECK (status, "coll_put", gupcr_coll_lcq);
+  gupcr_fabric_call_cntr_wait ((gupcr_coll_lct, gupcr_coll_ack_cnt,
+				GUPCR_TRANSFER_TIMEOUT), "coll_put",
+			       gupcr_coll_lcq);
 }
 
 /**
@@ -341,17 +339,15 @@ gupcr_coll_ack_wait (void)
 void
 gupcr_coll_signal_wait (size_t cnt)
 {
-  int status;
   gupcr_debug (FC_COLL, "wait for %lu (%lu)",
 	       (long unsigned) cnt,
 	       (long unsigned) (gupcr_coll_event_cnt + cnt));
   gupcr_coll_event_cnt += cnt;
   if (GUPCR_FABRIC_RMA_EVENT ())
     {
-      gupcr_fabric_call_nc (fi_cntr_wait, status,
-			    (gupcr_coll_ct, gupcr_coll_event_cnt,
-			     GUPCR_TRANSFER_TIMEOUT));
-      GUPCR_CNT_ERROR_CHECK (status, "coll_put", gupcr_coll_cq);
+      gupcr_fabric_call_cntr_wait ((gupcr_coll_ct, gupcr_coll_event_cnt,
+				    GUPCR_TRANSFER_TIMEOUT), "coll_put",
+				   gupcr_coll_cq);
     }
   else
     {
@@ -400,7 +396,7 @@ gupcr_coll_init (void)
   gupcr_coll_event_cnt = 0;
 
   /* ... and completion queue for remote target transfer errors.  */
-  cq_attr.size = 1;
+  cq_attr.size = GUPCR_CQ_ERROR_SIZE;
   cq_attr.format = FI_CQ_FORMAT_MSG;
   cq_attr.wait_obj = FI_WAIT_NONE;
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_coll_lcq, NULL));
@@ -440,7 +436,7 @@ gupcr_coll_init (void)
       gupcr_fabric_call (fi_mr_bind, (gupcr_coll_mr, &gupcr_coll_ct->fid,
 				      FI_REMOTE_WRITE));
       /* ... and completion queue for remote inbound errors.  */
-      cq_attr.size = 1;
+      cq_attr.size = GUPCR_CQ_ERROR_SIZE;
       cq_attr.format = FI_CQ_FORMAT_MSG;
       cq_attr.wait_obj = FI_WAIT_NONE;
       gupcr_fabric_call (fi_cq_open,
@@ -459,7 +455,8 @@ gupcr_coll_init (void)
 				     sizeof (gupcr_coll_signal),
 				     FI_REMOTE_WRITE, 0, GUPCR_MR_COLL_SIGNAL,
 				     0, &gupcr_coll_signal_mr, NULL));
-      GUPCR_GATHER_MR_KEYS (coll_signal, gupcr_coll_signal_mr, &gupcr_coll_signal);
+      GUPCR_GATHER_MR_KEYS (coll_signal, gupcr_coll_signal_mr,
+			    &gupcr_coll_signal);
     }
   /* Enable RX endpoint and bind MR.  */
   gupcr_fabric_call (fi_enable, (gupcr_coll_ep.rx_ep));

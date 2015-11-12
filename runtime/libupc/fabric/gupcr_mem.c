@@ -80,12 +80,12 @@ upc_memcpy (upc_shared_ptr_t dest, upc_shared_ptr_t src, size_t n)
     {
       if (n > (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
-          gupcr_gmem_sync_puts ();
-          gupcr_gmem_copy (dthread, doffset, sthread, soffset, n);
-          gupcr_pending_strict_put = 1;
+	  gupcr_gmem_sync_puts ();
+	  gupcr_gmem_copy (dthread, doffset, sthread, soffset, n);
+	  gupcr_pending_strict_put = 1;
 	}
       else
-        gupcr_gmem_copy (dthread, doffset, sthread, soffset, n);
+	gupcr_gmem_copy (dthread, doffset, sthread, soffset, n);
     }
   gupcr_trace (FC_MEM, "MEM MEMCPY EXIT");
 }

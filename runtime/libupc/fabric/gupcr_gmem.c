@@ -131,7 +131,6 @@ gupcr_gmem_alloc_shared (void)
 void
 gupcr_gmem_sync_gets (void)
 {
-  int status;
   /* Sync all outstanding local accesses.  */
   GUPCR_MEM_BARRIER ();
   /* Sync all outstanding remote get accesses.  */
@@ -141,10 +140,9 @@ gupcr_gmem_sync_gets (void)
 	gupcr_gmem_gets.num_completed + gupcr_gmem_gets.num_pending;
       gupcr_debug (FC_MEM, "outstanding gets: %lu",
 		   (long unsigned) gupcr_gmem_gets.num_pending);
-      gupcr_fabric_call_nc (fi_cntr_wait, status,
-			    (gupcr_gmem_gets.ct_handle, num_initiated,
-			     GUPCR_TRANSFER_TIMEOUT));
-      GUPCR_CNT_ERROR_CHECK (status, "sync gets", gupcr_gmem_cq);
+      gupcr_fabric_call_cntr_wait ((gupcr_gmem_gets.ct_handle, num_initiated,
+				    GUPCR_TRANSFER_TIMEOUT), "sync gets",
+				   gupcr_gmem_cq);
       gupcr_gmem_gets.num_pending = 0;
       gupcr_gmem_gets.num_completed = num_initiated;
     }
@@ -161,7 +159,6 @@ gupcr_gmem_sync_gets (void)
 void
 gupcr_gmem_sync_puts (void)
 {
-  int status;
   /* Sync all outstanding local accesses.  */
   GUPCR_MEM_BARRIER ();
   /* Sync all outstanding remote put accesses.  */
@@ -171,10 +168,9 @@ gupcr_gmem_sync_puts (void)
 	gupcr_gmem_puts.num_completed + gupcr_gmem_puts.num_pending;
       gupcr_debug (FC_MEM, "outstanding puts: %lu",
 		   (long unsigned) gupcr_gmem_puts.num_pending);
-      gupcr_fabric_call_nc (fi_cntr_wait, status,
-			    (gupcr_gmem_puts.ct_handle, num_initiated,
-			     GUPCR_TRANSFER_TIMEOUT));
-      GUPCR_CNT_ERROR_CHECK (status, "sync puts", gupcr_gmem_cq);
+      gupcr_fabric_call_cntr_wait ((gupcr_gmem_puts.ct_handle, num_initiated,
+				    GUPCR_TRANSFER_TIMEOUT), "sync puts",
+				   gupcr_gmem_cq);
       gupcr_gmem_puts.num_pending = 0;
       gupcr_gmem_puts.num_completed = num_initiated;
       gupcr_pending_strict_put = 0;
@@ -265,6 +261,7 @@ void
 gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 {
   char *src_addr = (char *) src;
+  ssize_t ret;
   size_t n_rem = n;
   size_t dest_offset = offset;
   int src_aligned = GUPCR_DATA_ALIGNED (src);
@@ -275,12 +272,13 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
   if (n <= GUPCR_MAX_OPTIM_SIZE && src_aligned)
     {
       /* Fast track, no need for bounce buffer.  */
-      gupcr_fabric_call (fi_inject_write,
-			 (gupcr_gmem_ep.tx_ep,
-			  GUPCR_LOCAL_INDEX (src_addr), n,
-			  GUPCR_TARGET_ADDR (thread),
-			  GUPCR_REMOTE_MR_ADDR (gmem, thread, dest_offset),
-			  GUPCR_REMOTE_MR_KEY (gmem, thread)));
+      gupcr_fabric_call_size (fi_inject_write, ret,
+			      (gupcr_gmem_ep.tx_ep,
+			       GUPCR_LOCAL_INDEX (src_addr), n,
+			       GUPCR_TARGET_ADDR (thread),
+			       GUPCR_REMOTE_MR_ADDR (gmem, thread,
+						     dest_offset),
+			       GUPCR_REMOTE_MR_KEY (gmem, thread)));
       ++gupcr_gmem_puts.num_pending;
     }
   else
@@ -307,15 +305,16 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 	      local_addr = &gupcr_gmem_put_bb[gupcr_gmem_put_bb_used];
 	      memcpy (local_addr, src_addr, n_xfer);
 	      gupcr_gmem_put_bb_used += n_xfer;
-	      gupcr_gmem_put_bb_used = GUPCR_DATA_ALIGN (gupcr_gmem_put_bb_used);
+	      gupcr_gmem_put_bb_used =
+		GUPCR_DATA_ALIGN (gupcr_gmem_put_bb_used);
 	    }
-	  gupcr_fabric_call (fi_write,
-			     (gupcr_gmem_ep.tx_ep,
-			      GUPCR_LOCAL_INDEX (local_addr), n_xfer,
-			      NULL, GUPCR_TARGET_ADDR (thread),
-			      GUPCR_REMOTE_MR_ADDR (gmem, thread,
-						    dest_offset),
-			      GUPCR_REMOTE_MR_KEY (gmem, thread), NULL));
+	  gupcr_fabric_call_size (fi_write, ret,
+				  (gupcr_gmem_ep.tx_ep,
+				   GUPCR_LOCAL_INDEX (local_addr), n_xfer,
+				   NULL, GUPCR_TARGET_ADDR (thread),
+				   GUPCR_REMOTE_MR_ADDR (gmem, thread,
+							 dest_offset),
+				   GUPCR_REMOTE_MR_KEY (gmem, thread), NULL));
 	  n_rem -= n_xfer;
 	  src_addr += n_xfer;
 	  dest_offset += n_xfer;
@@ -324,13 +323,11 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
     }
   if (gupcr_gmem_puts.num_pending == gupcr_gmem_high_mark_puts)
     {
-      int status;
       size_t wait_cnt = gupcr_gmem_puts.num_completed
 	+ gupcr_gmem_puts.num_pending - gupcr_gmem_low_mark_puts;
-      gupcr_fabric_call_nc (fi_cntr_wait, status,
-			    (gupcr_gmem_puts.ct_handle, wait_cnt,
-			     GUPCR_TRANSFER_TIMEOUT));
-      GUPCR_CNT_ERROR_CHECK (status, "gmem put", gupcr_gmem_cq);
+      gupcr_fabric_call_cntr_wait ((gupcr_gmem_puts.ct_handle, wait_cnt,
+				    GUPCR_TRANSFER_TIMEOUT), "gmem put",
+				   gupcr_gmem_cq);
       gupcr_gmem_puts.num_pending -= wait_cnt - gupcr_gmem_puts.num_completed;
       gupcr_gmem_puts.num_completed = wait_cnt;
     }
@@ -357,6 +354,7 @@ void
 gupcr_gmem_copy (int dthread, size_t doffset,
 		 int sthread, size_t soffset, size_t n)
 {
+  ssize_t ret;
   size_t n_rem = n;
   size_t dest_offset = doffset;
   size_t src_addr = soffset;
@@ -379,13 +377,13 @@ gupcr_gmem_copy (int dthread, size_t doffset,
       gupcr_gmem_get (local_addr, sthread, src_addr, n_xfer);
       gupcr_gmem_sync_gets ();
       ++gupcr_gmem_puts.num_pending;
-      gupcr_fabric_call (fi_write,
-			 (gupcr_gmem_ep.tx_ep,
-			  GUPCR_LOCAL_INDEX (local_addr), n_xfer, NULL,
-			  GUPCR_TARGET_ADDR (dthread),
-			  GUPCR_REMOTE_MR_ADDR (gmem, dthread,
-						dest_offset),
-			  GUPCR_REMOTE_MR_KEY (gmem, dthread), NULL));
+      gupcr_fabric_call_size (fi_write, ret,
+			      (gupcr_gmem_ep.tx_ep,
+			       GUPCR_LOCAL_INDEX (local_addr), n_xfer, NULL,
+			       GUPCR_TARGET_ADDR (dthread),
+			       GUPCR_REMOTE_MR_ADDR (gmem, dthread,
+						     dest_offset),
+			       GUPCR_REMOTE_MR_KEY (gmem, dthread), NULL));
       n_rem -= n_xfer;
       src_addr += n_xfer;
       dest_offset += n_xfer;
@@ -409,6 +407,7 @@ gupcr_gmem_copy (int dthread, size_t doffset,
 void
 gupcr_gmem_set (int thread, size_t offset, int c, size_t n)
 {
+  ssize_t ret;
   size_t n_rem = n;
   int already_filled = 0;
   size_t dest_offset = offset;
@@ -433,12 +432,13 @@ gupcr_gmem_set (int thread, size_t offset, int c, size_t n)
 	  already_filled = (local_addr == gupcr_gmem_put_bb
 			    && n_xfer == GUPCR_BOUNCE_BUFFER_SIZE);
 	}
-      gupcr_fabric_call (fi_write,
-			 (gupcr_gmem_ep.tx_ep,
-			  GUPCR_LOCAL_INDEX (local_addr), n_xfer, NULL,
-			  GUPCR_TARGET_ADDR (thread),
-			  GUPCR_REMOTE_MR_ADDR (gmem, thread, dest_offset),
-			  GUPCR_REMOTE_MR_KEY (gmem, thread), NULL));
+      gupcr_fabric_call_size (fi_write, ret,
+			      (gupcr_gmem_ep.tx_ep,
+			       GUPCR_LOCAL_INDEX (local_addr), n_xfer, NULL,
+			       GUPCR_TARGET_ADDR (thread),
+			       GUPCR_REMOTE_MR_ADDR (gmem, thread,
+						     dest_offset),
+			       GUPCR_REMOTE_MR_KEY (gmem, thread), NULL));
       n_rem -= n_xfer;
       dest_offset += n_xfer;
       ++gupcr_gmem_puts.num_pending;
@@ -452,8 +452,12 @@ gupcr_gmem_set (int thread, size_t offset, int c, size_t n)
 void
 gupcr_gmem_init (void)
 {
-  cntr_attr_t cntr_attr = { 0 };
-  cq_attr_t cq_attr = { 0 };
+  cntr_attr_t cntr_attr = {
+    0
+  };
+  cq_attr_t cq_attr = {
+    0
+  };
 
   gupcr_log (FC_MEM, "gmem init called");
 
@@ -494,15 +498,14 @@ gupcr_gmem_init (void)
   /* Create completion queue for remote target transfer errors.  There
      is only one completion queue for read and writes and minimum
      size of one message is enough for error reporting.  */
-  cq_attr.size = 1;
+  cq_attr.size = GUPCR_CQ_ERROR_SIZE;
   cq_attr.format = FI_CQ_FORMAT_MSG;
   cq_attr.wait_obj = FI_WAIT_NONE;
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_gmem_cq, NULL));
   /* Use FI_SELECTIVE_COMPLETION flag to report errors only.  */
   gupcr_fabric_call (fi_ep_bind, (gupcr_gmem_ep.tx_ep,
 				  &gupcr_gmem_cq->fid,
-				  FI_WRITE | FI_READ |
-				  FI_SELECTIVE_COMPLETION));
+				  FI_TRANSMIT | FI_SELECTIVE_COMPLETION));
 
 #if LOCAL_MR_NEEDED
   /* Create a memory region for local memory accesses.  */

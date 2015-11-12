@@ -113,7 +113,7 @@ static fab_mr_t gupcr_shutdown_lmr;
 #endif
 
 /** Target memory regions */
-static gupcr_memreg_t * gupcr_shutdown_mr_keys;
+static gupcr_memreg_t *gupcr_shutdown_mr_keys;
 
 /** Target address */
 #define GUPCR_TARGET_ADDR(target) \
@@ -132,6 +132,7 @@ static gupcr_memreg_t * gupcr_shutdown_mr_keys;
 void
 gupcr_signal_exit (int status)
 {
+  ssize_t ret;
   int thread;
   int wait_cnt = GUPCR_GLOBAL_EXIT_TIMEOUT *
     (1000000L / SHUTDOWN_MICROSEC_WAIT);
@@ -145,28 +146,29 @@ gupcr_signal_exit (int status)
   /* Send global exit code to all threads.  */
   for (thread = 0; thread < THREADS; thread++)
     {
-      gupcr_fabric_call (fi_write,
-			 (gupcr_shutdown_ep.tx_ep,
-			  &gupcr_shutdown_memory.status,
-			  sizeof (gupcr_shutdown_memory.status),
-			  NULL, GUPCR_TARGET_ADDR (thread),
-			  GUPCR_REMOTE_MR_ADDR (shutdown, thread,
-						GUPCR_REMOTE_OFFSET
-						(&gupcr_shutdown_memory.status)),
-			  GUPCR_REMOTE_MR_KEY (shutdown, thread),
-			  NULL));
+      gupcr_fabric_call_size (fi_write, ret,
+			      (gupcr_shutdown_ep.tx_ep,
+			       &gupcr_shutdown_memory.status,
+			       sizeof (gupcr_shutdown_memory.status),
+			       NULL, GUPCR_TARGET_ADDR (thread),
+			       GUPCR_REMOTE_MR_ADDR (shutdown, thread,
+						     GUPCR_REMOTE_OFFSET
+						     (&gupcr_shutdown_memory.
+						      status)),
+			       GUPCR_REMOTE_MR_KEY (shutdown, thread), NULL));
 
       if (!GUPCR_FABRIC_RMA_EVENT ())
-	gupcr_fabric_call (fi_write,
-			   (gupcr_shutdown_ep.tx_ep,
-			    &gupcr_shutdown_memory.signal,
-			    sizeof (gupcr_shutdown_memory.signal),
-			    NULL, GUPCR_TARGET_ADDR (thread),
-			    GUPCR_REMOTE_MR_ADDR (shutdown, thread,
-						  GUPCR_REMOTE_OFFSET
-						  (&gupcr_shutdown_memory.signal)),
-			    GUPCR_REMOTE_MR_KEY (shutdown, thread),
-			    NULL));
+	gupcr_fabric_call_size (fi_write, ret,
+				(gupcr_shutdown_ep.tx_ep,
+				 &gupcr_shutdown_memory.signal,
+				 sizeof (gupcr_shutdown_memory.signal),
+				 NULL, GUPCR_TARGET_ADDR (thread),
+				 GUPCR_REMOTE_MR_ADDR (shutdown, thread,
+						       GUPCR_REMOTE_OFFSET
+						       (&gupcr_shutdown_memory.
+							signal)),
+				 GUPCR_REMOTE_MR_KEY (shutdown, thread),
+				 NULL));
     }
   /* It is NOT ok to call finalize routines as there might
      be outstanding transactions.  */
@@ -201,21 +203,22 @@ gupcr_signal_exit (int status)
 static void
 gupcr_shutdown_terminate_pthread (void)
 {
+  ssize_t ret;
   /* Disable interrupts before sending a signal to
      shutdown pthread.  */
   gupcr_signal_disable (SHUTDOWN_SIGNAL);
 
   gupcr_shutdown_memory.status = 0;
-  gupcr_fabric_call (fi_write,
-		     (gupcr_shutdown_ep.tx_ep,
-		      &gupcr_shutdown_memory.status,
-		      sizeof (gupcr_shutdown_memory.status),
-		      NULL, GUPCR_TARGET_ADDR (MYTHREAD),
-		      GUPCR_REMOTE_MR_ADDR (shutdown, MYTHREAD,
-					    GUPCR_REMOTE_OFFSET
-					    (&gupcr_shutdown_memory.status)),
-		      GUPCR_REMOTE_MR_KEY (shutdown, MYTHREAD),
-		      NULL));
+  gupcr_fabric_call_size (fi_write, ret,
+			  (gupcr_shutdown_ep.tx_ep,
+			   &gupcr_shutdown_memory.status,
+			   sizeof (gupcr_shutdown_memory.status),
+			   NULL, GUPCR_TARGET_ADDR (MYTHREAD),
+			   GUPCR_REMOTE_MR_ADDR (shutdown, MYTHREAD,
+						 GUPCR_REMOTE_OFFSET
+						 (&gupcr_shutdown_memory.
+						  status)),
+			   GUPCR_REMOTE_MR_KEY (shutdown, MYTHREAD), NULL));
   gupcr_shutdown_memory.signal = 1;
   gupcr_shutdown_lmr_count += 1;
   pthread_join (gupcr_shutdown_pthread_id, NULL);
@@ -313,7 +316,7 @@ gupcr_shutdown_init (void)
 				  FI_READ | FI_WRITE));
 
   /* ... and completion queue for remote target transfer errors.  */
-  cq_attr.size = 1;
+  cq_attr.size = GUPCR_CQ_ERROR_SIZE;
   cq_attr.format = FI_CQ_FORMAT_MSG;
   cq_attr.wait_obj = FI_WAIT_NONE;
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_shutdown_lcq,
@@ -364,7 +367,7 @@ gupcr_shutdown_init (void)
 				      FI_REMOTE_WRITE));
     }
   /* ... and completion queue for remote inbound errors.  */
-  cq_attr.size = 1;
+  cq_attr.size = GUPCR_CQ_ERROR_SIZE;
   cq_attr.format = FI_CQ_FORMAT_MSG;
   cq_attr.wait_obj = FI_WAIT_NONE;
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr,

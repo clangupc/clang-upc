@@ -79,8 +79,8 @@ gupcr_init (void)
   if (gupcr_runtime_init ())
     {
       /* Report an error to stderr as the GUPC error reporting
-	 is not initialized yet.  Note: all threads report
-	 this error.  */
+         is not initialized yet.  Note: all threads report
+         this error.  */
       fprintf (stderr, "Unable to initialize runtime.\n");
       abort ();
     }
@@ -110,10 +110,10 @@ gupcr_init (void)
 			  run_threads_count, THREADS);
   gupcr_assert (THREADS >= 1);
 
-#if HAVE_UPC_BACKTRACE                                                          
-  /* Initialize backtrace support. */                                           
-  gupcr_backtrace_init (gupcr_get_pgm_name () );                                        
-#endif 
+#if HAVE_UPC_BACKTRACE
+  /* Initialize backtrace support. */
+  gupcr_backtrace_init (gupcr_get_pgm_name ());
+#endif
 
   /* Initialize the Fabric Network Interface.  */
   gupcr_fabric_ni_init ();

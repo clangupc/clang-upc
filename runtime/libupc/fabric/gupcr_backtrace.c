@@ -64,7 +64,7 @@ void
 gupcr_backtrace (void)
 {
   void *strace[GUPCR_BT_DEPTH_CNT];
-  size_t size,i;
+  size_t size, i;
   char **strace_str;
   char *file_env;
   int under_upc_main = 1;
@@ -73,7 +73,7 @@ gupcr_backtrace (void)
   file_env = getenv (GUPCR_BACKTRACE_FILE_ENV);
   if (file_env)
     {
-      #define MAX_INT_STRING ".2147483647"
+#define MAX_INT_STRING ".2147483647"
       char *tracefile;
       int len, lenw;
       /* Use default trace file name if one not specified by the user.  */
@@ -82,8 +82,9 @@ gupcr_backtrace (void)
       len = strlen (file_env) + strlen (MAX_INT_STRING) + 1;
       tracefile = malloc (len);
       if (!tracefile)
-        gupcr_fatal_error ("cannot allocate (%d) memory for backtrace file %s",
-		     len, file_env);
+	gupcr_fatal_error
+	  ("cannot allocate (%d) memory for backtrace file %s", len,
+	   file_env);
       lenw = snprintf (tracefile, len, "%s.%d", file_env, MYTHREAD);
       if ((lenw >= len) || (lenw < 0))
 	gupcr_fatal_error ("cannot create backtrace file name: %s", file_env);
@@ -103,19 +104,18 @@ gupcr_backtrace (void)
   for (i = GUPCR_BT_SKIP_FRAME_CNT; i < size; i++)
     {
       if (under_upc_main)
-        {
-# if HAVE_UPC_BACKTRACE_ADDR2LINE
+	{
+#if HAVE_UPC_BACKTRACE_ADDR2LINE
 	  /* Call addr2line to generate source files, line numbers,
 	     and functions.  In case of any error (malloc, snprintf)
 	     do not abort the program.  */
 	  FILE *a2l;
-	  #define CMD_TMPL "%s -f -e %s %p"
+#define CMD_TMPL "%s -f -e %s %p"
 	  /* Allow space for addr2line, filename, command line options,
 	     and address argument for addr2line.  */
 	  int cmd_size = strlen (GUPCR_BACKTRACE_ADDR2LINE) +
-			 strlen (gupcr_abs_execname) +
-			 strlen (CMD_TMPL) +
-			 strlen ("0x1234567812345678");
+	    strlen (gupcr_abs_execname) +
+	    strlen (CMD_TMPL) + strlen ("0x1234567812345678");
 	  int sz;
 	  char *cmd = malloc (cmd_size);
 	  /* Create an actual addr2line command.  */
@@ -124,7 +124,7 @@ gupcr_backtrace (void)
 	  if ((sz >= cmd_size) || (sz < 0))
 	    {
 	      fprintf (traceout, "unable to create addr2line "
-				 "command line\n");
+		       "command line\n");
 	      return;
 	    }
 	  /* Execute addr2line.  */
@@ -133,25 +133,26 @@ gupcr_backtrace (void)
 	  if (a2l)
 	    {
 	      /* addr2line responds with two lines: procedure name and
-		 the file name with line number.  */
+	         the file name with line number.  */
 	      int max_rep = 2 * FILENAME_MAX;
 	      /* Build a data structure that is identical to the
-		 structure returned by the glibc backtrace_symbol().  */
-	      struct back_trace {
+	         structure returned by the glibc backtrace_symbol().  */
+	      struct back_trace
+	      {
 		char *addr;
-	        char data[1];
+		char data[1];
 	      };
 	      struct back_trace *rep = malloc (max_rep);
 	      int index = 0;
 	      if (!rep)
 		{
 		  fprintf (traceout, "unable to acquire memory "
-				     "for backtracing\n");
+			   "for backtracing\n");
 		  return;
 		}
 	      rep->data[0] = '\0';
 	      /* Read addr2line response.  */
-	      while (fgets(&rep->data[index], max_rep-index, a2l))
+	      while (fgets (&rep->data[index], max_rep - index, a2l))
 		{
 		  /* Remove all the new lines, as addr2line returns
 		     info in multiple lines.  */
@@ -169,18 +170,19 @@ gupcr_backtrace (void)
 	         to glibc.  */
 	      strace_str = backtrace_symbols (&strace[i], 1);
 	    }
-# else
+#else
 	  strace_str = backtrace_symbols (&strace[i], 1);
-# endif
-	  fprintf (traceout, "[%4d][%lld] %s\n", MYTHREAD, 
-	      (long long int) (i - GUPCR_BT_SKIP_FRAME_CNT), *strace_str);
+#endif
+	  fprintf (traceout, "[%4d][%lld] %s\n", MYTHREAD,
+		   (long long int) (i - GUPCR_BT_SKIP_FRAME_CNT),
+		   *strace_str);
 	  /* Extra info for the barrier. */
-	  if (strstr( *strace_str, "__upc_wait"))
+	  if (strstr (*strace_str, "__upc_wait"))
 	    {
-	      fprintf (traceout, "[%4d]       BARRIER ID: %d\n", MYTHREAD, 
+	      fprintf (traceout, "[%4d]       BARRIER ID: %d\n", MYTHREAD,
 		       gupcr_barrier_id);
 	    }
-          if (strstr (*strace_str, "upc_main"))
+	  if (strstr (*strace_str, "upc_main"))
 	    under_upc_main = 0;
 	  /* Symbol trace buffer must be released.  */
 	  free (strace_str);
@@ -216,62 +218,62 @@ gupcr_fatal_error_backtrace (void)
   if (bt_enabled)
     {
 #ifdef HAVE_UPC_BACKTRACE_GDB
-  	{
-	  char *env;
-	  const char *gdb;
-          char pid_buf[GUPCR_BACKTRACE_PID_BUFLEN];
-          int child_pid;
-          /* Which gdb to use? */
-          env = getenv (GUPCR_BACKTRACE_GDB_ENV);
-          if (!env || (strlen (env) == 0))
-              gdb = GUPCR_BACKTRACE_GDB;
-	  else
-              gdb = (const char *) env;
-	  if (strcmp (gdb, "none"))
- 	    {
-	      const char *err_msg = 0;
-	      char tmpf[PATH_MAX];
-	      int fbt;
-	      const char *btcmd = "backtrace 30\n";
-              fprintf (stderr, "Thread %d GDB backtrace:\n", MYTHREAD);
-	      /* Get pid and name of the running program. */
-              sprintf(pid_buf, "%d", getpid());
-	      /* Create temp file for GDB commands. */
-	      if ((fbt = gupcr_create_temp_file 
-			 ("upc_bt_gdb.XXXXXX", tmpf, &err_msg)) == -1)
-	   	{
-		  fprintf (stderr, "cannot open gdb command - %s\n", err_msg);
-		  return;
-		}
-	      if (write (fbt, btcmd, sizeof (btcmd)) == -1)
- 		{
-		  perror ("cannot write gdb command file for backtrace");
-		  return;
-		}
-	      if (close (fbt))
- 		{
-		  perror ("cannot close gdb command file for backtrace");
-		  return;
-		}
-              child_pid = fork();
-              if (!child_pid)
-		{
-		  dup2(2,1);
-		  execlp(gdb, gdb, "-nx", "-batch", "-x", tmpf, 
-		         gupcr_abs_execname, pid_buf, NULL);
-		  fprintf (stderr, "cannot start GDB - %s\n", gdb);
-		  abort(); /* If gdb failed to start */
-		}
-	      else
-		waitpid(child_pid,NULL,0);
-	      unlink (tmpf);
-              return;
-	    }
-        }
+      {
+	char *env;
+	const char *gdb;
+	char pid_buf[GUPCR_BACKTRACE_PID_BUFLEN];
+	int child_pid;
+	/* Which gdb to use? */
+	env = getenv (GUPCR_BACKTRACE_GDB_ENV);
+	if (!env || (strlen (env) == 0))
+	  gdb = GUPCR_BACKTRACE_GDB;
+	else
+	  gdb = (const char *) env;
+	if (strcmp (gdb, "none"))
+	  {
+	    const char *err_msg = 0;
+	    char tmpf[PATH_MAX];
+	    int fbt;
+	    const char *btcmd = "backtrace 30\n";
+	    fprintf (stderr, "Thread %d GDB backtrace:\n", MYTHREAD);
+	    /* Get pid and name of the running program. */
+	    sprintf (pid_buf, "%d", getpid ());
+	    /* Create temp file for GDB commands. */
+	    if ((fbt = gupcr_create_temp_file
+		 ("upc_bt_gdb.XXXXXX", tmpf, &err_msg)) == -1)
+	      {
+		fprintf (stderr, "cannot open gdb command - %s\n", err_msg);
+		return;
+	      }
+	    if (write (fbt, btcmd, sizeof (btcmd)) == -1)
+	      {
+		perror ("cannot write gdb command file for backtrace");
+		return;
+	      }
+	    if (close (fbt))
+	      {
+		perror ("cannot close gdb command file for backtrace");
+		return;
+	      }
+	    child_pid = fork ();
+	    if (!child_pid)
+	      {
+		dup2 (2, 1);
+		execlp (gdb, gdb, "-nx", "-batch", "-x", tmpf,
+			gupcr_abs_execname, pid_buf, NULL);
+		fprintf (stderr, "cannot start GDB - %s\n", gdb);
+		abort ();	/* If gdb failed to start */
+	      }
+	    else
+	      waitpid (child_pid, NULL, 0);
+	    unlink (tmpf);
+	    return;
+	  }
+      }
 #endif /* GUPCR_BACKTRACE_GDB */
 
-       /* Simple backtrace only. */
-       gupcr_backtrace ();
+      /* Simple backtrace only. */
+      gupcr_backtrace ();
     }
 }
 
@@ -284,7 +286,7 @@ gupcr_fatal_error_backtrace (void)
  */
 static void
 gupcr_backtrace_handler (int sig __attribute__ ((unused)),
-			 siginfo_t *siginfo __attribute__ ((unused)),
+			 siginfo_t * siginfo __attribute__ ((unused)),
 			 void *context __attribute__ ((unused)))
 {
   gupcr_backtrace ();
@@ -301,7 +303,7 @@ gupcr_backtrace_handler (int sig __attribute__ ((unused)),
  */
 static void
 gupcr_fault_handler (int sig __attribute__ ((unused)),
-	  	     siginfo_t *siginfo __attribute__ ((unused)),
+		     siginfo_t * siginfo __attribute__ ((unused)),
 		     void *context __attribute__ ((unused)))
 {
   gupcr_backtrace_restore_handlers ();
@@ -325,7 +327,7 @@ gupcr_backtrace_init (const char *execname)
   if (execname[0] != '/')
     {
       if (!getcwd (gupcr_abs_execname, slen))
-        strcpy (gupcr_abs_execname, "/BT_CANNOT_CREATE_ABS_PATH");
+	strcpy (gupcr_abs_execname, "/BT_CANNOT_CREATE_ABS_PATH");
       strcat (gupcr_abs_execname, "/");
     }
   strcat (gupcr_abs_execname, execname);
@@ -334,34 +336,35 @@ gupcr_backtrace_init (const char *execname)
   {
     /* Install backtrace signal handler (backtrace on request). */
     struct sigaction act;
-    memset (&act, '\0', sizeof(act));
+    memset (&act, '\0', sizeof (act));
     act.sa_sigaction = &gupcr_backtrace_handler;
     act.sa_flags = SA_SIGINFO;
-    if (sigaction(GUPCR_BACKTRACE_SIGNAL, &act, NULL) < 0) {
-      perror ("was not able to install backtrace handler");
-    }
+    if (sigaction (GUPCR_BACKTRACE_SIGNAL, &act, NULL) < 0)
+      {
+	perror ("was not able to install backtrace handler");
+      }
   }
 #endif
 
   /* Install signal handlers only if backtrace is enabled.  */
   bt_enabled = gupcr_is_backtrace_enabled ();
-  
+
   if (bt_enabled)
     {
       struct sigaction act;
-      memset (&act, '\0', sizeof(act));
+      memset (&act, '\0', sizeof (act));
       act.sa_sigaction = &gupcr_fault_handler;
       act.sa_flags = SA_SIGINFO;
-      if (sigaction(SIGABRT, &act, NULL) < 0)
-        perror ("unable to install SIGABRT handler");
-      if (sigaction(SIGILL, &act, NULL) < 0)
-        perror ("unable to install SIGILL handler");
-      if (sigaction(SIGSEGV, &act, NULL) < 0)
-        perror ("unable to install SIGSEGV handler");
-      if (sigaction(SIGBUS, &act, NULL) < 0)
-        perror ("unable to install SIGBUS handler");
-      if (sigaction(SIGFPE, &act, NULL) < 0)
-        perror ("unable to install SIGFPE handler");
+      if (sigaction (SIGABRT, &act, NULL) < 0)
+	perror ("unable to install SIGABRT handler");
+      if (sigaction (SIGILL, &act, NULL) < 0)
+	perror ("unable to install SIGILL handler");
+      if (sigaction (SIGSEGV, &act, NULL) < 0)
+	perror ("unable to install SIGSEGV handler");
+      if (sigaction (SIGBUS, &act, NULL) < 0)
+	perror ("unable to install SIGBUS handler");
+      if (sigaction (SIGFPE, &act, NULL) < 0)
+	perror ("unable to install SIGFPE handler");
     }
 }
 
@@ -370,7 +373,7 @@ gupcr_backtrace_init (const char *execname)
  *
  * Has to be called once the run-time discovered
  * a fatal error.
- */ 
+ */
 void
 gupcr_backtrace_restore_handlers (void)
 {

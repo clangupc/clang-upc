@@ -57,7 +57,7 @@ fab_mr_t gupcr_lock_mr;
 fab_mr_t gupcr_lock_lmr;
 #endif
 /** Target memory regions */
-static gupcr_memreg_t * gupcr_lock_mr_keys;
+static gupcr_memreg_t *gupcr_lock_mr_keys;
 
 /** Target address */
 #define GUPCR_TARGET_ADDR(target) \
@@ -85,7 +85,6 @@ void
 gupcr_lock_swap (size_t dest_thread,
 		 size_t dest_offset, void *val, void *old, size_t size)
 {
-  int status;
   gupcr_debug (FC_LOCK, "%lu:0x%lx",
 	       (long unsigned) dest_thread, (long unsigned) dest_offset);
   gupcr_fabric_call (fi_fetch_atomic,
@@ -99,10 +98,9 @@ gupcr_lock_swap (size_t dest_thread,
 		      NULL));
 
   gupcr_lock_lmr_count += 1;
-  gupcr_fabric_call_nc (fi_cntr_wait, status,
-			(gupcr_lock_lct, gupcr_lock_lmr_count,
-			 GUPCR_TRANSFER_TIMEOUT));
-  GUPCR_CNT_ERROR_CHECK (status, "lock_swap", gupcr_lock_lcq);
+  gupcr_fabric_call_cntr_wait ((gupcr_lock_lct, gupcr_lock_lmr_count,
+				GUPCR_TRANSFER_TIMEOUT), "lock_swap",
+			       gupcr_lock_lcq);
 }
 
 /**
@@ -129,7 +127,6 @@ int
 gupcr_lock_cswap (size_t dest_thread,
 		  size_t dest_offset, void *cmp, void *val, size_t size)
 {
-  int status;
   gupcr_debug (FC_LOCK, "%lu:0x%lx",
 	       (long unsigned) dest_thread, (long unsigned) dest_offset);
 
@@ -144,10 +141,9 @@ gupcr_lock_cswap (size_t dest_thread,
 		      gupcr_get_atomic_datatype (size), FI_CSWAP, NULL));
 
   gupcr_lock_lmr_count += 1;
-  gupcr_fabric_call_nc (fi_cntr_wait, status,
-			(gupcr_lock_lct, gupcr_lock_lmr_count,
-			 GUPCR_TRANSFER_TIMEOUT));
-  GUPCR_CNT_ERROR_CHECK (status, "lock_cswap", gupcr_lock_lcq);
+  gupcr_fabric_call_cntr_wait ((gupcr_lock_lct, gupcr_lock_lmr_count,
+				GUPCR_TRANSFER_TIMEOUT), "lock_cswap",
+			       gupcr_lock_lcq);
   return !memcmp (cmp, gupcr_lock_buf, size);
 }
 
@@ -168,31 +164,32 @@ gupcr_lock_cswap (size_t dest_thread,
 void
 gupcr_lock_put (size_t dest_thread, size_t dest_addr, void *val, size_t size)
 {
-  int status;
+  ssize_t ret;
   gupcr_debug (FC_LOCK, "%lu:0x%lx",
 	       (long unsigned) dest_thread, (long unsigned) dest_addr);
   if (size <= GUPCR_MAX_OPTIM_SIZE)
     {
-      gupcr_fabric_call (fi_inject_write,
-			 (gupcr_lock_ep.tx_ep, GUPCR_LOCAL_INDEX (val), size,
-			  GUPCR_TARGET_ADDR (dest_thread),
-			  GUPCR_REMOTE_MR_ADDR (lock, dest_thread, dest_addr),
-			  GUPCR_REMOTE_MR_KEY (lock, dest_thread)));
+      gupcr_fabric_call_size (fi_inject_write, ret,
+			      (gupcr_lock_ep.tx_ep, GUPCR_LOCAL_INDEX (val),
+			       size, GUPCR_TARGET_ADDR (dest_thread),
+			       GUPCR_REMOTE_MR_ADDR (lock, dest_thread,
+						     dest_addr),
+			       GUPCR_REMOTE_MR_KEY (lock, dest_thread)));
     }
   else
     {
-      gupcr_fabric_call (fi_write,
-			 (gupcr_lock_ep.tx_ep, GUPCR_LOCAL_INDEX (val), size,
-			  NULL, GUPCR_TARGET_ADDR (dest_thread),
-			  GUPCR_REMOTE_MR_ADDR (lock, dest_thread, dest_addr),
-			  GUPCR_REMOTE_MR_KEY (lock, dest_thread),
-			  NULL));
+      gupcr_fabric_call_size (fi_write, ret,
+			      (gupcr_lock_ep.tx_ep, GUPCR_LOCAL_INDEX (val),
+			       size, NULL, GUPCR_TARGET_ADDR (dest_thread),
+			       GUPCR_REMOTE_MR_ADDR (lock, dest_thread,
+						     dest_addr),
+			       GUPCR_REMOTE_MR_KEY (lock, dest_thread),
+			       NULL));
     }
   gupcr_lock_lmr_count += 1;
-  gupcr_fabric_call_nc (fi_cntr_wait, status,
-			(gupcr_lock_lct, gupcr_lock_lmr_count,
-			 GUPCR_TRANSFER_TIMEOUT));
-  GUPCR_CNT_ERROR_CHECK (status, "lock_put", gupcr_lock_lcq);
+  gupcr_fabric_call_cntr_wait ((gupcr_lock_lct, gupcr_lock_lmr_count,
+				GUPCR_TRANSFER_TIMEOUT), "lock_put",
+			       gupcr_lock_lcq);
 }
 
 /*
@@ -204,23 +201,21 @@ gupcr_lock_put (size_t dest_thread, size_t dest_addr, void *val, size_t size)
 void
 gupcr_lock_get (size_t dest_thread, size_t dest_addr, void *val, size_t size)
 {
-  int status;
+  ssize_t ret;
   char *loc_addr = (char *) val - (size_t) USER_PROG_MEM_START;
 
   gupcr_debug (FC_LOCK, "%lu:0x%lx",
 	       (long unsigned) dest_thread, (long unsigned) dest_addr);
-  gupcr_fabric_call (fi_read,
-		     (gupcr_lock_ep.tx_ep, GUPCR_LOCAL_INDEX (loc_addr), size,
-		      NULL, GUPCR_TARGET_ADDR (dest_thread),
-		      GUPCR_REMOTE_MR_ADDR (lock, dest_thread,
-					    dest_addr),
-		      GUPCR_REMOTE_MR_KEY (lock, dest_thread),
-		      NULL));
+  gupcr_fabric_call_size (fi_read, ret,
+			  (gupcr_lock_ep.tx_ep, GUPCR_LOCAL_INDEX (loc_addr),
+			   size, NULL, GUPCR_TARGET_ADDR (dest_thread),
+			   GUPCR_REMOTE_MR_ADDR (lock, dest_thread,
+						 dest_addr),
+			   GUPCR_REMOTE_MR_KEY (lock, dest_thread), NULL));
   gupcr_lock_lmr_count += 1;
-  gupcr_fabric_call_nc (fi_cntr_wait, status,
-			(gupcr_lock_lct, gupcr_lock_lmr_count,
-			 GUPCR_TRANSFER_TIMEOUT));
-  GUPCR_CNT_ERROR_CHECK (status, "lock_get", gupcr_lock_lcq);
+  gupcr_fabric_call_cntr_wait ((gupcr_lock_lct, gupcr_lock_lmr_count,
+				GUPCR_TRANSFER_TIMEOUT), "lock_get",
+			       gupcr_lock_lcq);
 }
 
 /**
@@ -238,15 +233,13 @@ gupcr_lock_get (size_t dest_thread, size_t dest_addr, void *val, size_t size)
 void
 gupcr_lock_wait (void)
 {
-  int status;
   if (GUPCR_FABRIC_RMA_EVENT ())
     {
       gupcr_debug (FC_LOCK, "");
       gupcr_lock_mr_count++;
-      gupcr_fabric_call_nc (fi_cntr_wait, status,
-			    (gupcr_lock_ct, gupcr_lock_mr_count,
-			     GUPCR_TRANSFER_TIMEOUT));
-      GUPCR_CNT_ERROR_CHECK (status, "lock_wait", gupcr_lock_cq);
+      gupcr_fabric_call_cntr_wait ((gupcr_lock_ct, gupcr_lock_mr_count,
+				    GUPCR_TRANSFER_TIMEOUT), "lock_wait",
+				   gupcr_lock_cq);
     }
   else
     {
@@ -282,7 +275,7 @@ gupcr_lock_init (void)
   gupcr_lock_mr_count = 0;
 
   /* ... and completion queue for remote target transfer errors.  */
-  cq_attr.size = 1;
+  cq_attr.size = GUPCR_CQ_ERROR_SIZE;
   cq_attr.format = FI_CQ_FORMAT_MSG;
   cq_attr.wait_obj = FI_WAIT_NONE;
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_lock_lcq, NULL));
@@ -322,7 +315,7 @@ gupcr_lock_init (void)
       gupcr_fabric_call (fi_mr_bind, (gupcr_lock_mr, &gupcr_lock_ct->fid,
 				      FI_REMOTE_WRITE));
       /* ... and completion queue for remote inbound errors.  */
-      cq_attr.size = 1;
+      cq_attr.size = GUPCR_CQ_ERROR_SIZE;
       cq_attr.format = FI_CQ_FORMAT_MSG;
       cq_attr.wait_obj = FI_WAIT_NONE;
       gupcr_fabric_call (fi_cq_open,
