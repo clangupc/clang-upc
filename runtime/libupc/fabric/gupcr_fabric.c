@@ -436,10 +436,12 @@ gupcr_fabric_init (void)
       node = node_name;
     }
 
-  /* Find fabric provider based on the hints.  */
-  hints->caps = FI_RMA | FI_ATOMICS;	/* Request RMA, atomics.  */
+  /* Request RMA, atomics.  */
+  hints->caps = FI_RMA | FI_ATOMICS;
   hints->addr_format = FI_FORMAT_UNSPEC;
-  hints->ep_attr->type = FI_EP_RDM;	/* Reliable datagram message.  */
+  /* Reliable datagram message.  */
+  hints->ep_attr->type = FI_EP_RDM;
+  /* By default report completion after delivered on the target.  */
   hints->tx_attr->op_flags = FI_DELIVERY_COMPLETE;
 
   /* Choose provider.  */

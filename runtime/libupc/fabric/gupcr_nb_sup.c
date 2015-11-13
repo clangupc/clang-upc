@@ -561,9 +561,9 @@ gupcr_nb_init (void)
   cq_attr.format = FI_CQ_FORMAT_MSG;
   cq_attr.wait_obj = FI_WAIT_NONE;
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_nb_cq, NULL));
-  /* Use FI_COMPLETION flag to report all completions by default.  */
+  /* Use successful completions by default.  */
   gupcr_fabric_call (fi_ep_bind, (gupcr_nb_ep.tx_ep, &gupcr_nb_cq->fid,
-				  FI_WRITE | FI_READ | FI_COMPLETION));
+				  FI_TRANSMIT));
 
   /* ... and completion cntr/cq for remote NBI read/write.  */
   cntr_attr.events = FI_CNTR_EVENTS_COMP;
@@ -582,7 +582,7 @@ gupcr_nb_init (void)
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_nbi_cq, NULL));
   /* Use FI_SELECTIVE_COMPLETION flag to report errors only.  */
   gupcr_fabric_call (fi_ep_bind, (gupcr_nbi_ep.tx_ep, &gupcr_nbi_cq->fid,
-				  FI_WRITE | FI_READ |
+				  FI_READ | FI_WRITE |
 				  FI_SELECTIVE_COMPLETION));
 
 #if LOCAL_MR_NEEDED
