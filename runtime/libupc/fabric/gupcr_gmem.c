@@ -256,9 +256,6 @@ gupcr_gmem_get (void *dest, int thread, size_t offset, size_t n)
  * . Large requests with non-aligned source address must
  *   go through the bounce buffer
  *
- * NOTE: Alignment based on the address and size of the transfer.
- *       Cray GNI provider does not require but it is probably
- *       more efficient.
  * @param [in] thread Destination thread
  * @param [in] offset Destination offset
  * @param [in] src Local source pointer to data
@@ -271,7 +268,7 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
   ssize_t ret;
   size_t n_rem = n;
   size_t dest_offset = offset;
-  int src_aligned = GUPCR_DATA_ALIGNED (src) && GUPCR_DATA_ALIGNED (n);
+  int src_aligned = GUPCR_DATA_ALIGNED (src);
   int must_sync = (n > GUPCR_GMEM_MAX_SAFE_PUT_SIZE && src_aligned);
 
   gupcr_debug (FC_MEM, "0x%lx %d:0x%lx",
@@ -294,18 +291,16 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
          safe to re-use the source buffer upon return.  */
       while (n_rem > 0)
 	{
-	  size_t n_xfer;  /* requested transfer count */
-	  size_t a_xfer;  /* aligned transfer count */
+	  size_t n_xfer;
 	  char *local_addr;
 	  if (must_sync)
 	    {
-	      a_xfer = n_xfer = GUPCR_MIN (n_rem, GUPCR_MAX_MSG_SIZE);
+	      n_xfer = GUPCR_MIN (n_rem, GUPCR_MAX_MSG_SIZE);
 	      local_addr = src_addr;
 	    }
 	  else
 	    {
 	      n_xfer = GUPCR_MIN (n_rem, GUPCR_BOUNCE_BUFFER_SIZE);
-	      a_xfer = GUPCR_DATA_ALIGN (n_xfer);
 	      /* If this transfer will overflow the bounce buffer,
 	         then first wait for all outstanding puts to complete.  */
 	      if ((gupcr_gmem_put_bb_used + n_xfer) >
@@ -313,11 +308,11 @@ gupcr_gmem_put (int thread, size_t offset, const void *src, size_t n)
 		gupcr_gmem_sync_puts ();
 	      local_addr = &gupcr_gmem_put_bb[gupcr_gmem_put_bb_used];
 	      memcpy (local_addr, src_addr, n_xfer);
-	      gupcr_gmem_put_bb_used += a_xfer;
+	      gupcr_gmem_put_bb_used += GUPCR_DATA_ALIGN (n_xfer);
 	    }
 	  gupcr_fabric_call_size (fi_write, ret,
 				  (gupcr_gmem_ep.tx_ep,
-				   GUPCR_LOCAL_INDEX (local_addr), a_xfer,
+				   GUPCR_LOCAL_INDEX (local_addr), n_xfer,
 				   NULL, GUPCR_TARGET_ADDR (thread),
 				   GUPCR_REMOTE_MR_ADDR (gmem, thread,
 							 dest_offset),
