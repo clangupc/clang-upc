@@ -98,6 +98,9 @@ char gupcr_gmem_get_bb[GUPCR_GET_BOUNCE_BUFFER_SIZE]
 #define GUPCR_DATA_ALIGN(addr) \
   (addr + GUPCR_FABRIC_ALIGNMENT - 1) & \
   ~ (GUPCR_FABRIC_ALIGNMENT - 1)
+/** Base address/index */
+#define GUPCR_DATA_BASE(addr) \
+  (addr & ~ (GUPCR_FABRIC_ALIGNMENT - 1))
 
 /**
  * Allocate memory for this thread's shared space contribution.
@@ -200,6 +203,7 @@ gupcr_gmem_sync (void)
  *
  * NOTE: Make sure that both address and size are aligned.
  *       Cray GNI requires size alignment.
+ *       Make sure that remote address is also properly aligned.
  * @param [in] dest Local memory to receive remote data
  * @param [in] thread Remote thread to request data from
  * @param [in] offset Remote address
@@ -211,7 +215,7 @@ gupcr_gmem_get (void *dest, int thread, size_t offset, size_t n)
   char *loc_addr = GUPCR_LOCAL_INDEX (dest);
   char *in_addr = gupcr_gmem_get_bb;
   size_t n_rem = n;
-  size_t dest_offset = offset;
+  size_t rmt_offset = offset;
   int dest_aligned = GUPCR_DATA_ALIGNED (dest) && GUPCR_DATA_ALIGNED (n);
   size_t dest_size =
     dest_aligned ? GUPCR_MAX_MSG_SIZE : GUPCR_GET_BOUNCE_BUFFER_SIZE;
@@ -222,24 +226,24 @@ gupcr_gmem_get (void *dest, int thread, size_t offset, size_t n)
     {
       size_t n_xfer = GUPCR_MIN (n_rem, dest_size);
       size_t a_xfer = GUPCR_DATA_ALIGN (n_xfer);
+      size_t rmt_baseoffset = GUPCR_DATA_BASE (rmt_offset);
       if (dest_aligned)
 	in_addr = loc_addr;
-
       ++gupcr_gmem_gets.num_pending;
       gupcr_fabric_call (fi_read,
 			 (gupcr_gmem_ep.tx_ep, GUPCR_LOCAL_INDEX (in_addr),
 			  a_xfer, NULL, GUPCR_TARGET_ADDR (thread),
-			  GUPCR_REMOTE_MR_ADDR (gmem, thread, dest_offset),
+			  GUPCR_REMOTE_MR_ADDR (gmem, thread, rmt_baseoffset),
 			  GUPCR_REMOTE_MR_KEY (gmem, thread), NULL));
       /* Complete unaligned gets right away.  */
       if (!dest_aligned)
 	{
 	  gupcr_gmem_sync_gets ();
-	  memcpy (loc_addr, in_addr, n_xfer);
+	  memcpy (loc_addr, &in_addr[rmt_offset-rmt_baseoffset], n_xfer);
 	}
       n_rem -= n_xfer;
       loc_addr += n_xfer;
-      dest_offset += n_xfer;
+      rmt_offset += n_xfer;
     }
 }
 
