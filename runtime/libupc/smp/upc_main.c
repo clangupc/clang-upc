@@ -49,6 +49,11 @@ GUPCR_THREAD_LOCAL int __upc_forall_depth;
    to the upc_info structure.  */
 int __upc_page_shift = GUPCR_VM_OFFSET_BITS;
 
+#if GUPCR_HAVE_OMP_CHECKS
+/* UPC thread's pthread ID (used for OMP checks).  */
+pthread_t __upc_omp_master_id;
+#endif
+
 /* Executable program's name */
 static char *__upc_pgm_name;
 
@@ -127,6 +132,16 @@ __upc_get_int_value (const char *str, long int *val,
   *val = v;
   return 1;
 }
+
+#if GUPCR_HAVE_OMP_CHECKS
+/* Check for UPC runtime calls from OMP threads.  */
+void
+__upc_omp_check (void)
+{
+  if (__upc_omp_master_id != pthread_self ())
+    __upc_fatal ("UPC runtime calls are allowed only from UPC threads");;
+}
+#endif
 
 /* Get list of CPUs to exclude from scheduling on (n1,n2,...) */
 static int
@@ -665,6 +680,9 @@ __upc_run_threads (upc_info_p u, int argc, char *argv[])
 
   if (THREADS == 1)
     {
+#if GUPCR_HAVE_OMP_CHECKS
+      __upc_omp_master_id = pthread_self ();
+#endif
       __upc_affinity_set (u, 0);
       __upc_run_this_thread (u, argc, argv, 0);
       /* Shouldn't get here.  */
@@ -685,6 +703,9 @@ __upc_run_threads (upc_info_p u, int argc, char *argv[])
       if (pid == 0)
 	{
 	  /* child */
+#if GUPCR_HAVE_OMP_CHECKS
+          __upc_omp_master_id = pthread_self ();
+#endif
 	  __upc_affinity_set (u, thread_id);
 	  __upc_run_this_thread (u, argc, argv, thread_id);
 	}

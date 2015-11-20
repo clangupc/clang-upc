@@ -46,6 +46,9 @@
 /* Define to 1 if UPC runtime tracing is supported. */
 #undef GUPCR_HAVE_TRACE
 
+/* Define to 1 if UPC runtime checks for OMP are supported. */
+#undef GUPCR_HAVE_OMP_CHECKS
+
 /* Maximum number of locks held per thread */
 #undef GUPCR_MAX_LOCKS
 

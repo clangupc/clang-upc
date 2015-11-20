@@ -90,6 +90,7 @@ namespace {
     void PrintTemplateParameters(const TemplateParameterList *Params,
                                  const TemplateArgumentList *Args = nullptr);
     void prettyPrintAttributes(Decl *D);
+    void printDeclType(QualType T, StringRef DeclName, bool Pack = false);
   };
 }
 
@@ -196,6 +197,17 @@ void DeclPrinter::prettyPrintAttributes(Decl *D) {
       A->printPretty(Out, Policy);
     }
   }
+}
+
+void DeclPrinter::printDeclType(QualType T, StringRef DeclName, bool Pack) {
+  // Normally, a PackExpansionType is written as T[3]... (for instance, as a
+  // template argument), but if it is the type of a declaration, the ellipsis
+  // is placed before the name being declared.
+  if (auto *PET = T->getAs<PackExpansionType>()) {
+    Pack = true;
+    T = PET->getPattern();
+  }
+  T.print(Out, Policy, (Pack ? "..." : "") + DeclName);
 }
 
 void DeclPrinter::ProcessDeclGroup(SmallVectorImpl<Decl*>& Decls) {
@@ -390,6 +402,22 @@ void DeclPrinter::VisitRecordDecl(RecordDecl *D) {
   if (!Policy.SuppressSpecifiers && D->isModulePrivate())
     Out << "__module_private__ ";
   Out << D->getKindName();
+
+  // HACK: clang 3.6 doesn't accept
+  // __attribute__((transparent_union)) in
+  // the normal location. -SJW
+  Attr *Extra = nullptr;
+  if (D->hasAttrs()) {
+    AttrVec &Attrs = D->getAttrs();
+    for (AttrVec::const_iterator i=Attrs.begin(), e=Attrs.end(); i!=e; ++i) {
+      Attr *A = *i;
+      if (A->getKind() == attr::TransparentUnion)
+        Extra = A;
+      else
+        A->printPretty(Out, Policy);
+    }
+  }
+
   if (D->getIdentifier())
     Out << ' ' << *D;
 
@@ -398,6 +426,9 @@ void DeclPrinter::VisitRecordDecl(RecordDecl *D) {
     VisitDeclContext(D);
     Indent() << "}";
   }
+
+  if (Extra)
+    Extra->printPretty(Out, Policy);
 }
 
 void DeclPrinter::VisitEnumConstantDecl(EnumConstantDecl *D) {
@@ -674,7 +705,6 @@ void DeclPrinter::VisitLabelDecl(LabelDecl *D) {
   Out << *D << ":";
 }
 
-
 void DeclPrinter::VisitVarDecl(VarDecl *D) {
   if (!Policy.SuppressSpecifiers) {
     StorageClass SC = D->getStorageClass();
@@ -702,7 +732,7 @@ void DeclPrinter::VisitVarDecl(VarDecl *D) {
   QualType T = D->getTypeSourceInfo()
     ? D->getTypeSourceInfo()->getType()
     : D->getASTContext().getUnqualifiedObjCPointerType(D->getType());
-  T.print(Out, Policy, D->getName());
+  printDeclType(T, D->getName());
   Expr *Init = D->getInit();
   if (!Policy.SuppressInitializers && Init) {
     bool ImplicitInit = false;
@@ -786,6 +816,9 @@ void DeclPrinter::VisitCXXRecordDecl(CXXRecordDecl *D) {
   if (!Policy.SuppressSpecifiers && D->isModulePrivate())
     Out << "__module_private__ ";
   Out << D->getKindName();
+
+  prettyPrintAttributes(D);
+
   if (D->getIdentifier())
     Out << ' ' << *D;
 
@@ -802,9 +835,11 @@ void DeclPrinter::VisitCXXRecordDecl(CXXRecordDecl *D) {
           Out << "virtual ";
 
         AccessSpecifier AS = Base->getAccessSpecifierAsWritten();
-        if (AS != AS_none)
+        if (AS != AS_none) {
           Print(AS);
-        Out << " " << Base->getType().getAsString(Policy);
+          Out << " ";
+        }
+        Out << Base->getType().getAsString(Policy);
 
         if (Base->isPackExpansion())
           Out << "...";
@@ -859,7 +894,7 @@ void DeclPrinter::PrintTemplateParameters(const TemplateParameterList *Params,
         Out << "class ";
 
       if (TTP->isParameterPack())
-        Out << "... ";
+        Out << "...";
 
       Out << *TTP;
 
@@ -872,15 +907,10 @@ void DeclPrinter::PrintTemplateParameters(const TemplateParameterList *Params,
       };
     } else if (const NonTypeTemplateParmDecl *NTTP =
                  dyn_cast<NonTypeTemplateParmDecl>(Param)) {
-      Out << NTTP->getType().getAsString(Policy);
-
-      if (NTTP->isParameterPack() && !isa<PackExpansionType>(NTTP->getType()))
-        Out << "...";
-        
-      if (IdentifierInfo *Name = NTTP->getIdentifier()) {
-        Out << ' ';
-        Out << Name->getName();
-      }
+      StringRef Name;
+      if (IdentifierInfo *II = NTTP->getIdentifier())
+        Name = II->getName();
+      printDeclType(NTTP->getType(), Name, NTTP->isParameterPack());
 
       if (Args) {
         Out << " = ";
@@ -969,11 +999,12 @@ void DeclPrinter::VisitObjCMethodDecl(ObjCMethodDecl *OMD) {
 
   if (OMD->isVariadic())
       Out << ", ...";
+  
+  prettyPrintAttributes(OMD);
 
   if (OMD->getBody() && !Policy.TerseOutput) {
     Out << ' ';
     OMD->getBody()->printPretty(Out, nullptr, Policy);
-    Out << '\n';
   }
   else if (Policy.PolishForDeclaration)
     Out << ';';
@@ -983,6 +1014,7 @@ void DeclPrinter::VisitObjCImplementationDecl(ObjCImplementationDecl *OID) {
   std::string I = OID->getNameAsString();
   ObjCInterfaceDecl *SID = OID->getSuperClass();
 
+  bool eolnOut = false;
   if (SID)
     Out << "@implementation " << I << " : " << *SID;
   else
@@ -990,6 +1022,7 @@ void DeclPrinter::VisitObjCImplementationDecl(ObjCImplementationDecl *OID) {
   
   if (OID->ivar_size() > 0) {
     Out << "{\n";
+    eolnOut = true;
     Indentation += Policy.Indentation;
     for (const auto *I : OID->ivars()) {
       Indent() << I->getASTContext().getUnqualifiedObjCPointerType(I->getType()).
@@ -998,7 +1031,13 @@ void DeclPrinter::VisitObjCImplementationDecl(ObjCImplementationDecl *OID) {
     Indentation -= Policy.Indentation;
     Out << "}\n";
   }
+  else if (SID || (OID->decls_begin() != OID->decls_end())) {
+    Out << "\n";
+    eolnOut = true;
+  }
   VisitDeclContext(OID, false);
+  if (!eolnOut)
+    Out << "\n";
   Out << "@end";
 }
 
@@ -1037,14 +1076,14 @@ void DeclPrinter::VisitObjCInterfaceDecl(ObjCInterfaceDecl *OID) {
     Indentation -= Policy.Indentation;
     Out << "}\n";
   }
-  else if (SID) {
+  else if (SID || (OID->decls_begin() != OID->decls_end())) {
     Out << "\n";
     eolnOut = true;
   }
 
   VisitDeclContext(OID, false);
   if (!eolnOut)
-    Out << ' ';
+    Out << "\n";
   Out << "@end";
   // FIXME: implement the rest...
 }

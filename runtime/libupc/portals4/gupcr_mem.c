@@ -46,6 +46,7 @@ upc_memcpy (upc_shared_ptr_t dest, upc_shared_ptr_t src, size_t n)
   int dthread = GUPCR_PTS_THREAD (dest);
   size_t doffset = GUPCR_PTS_OFFSET (dest);
   int dthread_local, sthread_local;
+  GUPCR_OMP_CHECK();
   gupcr_trace (FC_MEM, "MEM MEMCPY ENTER %d:0x%lx %d:0x%lx %lu",
 	       sthread, (long unsigned) soffset,
 	       dthread, (long unsigned) doffset, (long unsigned) n);
@@ -108,6 +109,7 @@ upc_memget (void *dest, upc_shared_ptr_t src, size_t n)
 {
   int sthread = GUPCR_PTS_THREAD (src);
   size_t soffset = GUPCR_PTS_OFFSET (src);
+  GUPCR_OMP_CHECK();
   gupcr_trace (FC_MEM, "MEM MEMGET ENTER %d:0x%lx 0x%lx %lu",
 	       sthread, (long unsigned) soffset,
 	       (long unsigned) dest, (long unsigned) n);
@@ -136,6 +138,7 @@ upc_memput (upc_shared_ptr_t dest, const void *src, size_t n)
 {
   int dthread = GUPCR_PTS_THREAD (dest);
   size_t doffset = GUPCR_PTS_OFFSET (dest);
+  GUPCR_OMP_CHECK();
   gupcr_trace (FC_MEM, "MEM MEMPUT ENTER 0x%lx %d:0x%lx %lu",
 	       (long unsigned) src, dthread, (long unsigned) doffset,
 	       (long unsigned) n);
@@ -172,6 +175,7 @@ upc_memset (upc_shared_ptr_t dest, int c, size_t n)
 {
   int dthread = GUPCR_PTS_THREAD (dest);
   size_t doffset = GUPCR_PTS_OFFSET (dest);
+  GUPCR_OMP_CHECK();
   gupcr_trace (FC_MEM, "MEM MEMSET ENTER 0x%x %d:0x%lx %lu",
 	       c, dthread, (long unsigned) doffset, (long unsigned) n);
   gupcr_assert (dthread < THREADS);

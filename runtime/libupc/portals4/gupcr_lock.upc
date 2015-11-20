@@ -219,6 +219,7 @@ upc_global_lock_alloc (void)
 {
   upc_lock_t *lock;
   gupcr_trace (FC_LOCK, "LOCK GLOBAL_ALLOC ENTER");
+  GUPCR_OMP_CHECK();
   /* Check if there is a lock cached on the free list.  */
   if (lock_free)
     {
@@ -264,6 +265,7 @@ upc_lock_free (upc_lock_t *lock)
 {
   gupcr_lock_link_ref link;
 
+  GUPCR_OMP_CHECK();
   gupcr_trace (FC_LOCK, "LOCK FREE ENTER %lu:0x%lx",
 	       (long unsigned) upc_threadof (lock),
 	       (long unsigned) upc_addrfield (lock));
@@ -307,6 +309,7 @@ upc_lock_t *
 upc_all_lock_alloc (void)
 {
   upc_lock_t *lock;
+  GUPCR_OMP_CHECK();
   gupcr_trace (FC_LOCK, "LOCK ALL_ALLOC ENTER");
   /* Allocate space for the lock from the shared memory of
      thread 0 and broadcast its address.  */
@@ -354,6 +357,7 @@ upc_lock (upc_lock_t *lock)
   gupcr_lock_link_ref link, old_link;
   shared [] gupcr_lock_link_ref *lock_last_addr;
   size_t lock_last_thread, lock_last_offset;
+  GUPCR_OMP_CHECK();
   gupcr_trace (FC_LOCK, "LOCK LOCK ENTER %lu:0x%lx",
 	       (long unsigned) upc_threadof (lock),
 	       (long unsigned) upc_addrfield (lock));
@@ -427,6 +431,7 @@ upc_lock_attempt (upc_lock_t *lock)
   shared [] gupcr_lock_link_ref *lock_last_addr;
   size_t lock_last_thread, lock_last_offset;
   int compare_ok;
+  GUPCR_OMP_CHECK();
   gupcr_trace (FC_LOCK, "LOCK ATTEMPT ENTER %lu:0x%lx",
 	       (long unsigned) upc_threadof (lock),
 	       (long unsigned) upc_addrfield (lock));
@@ -480,6 +485,7 @@ upc_unlock (upc_lock_t *lock)
   size_t lock_last_thread = upc_threadof (lock_last_addr);
   size_t lock_last_offset = upc_addrfield (lock_last_addr);
   int compare_ok;
+  GUPCR_OMP_CHECK();
   gupcr_trace (FC_LOCK, "LOCK UNLOCK ENTER %lu:0x%lx",
 	       (long unsigned) upc_threadof (lock),
 	       (long unsigned) upc_addrfield (lock));

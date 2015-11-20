@@ -49,6 +49,7 @@
 void
 gupcr_broadcast_get (void *value, size_t nbytes)
 {
+  GUPCR_OMP_CHECK();
   if (!MYTHREAD)
     gupcr_fatal_error ("called from thread 0");
   if (nbytes > GUPCR_MAX_BROADCAST_SIZE)
@@ -71,6 +72,7 @@ gupcr_broadcast_get (void *value, size_t nbytes)
 void
 gupcr_broadcast_put (void *value, size_t nbytes)
 {
+  GUPCR_OMP_CHECK();
   if (THREADS == 1)
     return;
   if (MYTHREAD)

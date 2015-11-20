@@ -8,7 +8,7 @@
 |* See LICENSE-INTREPID.TXT for details.
 |*
 |*===---------------------------------------------------------------------===*/
-/* Process the definitions file with autogen to produce tow UPC atomic files,
+/* Process the definitions file with autogen to produce two UPC atomic files,
    optimized and generic versions:
 
    autogen -DHAVE_BUILTIN_ATOMICS -bupc_atomic_builtin -L ../include upc_atomic.def
@@ -312,6 +312,7 @@ upc_atomic_relaxed (upc_atomicdomain_t *domain,
   struct upc_atomicdomain_struct *ldomain =
     (struct upc_atomicdomain_struct *) &domain[MYTHREAD];
   upc_op_num_t op_num;
+  GUPCR_OMP_CHECK ();
   if (op & ~(-op))
     __upc_fatal ("atomic operation (0x%llx) may have only "
                  "a single bit set", (long long)op);
@@ -359,6 +360,7 @@ upc_atomic_strict (upc_atomicdomain_t *domain,
 		   const void * restrict operand1,
 		   const void * restrict operand2)
 {
+  GUPCR_OMP_CHECK ();
   upc_fence;
   upc_atomic_relaxed (domain, fetch_ptr, op, target, operand1, operand2);
   upc_fence;
@@ -385,6 +387,7 @@ upc_all_atomicdomain_alloc (upc_type_t type,
   upc_atomicdomain_t *domain;
   struct upc_atomicdomain_struct *ldomain;
   upc_op_t supported_ops;
+  GUPCR_OMP_CHECK ();
   if (!__upc_atomic_is_valid_type (type))
     __upc_fatal ("unsupported atomic type: 0x%llx",
                  (long long) type);
@@ -414,6 +417,7 @@ void
 upc_all_atomicdomain_free (upc_atomicdomain_t * domain)
 {
   assert (domain != NULL);
+  GUPCR_OMP_CHECK ();
   upc_barrier;
   if (MYTHREAD == 0)
     {

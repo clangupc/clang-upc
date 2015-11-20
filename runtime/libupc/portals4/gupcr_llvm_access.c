@@ -2,7 +2,7 @@
 |*
 |*                  The LLVM Compiler Infrastructure
 |*
-|* Copyright 2012-2014, Intrepid Technology, Inc.  All rights reserved.
+|* Copyright 2012-2015, Intrepid Technology, Inc.  All rights reserved.
 |* This file is distributed under a BSD-style Open Source License.
 |* See LICENSE-INTREPID.TXT for details.
 |*
@@ -44,6 +44,7 @@ u_intQI_t
 __getqi3 (long thread, size_t offset)
 {
   u_intQI_t result;
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -61,7 +62,7 @@ __getqi3 (long thread, size_t offset)
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%x",
-	       thread, (long unsigned) offset, result);
+	       (int) thread, (long unsigned) offset, result);
   return result;
 }
 
@@ -79,6 +80,7 @@ u_intHI_t
 __gethi3 (long thread, size_t offset)
 {
   u_intHI_t result;
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -96,7 +98,7 @@ __gethi3 (long thread, size_t offset)
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%x",
-	       thread, (long unsigned) offset, result);
+	       (int) thread, (long unsigned) offset, result);
   return result;
 }
 
@@ -114,6 +116,7 @@ u_intSI_t
 __getsi3 (long thread, size_t offset)
 {
   u_intSI_t result;
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -131,7 +134,7 @@ __getsi3 (long thread, size_t offset)
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%x",
-	       thread, (long unsigned) offset, result);
+	       (int) thread, (long unsigned) offset, result);
   return result;
 }
 
@@ -149,6 +152,7 @@ u_intDI_t
 __getdi3 (long thread, size_t offset)
 {
   u_intDI_t result;
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -166,7 +170,8 @@ __getdi3 (long thread, size_t offset)
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%llx",
-	       thread, (long unsigned) offset, (long long unsigned) result);
+	       (int) thread, (long unsigned) offset,
+	       (long long unsigned) result);
   return result;
 }
 
@@ -185,6 +190,7 @@ u_intTI_t
 __getti3 (long thread, size_t offset)
 {
   u_intTI_t result;
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -202,7 +208,8 @@ __getti3 (long thread, size_t offset)
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%llx",
-	       thread, (long unsigned) offset, (long long unsigned) result);
+	       (int) thread, (long unsigned) offset,
+	       (long long unsigned) result);
   return result;
 }
 #endif /* GUPCR_TARGET64 */
@@ -220,6 +227,7 @@ float
 __getsf3 (long thread, size_t offset)
 {
   float result;
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -237,7 +245,7 @@ __getsf3 (long thread, size_t offset)
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx %6g",
-	       thread, (long unsigned) offset, result);
+	       (int) thread, (long unsigned) offset, result);
   return result;
 }
 
@@ -255,6 +263,7 @@ double
 __getdf3 (long thread, size_t offset)
 {
   double result;
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -272,7 +281,7 @@ __getdf3 (long thread, size_t offset)
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx %6g",
-	       thread, (long unsigned) offset, result);
+	       (int) thread, (long unsigned) offset, result);
   return result;
 }
 
@@ -291,6 +300,7 @@ __getdf3 (long thread, size_t offset)
 void
 __getblk4 (long thread, size_t offset, void *dest, size_t n)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_trace (FC_MEM, "GETBLK ENTER R");
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -309,7 +319,7 @@ __getblk4 (long thread, size_t offset, void *dest, size_t n)
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GETBLK EXIT R %d:0x%lx 0x%lx %lu",
-	       thread, (long unsigned) offset,
+	       (int) thread, (long unsigned) offset,
 	       (long unsigned) dest, (long unsigned) n);
 }
 
@@ -326,6 +336,7 @@ __getblk4 (long thread, size_t offset, void *dest, size_t n)
 void
 __putqi3 (long thread, size_t offset, u_intQI_t v)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -333,13 +344,13 @@ __putqi3 (long thread, size_t offset, u_intQI_t v)
   if (GUPCR_GMEM_IS_LOCAL (thread))
     {
       gupcr_trace (FC_MEM, "PUT ENTER R QI LOCAL "
-		   "0x%x %d:0x%lx", v, thread, (long unsigned) offset);
+		   "0x%x %d:0x%lx", v, (int) thread, (long unsigned) offset);
       *(u_intQI_t *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset) = v;
     }
   else
     {
       gupcr_trace (FC_MEM, "PUT ENTER R QI REMOTE "
-		   "0x%x %d:0x%lx", v, thread, (long unsigned) offset);
+		   "0x%x %d:0x%lx", v, (int) thread, (long unsigned) offset);
       if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
@@ -370,6 +381,7 @@ __putqi3 (long thread, size_t offset, u_intQI_t v)
 void
 __puthi3 (long thread, size_t offset, u_intHI_t v)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -377,13 +389,13 @@ __puthi3 (long thread, size_t offset, u_intHI_t v)
   if (GUPCR_GMEM_IS_LOCAL (thread))
     {
       gupcr_trace (FC_MEM, "PUT ENTER R HI LOCAL "
-		   "0x%x %d:0x%lx", v, thread, (long unsigned) offset);
+		   "0x%x %d:0x%lx", v, (int) thread, (long unsigned) offset);
       *(u_intHI_t *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset) = v;
     }
   else
     {
       gupcr_trace (FC_MEM, "PUT ENTER R HI REMOTE "
-		   "0x%x %d:0x%lx", v, thread, (long unsigned) offset);
+		   "0x%x %d:0x%lx", v, (int) thread, (long unsigned) offset);
       if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
@@ -414,6 +426,7 @@ __puthi3 (long thread, size_t offset, u_intHI_t v)
 void
 __putsi3 (long thread, size_t offset, u_intSI_t v)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -421,13 +434,13 @@ __putsi3 (long thread, size_t offset, u_intSI_t v)
   if (GUPCR_GMEM_IS_LOCAL (thread))
     {
       gupcr_trace (FC_MEM, "PUT ENTER R SI LOCAL "
-		   "0x%x %d:0x%lx", v, thread, (long unsigned) offset);
+		   "0x%x %d:0x%lx", v, (int) thread, (long unsigned) offset);
       *(u_intSI_t *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset) = v;
     }
   else
     {
       gupcr_trace (FC_MEM, "PUT ENTER R SI REMOTE "
-		   "0x%x %d:0x%lx", v, thread, (long unsigned) offset);
+		   "0x%x %d:0x%lx", v, (int) thread, (long unsigned) offset);
       if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
@@ -458,6 +471,7 @@ __putsi3 (long thread, size_t offset, u_intSI_t v)
 void
 __putdi3 (long thread, size_t offset, u_intDI_t v)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -466,14 +480,16 @@ __putdi3 (long thread, size_t offset, u_intDI_t v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER R DI LOCAL "
 		   "0x%llx %d:0x%lx",
-		   (long long unsigned) v, thread, (long unsigned) offset);
+		   (long long unsigned) v, (int) thread,
+		   (long unsigned) offset);
       *(u_intDI_t *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset) = v;
     }
   else
     {
       gupcr_trace (FC_MEM, "PUT ENTER R DI REMOTE "
 		   "0x%llx %d:0x%lx",
-		   (long long unsigned) v, thread, (long unsigned) offset);
+		   (long long unsigned) v, (int) thread,
+		   (long unsigned) offset);
       if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
@@ -505,6 +521,7 @@ __putdi3 (long thread, size_t offset, u_intDI_t v)
 void
 __putti3 (long thread, size_t offset, u_intTI_t v)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -513,14 +530,16 @@ __putti3 (long thread, size_t offset, u_intTI_t v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER R TI LOCAL "
 		   "0x%llx %d:0x%lx",
-		   (long long unsigned) v, thread, (long unsigned) offset);
+		   (long long unsigned) v, (int) thread,
+		   (long unsigned) offset);
       *(u_intTI_t *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset) = v;
     }
   else
     {
       gupcr_trace (FC_MEM, "PUT ENTER R TI REMOTE "
 		   "0x%llx %d:0x%lx",
-		   (long long unsigned) v, thread, (long unsigned) offset);
+		   (long long unsigned) v, (int) thread,
+		   (long unsigned) offset);
       if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
@@ -551,6 +570,7 @@ __putti3 (long thread, size_t offset, u_intTI_t v)
 void
 __putsf3 (long thread, size_t offset, float v)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -558,13 +578,13 @@ __putsf3 (long thread, size_t offset, float v)
   if (GUPCR_GMEM_IS_LOCAL (thread))
     {
       gupcr_trace (FC_MEM, "PUT ENTER R SF LOCAL "
-		   "%6g %d:0x%lx", v, thread, (long unsigned) offset);
+		   "%6g %d:0x%lx", v, (int) thread, (long unsigned) offset);
       *(float *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset) = v;
     }
   else
     {
       gupcr_trace (FC_MEM, "PUT ENTER R SF REMOTE "
-		   "%6g %d:0x%lx", v, thread, (long unsigned) offset);
+		   "%6g %d:0x%lx", v, (int) thread, (long unsigned) offset);
       if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
@@ -595,6 +615,7 @@ __putsf3 (long thread, size_t offset, float v)
 void
 __putdf3 (long thread, size_t offset, double v)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -602,13 +623,13 @@ __putdf3 (long thread, size_t offset, double v)
   if (GUPCR_GMEM_IS_LOCAL (thread))
     {
       gupcr_trace (FC_MEM, "PUT ENTER R DF LOCAL "
-		   "%6g %d:0x%lx", v, thread, (long unsigned) offset);
+		   "%6g %d:0x%lx", v, (int) thread, (long unsigned) offset);
       *(double *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset) = v;
     }
   else
     {
       gupcr_trace (FC_MEM, "PUT ENTER R DF REMOTE "
-		   "%6g %d:0x%lx", v, thread, (long unsigned) offset);
+		   "%6g %d:0x%lx", v, (int) thread, (long unsigned) offset);
       if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
@@ -641,8 +662,9 @@ __putdf3 (long thread, size_t offset, double v)
 void
 __putblk4 (void *src, long thread, size_t offset, size_t n)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_trace (FC_MEM, "PUTBLK ENTER R 0x%lx %d:0x%lx %lu",
-	       (long unsigned) src, thread,
+	       (long unsigned) src, (int) thread,
 	       (long unsigned) offset, (long unsigned) n);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -675,9 +697,10 @@ void
 __copyblk5 (long dthread, size_t doffset,
 	    long sthread, size_t soffset, size_t n)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_trace (FC_MEM, "COPYBLK ENTER R %d:0x%lx %d:0x%lx %lu",
-	       sthread, (long unsigned) soffset,
-	       dthread, (long unsigned) doffset, (long unsigned) n);
+	       (int) sthread, (long unsigned) soffset,
+	       (int) dthread, (long unsigned) doffset, (long unsigned) n);
   gupcr_assert (dthread < THREADS);
   gupcr_assert (doffset != 0);
   gupcr_assert (sthread < THREADS);
@@ -721,6 +744,7 @@ u_intQI_t
 __getsqi3 (long thread, size_t offset)
 {
   u_intQI_t result;
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -740,7 +764,7 @@ __getsqi3 (long thread, size_t offset)
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%x",
-	       thread, (long unsigned) offset, result);
+	       (int) thread, (long unsigned) offset, result);
   return result;
 }
 
@@ -758,6 +782,7 @@ u_intHI_t
 __getshi3 (long thread, size_t offset)
 {
   u_intHI_t result;
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -777,7 +802,7 @@ __getshi3 (long thread, size_t offset)
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%x",
-	       thread, (long unsigned) offset, result);
+	       (int) thread, (long unsigned) offset, result);
   return result;
 }
 
@@ -795,6 +820,7 @@ u_intSI_t
 __getssi3 (long thread, size_t offset)
 {
   u_intSI_t result;
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -814,7 +840,7 @@ __getssi3 (long thread, size_t offset)
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%x",
-	       thread, (long unsigned) offset, result);
+	       (int) thread, (long unsigned) offset, result);
   return result;
 }
 
@@ -832,6 +858,7 @@ u_intDI_t
 __getsdi3 (long thread, size_t offset)
 {
   u_intDI_t result;
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -851,7 +878,8 @@ __getsdi3 (long thread, size_t offset)
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%llx",
-	       thread, (long unsigned) offset, (long long unsigned) result);
+	       (int) thread, (long unsigned) offset,
+	       (long long unsigned) result);
   return result;
 }
 
@@ -870,6 +898,7 @@ u_intTI_t
 __getsti3 (long thread, size_t offset)
 {
   u_intTI_t result;
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -889,7 +918,8 @@ __getsti3 (long thread, size_t offset)
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx 0x%llx",
-	       thread, (long unsigned) offset, (long long unsigned) result);
+	       (int) thread, (long unsigned) offset,
+	       (long long unsigned) result);
   return result;
 }
 #endif /* GUPCR_TARGET64 */
@@ -907,6 +937,7 @@ float
 __getssf3 (long thread, size_t offset)
 {
   float result;
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -926,7 +957,7 @@ __getssf3 (long thread, size_t offset)
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx %6g",
-	       thread, (long unsigned) offset, result);
+	       (int) thread, (long unsigned) offset, result);
   return result;
 }
 
@@ -944,6 +975,7 @@ double
 __getsdf3 (long thread, size_t offset)
 {
   double result;
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -963,7 +995,7 @@ __getsdf3 (long thread, size_t offset)
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GET EXIT %d:0x%lx %6g",
-	       thread, (long unsigned) offset, result);
+	       (int) thread, (long unsigned) offset, result);
   return result;
 }
 
@@ -982,6 +1014,7 @@ __getsdf3 (long thread, size_t offset)
 void
 __getsblk4 (long thread, size_t offset, void *dest, size_t n)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_trace (FC_MEM, "GETBLK ENTER S");
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -1000,7 +1033,7 @@ __getsblk4 (long thread, size_t offset, void *dest, size_t n)
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GETBLK EXIT S %d:0x%lx 0x%lx %lu",
-	       thread, (long unsigned) offset,
+	       (int) thread, (long unsigned) offset,
 	       (long unsigned) dest, (long unsigned) n);
 }
 
@@ -1017,6 +1050,7 @@ __getsblk4 (long thread, size_t offset, void *dest, size_t n)
 void
 __putsqi3 (long thread, size_t offset, u_intQI_t v)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1024,7 +1058,7 @@ __putsqi3 (long thread, size_t offset, u_intQI_t v)
   if (GUPCR_GMEM_IS_LOCAL (thread))
     {
       gupcr_trace (FC_MEM, "PUT ENTER S QI LOCAL "
-		   "0x%x %d:0x%lx", v, thread, (long unsigned) offset);
+		   "0x%x %d:0x%lx", v, (int) thread, (long unsigned) offset);
       GUPCR_WRITE_MEM_BARRIER ();
       *(u_intQI_t *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset) = v;
       GUPCR_MEM_BARRIER ();
@@ -1032,7 +1066,7 @@ __putsqi3 (long thread, size_t offset, u_intQI_t v)
   else
     {
       gupcr_trace (FC_MEM, "PUT ENTER S QI REMOTE "
-		   "0x%x %d:0x%lx", v, thread, (long unsigned) offset);
+		   "0x%x %d:0x%lx", v, (int) thread, (long unsigned) offset);
       if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
@@ -1062,6 +1096,7 @@ __putsqi3 (long thread, size_t offset, u_intQI_t v)
 void
 __putshi3 (long thread, size_t offset, u_intHI_t v)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1069,7 +1104,7 @@ __putshi3 (long thread, size_t offset, u_intHI_t v)
   if (GUPCR_GMEM_IS_LOCAL (thread))
     {
       gupcr_trace (FC_MEM, "PUT ENTER S HI LOCAL "
-		   "0x%x %d:0x%lx", v, thread, (long unsigned) offset);
+		   "0x%x %d:0x%lx", v, (int) thread, (long unsigned) offset);
       GUPCR_WRITE_MEM_BARRIER ();
       *(u_intHI_t *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset) = v;
       GUPCR_MEM_BARRIER ();
@@ -1077,7 +1112,7 @@ __putshi3 (long thread, size_t offset, u_intHI_t v)
   else
     {
       gupcr_trace (FC_MEM, "PUT ENTER S HI REMOTE "
-		   "0x%x %d:0x%lx", v, thread, (long unsigned) offset);
+		   "0x%x %d:0x%lx", v, (int) thread, (long unsigned) offset);
       if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
@@ -1107,6 +1142,7 @@ __putshi3 (long thread, size_t offset, u_intHI_t v)
 void
 __putssi3 (long thread, size_t offset, u_intSI_t v)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1114,7 +1150,7 @@ __putssi3 (long thread, size_t offset, u_intSI_t v)
   if (GUPCR_GMEM_IS_LOCAL (thread))
     {
       gupcr_trace (FC_MEM, "PUT ENTER S SI LOCAL "
-		   "0x%x %d:0x%lx", v, thread, (long unsigned) offset);
+		   "0x%x %d:0x%lx", v, (int) thread, (long unsigned) offset);
       GUPCR_WRITE_MEM_BARRIER ();
       *(u_intSI_t *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset) = v;
       GUPCR_MEM_BARRIER ();
@@ -1122,7 +1158,7 @@ __putssi3 (long thread, size_t offset, u_intSI_t v)
   else
     {
       gupcr_trace (FC_MEM, "PUT ENTER S SI REMOTE "
-		   "0x%x %d:0x%lx", v, thread, (long unsigned) offset);
+		   "0x%x %d:0x%lx", v, (int) thread, (long unsigned) offset);
       if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
@@ -1152,6 +1188,7 @@ __putssi3 (long thread, size_t offset, u_intSI_t v)
 void
 __putsdi3 (long thread, size_t offset, u_intDI_t v)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1160,7 +1197,8 @@ __putsdi3 (long thread, size_t offset, u_intDI_t v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER S DI LOCAL "
 		   "0x%llx %d:0x%lx",
-		   (long long unsigned) v, thread, (long unsigned) offset);
+		   (long long unsigned) v, (int) thread,
+		   (long unsigned) offset);
       GUPCR_WRITE_MEM_BARRIER ();
       *(u_intDI_t *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset) = v;
       GUPCR_MEM_BARRIER ();
@@ -1169,7 +1207,8 @@ __putsdi3 (long thread, size_t offset, u_intDI_t v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER S DI REMOTE "
 		   "0x%llx %d:0x%lx",
-		   (long long unsigned) v, thread, (long unsigned) offset);
+		   (long long unsigned) v, (int) thread,
+		   (long unsigned) offset);
       if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
@@ -1200,6 +1239,7 @@ __putsdi3 (long thread, size_t offset, u_intDI_t v)
 void
 __putsti3 (long thread, size_t offset, u_intTI_t v)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1208,7 +1248,8 @@ __putsti3 (long thread, size_t offset, u_intTI_t v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER S TI LOCAL "
 		   "0x%llx %d:0x%lx",
-		   (long long unsigned) v, thread, (long unsigned) offset);
+		   (long long unsigned) v, (int) thread,
+		   (long unsigned) offset);
       GUPCR_WRITE_MEM_BARRIER ();
       *(u_intTI_t *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset) = v;
       GUPCR_MEM_BARRIER ();
@@ -1217,7 +1258,8 @@ __putsti3 (long thread, size_t offset, u_intTI_t v)
     {
       gupcr_trace (FC_MEM, "PUT ENTER S TI REMOTE "
 		   "0x%llx %d:0x%lx",
-		   (long long unsigned) v, thread, (long unsigned) offset);
+		   (long long unsigned) v, (int) thread,
+		   (long unsigned) offset);
       if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
@@ -1247,6 +1289,7 @@ __putsti3 (long thread, size_t offset, u_intTI_t v)
 void
 __putssf3 (long thread, size_t offset, float v)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1254,7 +1297,7 @@ __putssf3 (long thread, size_t offset, float v)
   if (GUPCR_GMEM_IS_LOCAL (thread))
     {
       gupcr_trace (FC_MEM, "PUT ENTER S SF LOCAL "
-		   "%6g %d:0x%lx", v, thread, (long unsigned) offset);
+		   "%6g %d:0x%lx", v, (int) thread, (long unsigned) offset);
       GUPCR_WRITE_MEM_BARRIER ();
       *(float *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset) = v;
       GUPCR_MEM_BARRIER ();
@@ -1262,7 +1305,7 @@ __putssf3 (long thread, size_t offset, float v)
   else
     {
       gupcr_trace (FC_MEM, "PUT ENTER S SF REMOTE "
-		   "%6g %d:0x%lx", v, thread, (long unsigned) offset);
+		   "%6g %d:0x%lx", v, (int) thread, (long unsigned) offset);
       if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
@@ -1292,6 +1335,7 @@ __putssf3 (long thread, size_t offset, float v)
 void
 __putsdf3 (long thread, size_t offset, double v)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1299,7 +1343,7 @@ __putsdf3 (long thread, size_t offset, double v)
   if (GUPCR_GMEM_IS_LOCAL (thread))
     {
       gupcr_trace (FC_MEM, "PUT ENTER S DF LOCAL "
-		   "%6g %d:0x%lx", v, thread, (long unsigned) offset);
+		   "%6g %d:0x%lx", v, (int) thread, (long unsigned) offset);
       GUPCR_WRITE_MEM_BARRIER ();
       *(double *) GUPCR_GMEM_OFF_TO_LOCAL (thread, offset) = v;
       GUPCR_MEM_BARRIER ();
@@ -1307,7 +1351,7 @@ __putsdf3 (long thread, size_t offset, double v)
   else
     {
       gupcr_trace (FC_MEM, "PUT ENTER S DF REMOTE "
-		   "%6g %d:0x%lx", v, thread, (long unsigned) offset);
+		   "%6g %d:0x%lx", v, (int) thread, (long unsigned) offset);
       if (sizeof (v) <= (size_t) GUPCR_MAX_PUT_ORDERED_SIZE)
 	{
 	  /* Ordered puts can proceed in parallel.  */
@@ -1339,8 +1383,9 @@ __putsdf3 (long thread, size_t offset, double v)
 void
 __putsblk4 (void *src, long thread, size_t offset, size_t n)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_trace (FC_MEM, "PUTBLK ENTER S 0x%lx %d:0x%lx %lu",
-	       (long unsigned) src, thread,
+	       (long unsigned) src, (int) thread,
 	       (long unsigned) offset, (long unsigned) n);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -1376,9 +1421,10 @@ void
 __copysblk5 (long dthread, size_t doffset,
 	     long sthread, size_t soffset, size_t n)
 {
+  GUPCR_OMP_CHECK ();
   gupcr_trace (FC_MEM, "COPYBLK ENTER S %d:0x%lx %d:0x%lx %lu",
-	       sthread, (long unsigned) soffset,
-	       dthread, (long unsigned) doffset, (long unsigned) n);
+	       (int) sthread, (long unsigned) soffset,
+	       (int) dthread, (long unsigned) doffset, (long unsigned) n);
   gupcr_assert (dthread < THREADS);
   gupcr_assert (doffset != 0);
   gupcr_assert (sthread < THREADS);

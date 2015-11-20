@@ -130,6 +130,8 @@ extern char __upc_shared_start[1];
 //include lib_pts_defs
 /* Runtime procedures */
 //include lib_runtime_api
+/* OMP support */
+//include lib_omp_check
 
 #if defined(__UPC_INLINE_LIB__) || defined(IN_TARGET_LIBS)
 

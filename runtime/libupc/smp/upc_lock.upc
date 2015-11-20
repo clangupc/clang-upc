@@ -184,6 +184,7 @@ upc_lock_t *
 upc_global_lock_alloc (void)
 {
   upc_lock_t *lock;
+  GUPCR_OMP_CHECK();
   if (lock_free)
     {
       lock = lock_free;
@@ -212,6 +213,7 @@ void
 upc_lock_free (upc_lock_t *lock)
 {
   upc_link_ref owner;
+  GUPCR_OMP_CHECK();
   if (lock == NULL)
     return;
   /* Release the link block if this thread owns the lock.  */
@@ -241,6 +243,7 @@ void
 upc_all_lock_free (upc_lock_t *lock)
 {
   upc_link_ref owner;
+  GUPCR_OMP_CHECK();
   if (lock == NULL)
     return;
   /* Release the link block if this thread owns the lock.  */
@@ -268,6 +271,7 @@ upc_lock_t *
 upc_all_lock_alloc (void)
 {
   upc_lock_t *lock;
+  GUPCR_OMP_CHECK();
   upc_barrier (-1);
   if (MYTHREAD == 0)
     {
@@ -295,6 +299,7 @@ upc_lock (upc_lock_t *lock)
 {
   upc_lock_link_t *link;
   upc_link_ref old_link_ref;
+  GUPCR_OMP_CHECK();
   link = upc_lock_link_alloc ();
 
   /* Insert this thread on the waiting list.  */
@@ -320,6 +325,7 @@ upc_lock_attempt (upc_lock_t *lock)
 {
   upc_lock_link_t *link;
   int compare_ok;
+  GUPCR_OMP_CHECK();
   /* No need go further if lock is unavailable.  */
   if (!NULL_LOCK_REF (upc_link_ref_last (&lock->last)))
     return 0;
@@ -346,6 +352,7 @@ upc_unlock (upc_lock_t *lock)
   upc_link_ref link_ref = lock->owner_link;
   int compare_ok;
 
+  GUPCR_OMP_CHECK();
   if (!lock)
     __upc_fatal ("Trying to release a NULL lock");
   if (NULL_LOCK_REF (link_ref))

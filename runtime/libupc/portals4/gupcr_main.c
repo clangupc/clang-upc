@@ -47,6 +47,11 @@ int gupcr_finalize_ok = 0;
    nested upc_forall statements.  */
 int __upc_forall_depth;
 
+#if GUPCR_HAVE_OMP_CHECKS
+/** UPC thread's OMP master thread ID */
+pthread_t __upc_omp_master_id;
+#endif
+
 /** The filename of the location where a runtime
    error was detected.  This is set by the various
    debug-enabled ('g') UPC runtime library routines.  */
@@ -87,6 +92,11 @@ gupcr_init (void)
 
   /* Get the thread number.  */
   MYTHREAD = gupcr_runtime_get_rank ();
+
+#if GUPCR_HAVE_OMP_CHECKS
+  /* Each UPC thread is OMP master thread.  */
+  __upc_omp_master_id = pthread_self ();
+#endif
 
   /* Set up debugging, tracing, statistics, and timing support.  */
   gupcr_utils_init ();
@@ -200,6 +210,18 @@ gupcr_per_thread_init (void)
 }
 
 /** @} */
+
+#if GUPCR_HAVE_OMP_CHECKS
+/**
+ *  Check for UPC runtime calls from OMP threads.
+ */
+void
+__upc_omp_check (void)
+{
+  if (__upc_omp_master_id != pthread_self ())
+    gupcr_fatal_error ("UPC runtime calls are allowed only from the UPC threads");;
+}
+#endif
 
 /**
  * UPC program exit.

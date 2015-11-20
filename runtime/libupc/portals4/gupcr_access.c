@@ -1,4 +1,4 @@
-/* Copyright (C) 2012-2013
+/* Copyright (C) 2012-2015
    Free Software Foundation, Inc.
    This file is part of the UPC runtime Library.
    Written by Gary Funck <gary@intrepid.com>
@@ -63,6 +63,7 @@ __getqi2 (upc_shared_ptr_t p)
   u_intQI_t result;
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -100,6 +101,7 @@ __gethi2 (upc_shared_ptr_t p)
   u_intHI_t result;
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -137,6 +139,7 @@ __getsi2 (upc_shared_ptr_t p)
   u_intSI_t result;
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -174,6 +177,7 @@ __getdi2 (upc_shared_ptr_t p)
   u_intDI_t result;
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -212,6 +216,7 @@ __getti2 (upc_shared_ptr_t p)
   u_intTI_t result;
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -249,6 +254,7 @@ __getsf2 (upc_shared_ptr_t p)
   float result;
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -286,6 +292,7 @@ __getdf2 (upc_shared_ptr_t p)
   double result;
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -323,6 +330,7 @@ __gettf2 (upc_shared_ptr_t p)
   long double result;
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -360,6 +368,7 @@ __getxf2 (upc_shared_ptr_t p)
   long double result;
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -398,6 +407,7 @@ __getblk3 (void *dest, upc_shared_ptr_t src, size_t n)
 {
   int thread = GUPCR_PTS_THREAD (src);
   size_t offset = GUPCR_PTS_OFFSET (src);
+  GUPCR_OMP_CHECK ();
   gupcr_trace (FC_MEM, "GETBLK ENTER R");
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -416,7 +426,7 @@ __getblk3 (void *dest, upc_shared_ptr_t src, size_t n)
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GETBLK EXIT R %d:0x%lx 0x%lx %lu",
-	       thread, (long unsigned) offset,
+	       (int) thread, (long unsigned) offset,
 	       (long unsigned) dest, (long unsigned) n);
 }
 
@@ -435,6 +445,7 @@ __putqi2 (upc_shared_ptr_t p, u_intQI_t v)
 {
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -481,6 +492,7 @@ __puthi2 (upc_shared_ptr_t p, u_intHI_t v)
 {
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -527,6 +539,7 @@ __putsi2 (upc_shared_ptr_t p, u_intSI_t v)
 {
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -573,6 +586,7 @@ __putdi2 (upc_shared_ptr_t p, u_intDI_t v)
 {
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -622,6 +636,7 @@ __putti2 (upc_shared_ptr_t p, u_intTI_t v)
 {
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -670,6 +685,7 @@ __putsf2 (upc_shared_ptr_t p, float v)
 {
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -716,6 +732,7 @@ __putdf2 (upc_shared_ptr_t p, double v)
 {
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -762,6 +779,7 @@ __puttf2 (upc_shared_ptr_t p, long double v)
 {
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -808,6 +826,7 @@ __putxf2 (upc_shared_ptr_t p, long double v)
 {
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -856,8 +875,9 @@ __putblk3 (upc_shared_ptr_t dest, void *src, size_t n)
 {
   int thread = GUPCR_PTS_THREAD (dest);
   size_t offset = GUPCR_PTS_OFFSET (dest);
+  GUPCR_OMP_CHECK ();
   gupcr_trace (FC_MEM, "PUTBLK ENTER R 0x%lx %d:0x%lx %lu",
-	       (long unsigned) src, thread,
+	       (long unsigned) src, (int) thread,
 	       (long unsigned) offset, (long unsigned) n);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -893,6 +913,7 @@ __copyblk3 (upc_shared_ptr_t dest, upc_shared_ptr_t src, size_t n)
   size_t doffset = GUPCR_PTS_OFFSET (dest);
   int sthread = GUPCR_PTS_THREAD (src);
   size_t soffset = GUPCR_PTS_OFFSET (src);
+  GUPCR_OMP_CHECK ();
   gupcr_trace (FC_MEM, "COPYBLK ENTER R %d:0x%lx %d:0x%lx %lu",
 	       sthread, (long unsigned) soffset,
 	       dthread, (long unsigned) doffset, (long unsigned) n);
@@ -941,6 +962,7 @@ __getsqi2 (upc_shared_ptr_t p)
   u_intQI_t result;
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -980,6 +1002,7 @@ __getshi2 (upc_shared_ptr_t p)
   u_intHI_t result;
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1019,6 +1042,7 @@ __getssi2 (upc_shared_ptr_t p)
   u_intSI_t result;
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1058,6 +1082,7 @@ __getsdi2 (upc_shared_ptr_t p)
   u_intDI_t result;
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1098,6 +1123,7 @@ __getsti2 (upc_shared_ptr_t p)
   u_intTI_t result;
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1137,6 +1163,7 @@ __getssf2 (upc_shared_ptr_t p)
   float result;
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1176,6 +1203,7 @@ __getsdf2 (upc_shared_ptr_t p)
   double result;
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1215,6 +1243,7 @@ __getstf2 (upc_shared_ptr_t p)
   long double result;
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1254,6 +1283,7 @@ __getsxf2 (upc_shared_ptr_t p)
   long double result;
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1294,6 +1324,7 @@ __getsblk3 (void *dest, upc_shared_ptr_t src, size_t n)
 {
   int thread = GUPCR_PTS_THREAD (src);
   size_t offset = GUPCR_PTS_OFFSET (src);
+  GUPCR_OMP_CHECK ();
   gupcr_trace (FC_MEM, "GETBLK ENTER S");
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -1312,7 +1343,7 @@ __getsblk3 (void *dest, upc_shared_ptr_t src, size_t n)
       gupcr_gmem_sync_gets ();
     }
   gupcr_trace (FC_MEM, "GETBLK EXIT S %d:0x%lx 0x%lx %lu",
-	       thread, (long unsigned) offset,
+	       (int) thread, (long unsigned) offset,
 	       (long unsigned) dest, (long unsigned) n);
 }
 
@@ -1331,6 +1362,7 @@ __putsqi2 (upc_shared_ptr_t p, u_intQI_t v)
 {
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1378,6 +1410,7 @@ __putshi2 (upc_shared_ptr_t p, u_intHI_t v)
 {
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1425,6 +1458,7 @@ __putssi2 (upc_shared_ptr_t p, u_intSI_t v)
 {
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1472,6 +1506,7 @@ __putsdi2 (upc_shared_ptr_t p, u_intDI_t v)
 {
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1522,6 +1557,7 @@ __putsti2 (upc_shared_ptr_t p, u_intTI_t v)
 {
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1571,6 +1607,7 @@ __putssf2 (upc_shared_ptr_t p, float v)
 {
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1618,6 +1655,7 @@ __putsdf2 (upc_shared_ptr_t p, double v)
 {
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1665,6 +1703,7 @@ __putstf2 (upc_shared_ptr_t p, long double v)
 {
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1712,6 +1751,7 @@ __putsxf2 (upc_shared_ptr_t p, long double v)
 {
   int thread = GUPCR_PTS_THREAD (p);
   size_t offset = GUPCR_PTS_OFFSET (p);
+  GUPCR_OMP_CHECK ();
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
   if (gupcr_pending_strict_put)
@@ -1761,8 +1801,9 @@ __putsblk3 (upc_shared_ptr_t dest, void *src, size_t n)
 {
   int thread = GUPCR_PTS_THREAD (dest);
   size_t offset = GUPCR_PTS_OFFSET (dest);
+  GUPCR_OMP_CHECK ();
   gupcr_trace (FC_MEM, "PUTBLK ENTER S 0x%lx %d:0x%lx %lu",
-	       (long unsigned) src, thread,
+	       (long unsigned) src, (int) thread,
 	       (long unsigned) offset, (long unsigned) n);
   gupcr_assert (thread < THREADS);
   gupcr_assert (offset != 0);
@@ -1801,6 +1842,7 @@ __copysblk3 (upc_shared_ptr_t dest, upc_shared_ptr_t src, size_t n)
   size_t doffset = GUPCR_PTS_OFFSET (dest);
   int sthread = GUPCR_PTS_THREAD (src);
   size_t soffset = GUPCR_PTS_OFFSET (src);
+  GUPCR_OMP_CHECK ();
   gupcr_trace (FC_MEM, "COPYBLK ENTER S %d:0x%lx %d:0x%lx %lu",
 	       sthread, (long unsigned) soffset,
 	       dthread, (long unsigned) doffset, (long unsigned) n);
@@ -1844,6 +1886,7 @@ __copysblk3 (upc_shared_ptr_t dest, upc_shared_ptr_t src, size_t n)
 void
 __upc_fence (void)
 {
+  GUPCR_OMP_CHECK ();
   GUPCR_MEM_BARRIER ();
   gupcr_gmem_sync ();
 }

@@ -262,8 +262,7 @@ checkDeducedTemplateArguments(ASTContext &Context,
     // If we deduced two declarations, make sure they they refer to the
     // same declaration.
     if (Y.getKind() == TemplateArgument::Declaration &&
-        isSameDeclaration(X.getAsDecl(), Y.getAsDecl()) &&
-        X.isDeclForReferenceParam() == Y.isDeclForReferenceParam())
+        isSameDeclaration(X.getAsDecl(), Y.getAsDecl()))
       return X;
 
     // All other combinations are incompatible.
@@ -384,7 +383,7 @@ DeduceNonTypeTemplateArgument(Sema &S,
          "Cannot deduce non-type template argument with depth > 0");
 
   D = D ? cast<ValueDecl>(D->getCanonicalDecl()) : nullptr;
-  TemplateArgument New(D, NTTP->getType()->isReferenceType());
+  TemplateArgument New(D, NTTP->getType());
   DeducedTemplateArgument NewDeduced(New);
   DeducedTemplateArgument Result = checkDeducedTemplateArguments(S.Context,
                                                      Deduced[NTTP->getIndex()],
@@ -1302,7 +1301,8 @@ DeduceTemplateArgumentsByTypeMatch(Sema &S,
 
     //     T &
     case Type::LValueReference: {
-      const LValueReferenceType *ReferenceArg = Arg->getAs<LValueReferenceType>();
+      const LValueReferenceType *ReferenceArg =
+          Arg->getAs<LValueReferenceType>();
       if (!ReferenceArg)
         return Sema::TDK_NonDeducedMismatch;
 
@@ -1313,7 +1313,8 @@ DeduceTemplateArgumentsByTypeMatch(Sema &S,
 
     //     T && [C++0x]
     case Type::RValueReference: {
-      const RValueReferenceType *ReferenceArg = Arg->getAs<RValueReferenceType>();
+      const RValueReferenceType *ReferenceArg =
+          Arg->getAs<RValueReferenceType>();
       if (!ReferenceArg)
         return Sema::TDK_NonDeducedMismatch;
 
@@ -1512,7 +1513,7 @@ DeduceTemplateArgumentsByTypeMatch(Sema &S,
             const RecordType *NextT = ToVisit.pop_back_val();
 
             // If we have already seen this type, skip it.
-            if (!Visited.insert(NextT))
+            if (!Visited.insert(NextT).second)
               continue;
 
             // If this is a base class, try to perform template argument
@@ -1746,8 +1747,7 @@ DeduceTemplateArguments(Sema &S,
 
   case TemplateArgument::Declaration:
     if (Arg.getKind() == TemplateArgument::Declaration &&
-        isSameDeclaration(Param.getAsDecl(), Arg.getAsDecl()) &&
-        Param.isDeclForReferenceParam() == Arg.isDeclForReferenceParam())
+        isSameDeclaration(Param.getAsDecl(), Arg.getAsDecl()))
       return Sema::TDK_Success;
 
     Info.FirstArg = Param;
@@ -1982,8 +1982,7 @@ static bool isSameTemplateArg(ASTContext &Context,
              Context.getCanonicalType(Y.getAsType());
 
     case TemplateArgument::Declaration:
-      return isSameDeclaration(X.getAsDecl(), Y.getAsDecl()) &&
-             X.isDeclForReferenceParam() == Y.isDeclForReferenceParam();
+      return isSameDeclaration(X.getAsDecl(), Y.getAsDecl());
 
     case TemplateArgument::NullPtr:
       return Context.hasSameType(X.getNullPtrType(), Y.getNullPtrType());
@@ -2076,7 +2075,8 @@ getTrivialTemplateArgumentLoc(Sema &S,
       TemplateName Template = Arg.getAsTemplate();
       if (DependentTemplateName *DTN = Template.getAsDependentTemplateName())
         Builder.MakeTrivial(S.Context, DTN->getQualifier(), Loc);
-      else if (QualifiedTemplateName *QTN = Template.getAsQualifiedTemplateName())
+      else if (QualifiedTemplateName *QTN =
+                   Template.getAsQualifiedTemplateName())
         Builder.MakeTrivial(S.Context, QTN->getQualifier(), Loc);
       
       if (Arg.getKind() == TemplateArgument::Template)
@@ -2608,6 +2608,9 @@ Sema::SubstituteExplicitTemplateArguments(
     = Function->getType()->getAs<FunctionProtoType>();
   assert(Proto && "Function template does not have a prototype?");
 
+  // Isolate our substituted parameters from our caller.
+  LocalInstantiationScope InstScope(*this, /*MergeWithOuterScope*/true);
+
   // Instantiate the types of each of the function parameters given the
   // explicitly-specified template arguments. If the function has a trailing
   // return type, substitute it after the arguments to ensure we substitute
@@ -3020,7 +3023,7 @@ Sema::FinishTemplateArgumentDeduction(FunctionTemplateDecl *FunctionTemplate,
 static QualType GetTypeOfFunction(Sema &S, const OverloadExpr::FindResult &R,
                                   FunctionDecl *Fn) {
   // We may need to deduce the return type of the function now.
-  if (S.getLangOpts().CPlusPlus1y && Fn->getReturnType()->isUndeducedType() &&
+  if (S.getLangOpts().CPlusPlus14 && Fn->getReturnType()->isUndeducedType() &&
       S.DeduceReturnType(Fn, R.Expression->getExprLoc(), /*Diagnose*/ false))
     return QualType();
 
@@ -3249,9 +3252,9 @@ static bool AdjustFunctionParmAndArgTypesForDeduction(Sema &S,
   return false;
 }
 
-static bool hasDeducibleTemplateParameters(Sema &S,
-                                           FunctionTemplateDecl *FunctionTemplate,
-                                           QualType T);
+static bool
+hasDeducibleTemplateParameters(Sema &S, FunctionTemplateDecl *FunctionTemplate,
+                               QualType T);
 
 /// \brief Perform template argument deduction by matching a parameter type
 ///        against a single expression, where the expression is an element of
@@ -3508,8 +3511,8 @@ Sema::TemplateDeductionResult Sema::DeduceTemplateArguments(
   }
 
   return FinishTemplateArgumentDeduction(FunctionTemplate, Deduced,
-                                         NumExplicitlySpecified,
-                                         Specialization, Info, &OriginalCallArgs);
+                                         NumExplicitlySpecified, Specialization,
+                                         Info, &OriginalCallArgs);
 }
 
 QualType Sema::adjustCCAndNoReturn(QualType ArgFunctionType,
@@ -3599,7 +3602,7 @@ Sema::DeduceTemplateArguments(FunctionTemplateDecl *FunctionTemplate,
   // If the function has a deduced return type, substitute it for a dependent
   // type so that we treat it as a non-deduced context in what follows.
   bool HasDeducedReturnType = false;
-  if (getLangOpts().CPlusPlus1y && InOverloadResolution &&
+  if (getLangOpts().CPlusPlus14 && InOverloadResolution &&
       Function->getReturnType()->getContainedAutoType()) {
     FunctionType = SubstAutoType(FunctionType, Context.DependentTy);
     HasDeducedReturnType = true;
@@ -3808,7 +3811,7 @@ Sema::DeduceTemplateArguments(FunctionTemplateDecl *ConversionTemplate,
 
     // C++0x [temp.deduct.conv]p4:
     //   If A is a cv-qualified type, the top level cv-qualifiers of A's
-    //   type are ignored for type deduction. If A is a reference type, the type 
+    //   type are ignored for type deduction. If A is a reference type, the type
     //   referred to by A is used for type deduction.
     A = A.getUnqualifiedType();
   }
@@ -3862,8 +3865,8 @@ Sema::DeduceTemplateArguments(FunctionTemplateDecl *ConversionTemplate,
   Specialization = cast_or_null<CXXConversionDecl>(ConversionSpecialized);
 
   // If the conversion operator is being invoked on a lambda closure to convert
-  // to a ptr-to-function, use the deduced arguments from the conversion function
-  // to specialize the corresponding call operator.
+  // to a ptr-to-function, use the deduced arguments from the conversion
+  // function to specialize the corresponding call operator.
   //   e.g., int (*fp)(int) = [](auto a) { return a; };
   if (Result == TDK_Success && isLambdaConversionOperator(ConversionGeneric)) {
     
@@ -3927,9 +3930,10 @@ namespace {
     public TreeTransform<SubstituteAutoTransform> {
     QualType Replacement;
   public:
-    SubstituteAutoTransform(Sema &SemaRef, QualType Replacement) :
-      TreeTransform<SubstituteAutoTransform>(SemaRef), Replacement(Replacement) {
-    }
+    SubstituteAutoTransform(Sema &SemaRef, QualType Replacement)
+        : TreeTransform<SubstituteAutoTransform>(SemaRef),
+          Replacement(Replacement) {}
+
     QualType TransformAutoType(TypeLocBuilder &TLB, AutoTypeLoc TL) {
       // If we're building the type pattern to deduce against, don't wrap the
       // substituted type in an AutoType. Certain template deduction rules
@@ -4008,7 +4012,7 @@ Sema::DeduceAutoType(TypeLoc Type, Expr *&Init, QualType &Result) {
         return DAR_FailedAlreadyDiagnosed;
       }
 
-      QualType Deduced = BuildDecltypeType(Init, Init->getLocStart());
+      QualType Deduced = BuildDecltypeType(Init, Init->getLocStart(), false);
       // FIXME: Support a non-canonical deduced type for 'auto'.
       Deduced = Context.getCanonicalType(Deduced);
       Result = SubstituteAutoTransform(*this, Deduced).Apply(Type);
@@ -4906,8 +4910,8 @@ MarkUsedTemplateParameters(ASTContext &Ctx, QualType T,
                                Depth, Used);
 
     // C++0x [temp.deduct.type]p9:
-    //   If the template argument list of P contains a pack expansion that is not
-    //   the last template argument, the entire template argument list is a
+    //   If the template argument list of P contains a pack expansion that is
+    //   not the last template argument, the entire template argument list is a
     //   non-deduced context.
     if (OnlyDeduced &&
         hasPackExpansionBeforeEnd(Spec->getArgs(), Spec->getNumArgs()))
@@ -5090,10 +5094,9 @@ Sema::MarkUsedTemplateParameters(const TemplateArgumentList &TemplateArgs,
 
 /// \brief Marks all of the template parameters that will be deduced by a
 /// call to the given function template.
-void
-Sema::MarkDeducedTemplateParameters(ASTContext &Ctx,
-                                    const FunctionTemplateDecl *FunctionTemplate,
-                                    llvm::SmallBitVector &Deduced) {
+void Sema::MarkDeducedTemplateParameters(
+    ASTContext &Ctx, const FunctionTemplateDecl *FunctionTemplate,
+    llvm::SmallBitVector &Deduced) {
   TemplateParameterList *TemplateParams
     = FunctionTemplate->getTemplateParameters();
   Deduced.clear();

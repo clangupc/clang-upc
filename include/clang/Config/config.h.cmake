@@ -8,6 +8,9 @@
 /* Bug report URL. */
 #define BUG_REPORT_URL "${BUG_REPORT_URL}"
 
+/* Multilib suffix for libdir. */
+#define CLANG_LIBDIR_SUFFIX "${CLANG_LIBDIR_SUFFIX}"
+
 /* Relative directory for resource files */
 #define CLANG_RESOURCE_DIR "${CLANG_RESOURCE_DIR}"
 
@@ -65,10 +68,16 @@
 /* PMI2 job manager library */                                                    
 #cmakedefine HAVE_PMI2_LIB 1
 
+/* UPC enable OMP checks */
+#cmakedefine LIBUPC_ENABLE_OMP_CHECKS ${LIBUPC_ENABLE_OMP_CHECKS}
+
 /* Define if we have libxml2 */
 #cmakedefine CLANG_HAVE_LIBXML ${CLANG_HAVE_LIBXML}
 
 /* The LLVM product name and version */
 #define BACKEND_PACKAGE_STRING "${BACKEND_PACKAGE_STRING}"
+
+/* Linker version detected at compile time. */
+#cmakedefine HOST_LINK_VERSION "${HOST_LINK_VERSION}"
 
 #endif

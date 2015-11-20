@@ -1,8 +1,6 @@
 set(LLVM_NO_RTTI 1)
 
-set(LLVM_LINK_COMPONENTS
-    jit
-  )
+set(LLVM_LINK_COMPONENTS)
 
 add_clang_executable(ast-test
   ast-test.cpp

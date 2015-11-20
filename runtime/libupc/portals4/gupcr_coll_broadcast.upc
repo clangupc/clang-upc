@@ -47,6 +47,7 @@ upc_all_broadcast (shared void *dst, shared const void *src,
   size_t send_cnt = nbytes;
   int i, blk_cnt;
 
+  GUPCR_OMP_CHECK();
   gupcr_trace (FC_COLL, "COLL ALL_BROADCAST ENTER %lu %lu",
 	       (long unsigned) src_thread, (long unsigned) nbytes);
 #ifdef _UPC_COLL_CHECK_ARGS

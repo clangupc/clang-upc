@@ -103,7 +103,7 @@ struct barrier_block
 };
 
 typedef struct barrier_block barrier_block_t;
-shared barrier_block_t __upc_btree[THREADS];
+strict shared barrier_block_t __upc_btree[THREADS];
 /* Alternative barrier count (even/odd). Need to distinguish barrier IDs from
    two consecutive barriers as some threads might enter the notify statements
    while the others have not completed the wait statement of the previous
@@ -129,7 +129,7 @@ GUPCR_THREAD_LOCAL int __upc_barrier_id = 0;
 __attribute__ ((__always_inline__))
 static inline
 int
-__upc_atomic_inc (shared void *p)
+__upc_atomic_inc (strict shared void *p)
 {
   int *addr = __upc_map_to_local (p);
   return __upc_sync_fetch_and_add (addr, 1);
@@ -206,6 +206,7 @@ __upc_notify (int barrier_id)
 {
   int notify_cnt;
   int notify_thread;
+  GUPCR_OMP_CHECK();
   if (__upc_barrier_active)
     __upc_fatal ("Two successive upc_notify statements executed "
 		 "without an intervening upc_wait");
@@ -257,6 +258,7 @@ __upc_wait (int barrier_id)
 {
   int wait_cnt, i;
 
+  GUPCR_OMP_CHECK();
   if (!__upc_barrier_active)
     __upc_fatal ("upc_wait statement executed without a "
 		 "preceding upc_notify");

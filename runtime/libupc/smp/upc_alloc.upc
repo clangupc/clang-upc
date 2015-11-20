@@ -345,6 +345,7 @@ upc_global_alloc (size_t nblocks, size_t nbytes)
 {
   size_t request_size = GUPCR_ROUND(nblocks, THREADS) * nbytes;
   size_t alloc_size = request_size / THREADS;
+  GUPCR_OMP_CHECK ();
   shared void *mem = __upc_global_alloc (alloc_size);
   return mem;
 }
@@ -355,6 +356,7 @@ upc_all_alloc (size_t nblocks, size_t nbytes)
   size_t request_size = GUPCR_ROUND(nblocks, THREADS) * nbytes;
   size_t alloc_size = request_size / THREADS;
   shared void *mem = NULL;
+  GUPCR_OMP_CHECK ();
   if (alloc_size)
     {
       upc_barrier -1;
@@ -370,6 +372,7 @@ shared void *
 upc_alloc (size_t nbytes)
 {
   shared void *mem = NULL; 
+  GUPCR_OMP_CHECK ();
   if (nbytes)
     mem = __upc_local_alloc (nbytes);
   return mem;
@@ -378,6 +381,7 @@ upc_alloc (size_t nbytes)
 void
 upc_all_free (shared void *ptr)
 {
+  GUPCR_OMP_CHECK ();
   if (ptr)
     {
       const int thread = (int)upc_threadof (ptr);
@@ -393,6 +397,7 @@ upc_all_free (shared void *ptr)
 void
 upc_free (shared void *ptr)
 {
+  GUPCR_OMP_CHECK ();
   if (ptr)
     {
       const size_t offset __attribute__ ((unused)) = upc_addrfield (ptr);
