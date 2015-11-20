@@ -73,6 +73,8 @@ int gupcr_enable_shared_rx_ctx = 0;
 int gupcr_enable_scalable_ctx = 0;
 /** Libfabric supports FI_TARGET_WRITE/READ notifications */
 int gupcr_enable_rma_event = 0;
+/** Libfabric supports triggered operations */
+int gupcr_enable_trigger = 0;
 /** Libfabric supports scalable memory region - FI_MR_SCALABLE */
 int gupcr_enable_mr_scalable = 0;
 /** Interface IPv4 address */
@@ -436,8 +438,8 @@ gupcr_fabric_init (void)
       node = node_name;
     }
 
-  /* Request RMA, atomics.  */
-  hints->caps = FI_RMA | FI_ATOMICS;
+  /* Let fabric report what is supported.  */
+  hints->caps = 0;
   hints->addr_format = FI_FORMAT_UNSPEC;
   /* Reliable datagram message.  */
   hints->ep_attr->type = FI_EP_RDM;
@@ -461,46 +463,30 @@ gupcr_fabric_init (void)
       gupcr_enable_scalable_ctx = 1;
       gupcr_log (FC_FABRIC, "enabled SCALABLE endpoint context");
     }
-
-  /* Check if FI_RMA_EVENT is supported (ability to receive events
-     (CT/CQ) after remote write into local MR).  This feature is
-     required for effective lock/barrier/shutdown implementation.  */
+  /* Check for capabilities we care about.  */
   {
-    int status;
-    fab_info_t ret_info;
-    hints->caps |= FI_RMA_EVENT;
-    gupcr_fabric_call_nc (fi_getinfo, status,
-			  (FI_VERSION (1, 0), node, NULL,
-			   FI_SOURCE, hints, &ret_info));
-    if (!status && (ret_info->caps & FI_RMA_EVENT))
-      {
-	gupcr_enable_rma_event = 1;
-	gupcr_log (FC_FABRIC, "enabled RMA events");
-      }
-    hints->caps ^= FI_RMA_EVENT;
-  }
-
-  /* Check if scalable MR is supported.  */
-  {
-    int status;
-    fab_info_t ret_info;
-    hints->domain_attr->mr_mode = FI_MR_SCALABLE;
-    gupcr_fabric_call_nc (fi_getinfo, status,
-			  (FI_VERSION (1, 0), node, NULL,
-			   FI_SOURCE, hints, &ret_info));
-    if (!status)
-      {
-	gupcr_fi->domain_attr->mr_mode = FI_MR_SCALABLE;
+    uint64_t req_caps = FI_RMA | FI_ATOMIC |
+	FI_READ | FI_WRITE | FI_REMOTE_READ | FI_REMOTE_WRITE;
+    if ((gupcr_fi->caps & req_caps) != req_caps)
+      gupcr_fatal_error ("required capabilities not supported");
+    /* Check if FI_RMA_EVENT is supported (ability to receive events
+       (CT/CQ) after remote write into local MR).  This feature is
+       required for effective lock/barrier/shutdown implementation.  */
+    if (gupcr_fi->caps & FI_RMA_EVENT)
+      gupcr_enable_rma_event = 1;
+    /* Triggered ops are required for barrier/collectives.  */
+    if (gupcr_fi->caps & FI_TRIGGER)
+      gupcr_enable_trigger = 1;
+    /* Scalable MR is better for address filed to memory index conversion.  */
+    if (gupcr_fi->caps & FI_MR_SCALABLE)
 	gupcr_enable_mr_scalable = 1;
-	gupcr_log (FC_FABRIC, "enabled scalable MR");
-      }
   }
 
 #if GUPCR_FABRIC_SHARED_CTX
   /* Check for shared context support in order to save TX/RX resources.  */
   /* TODO - ? difference between scalable RX/MR v. shared RX/MR.  If we use
      MR keys to target particular MR we do not need scalable RX.
-     ? sharing on TX side might be resource benerficial.  */
+     ? sharing on TX side might be resource beneficial.  */
   {
     int status;
     fab_info_t ret_info;
