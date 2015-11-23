@@ -207,7 +207,7 @@ gupcr_barrier_notify_put (void *src, int thread, void *dst)
 						     GUPCR_REMOTE_OFFSET
 						     (dst)),
 			       GUPCR_REMOTE_MR_KEY (notify, thread),
-			       FI_UINT32, FI_MIN));
+			       FI_INT32, FI_MIN));
     }
   else
     {
@@ -218,7 +218,7 @@ gupcr_barrier_notify_put (void *src, int thread, void *dst)
 						     GUPCR_REMOTE_OFFSET
 						     (dst)),
 			       GUPCR_REMOTE_MR_KEY (notify, thread),
-			       FI_UINT32, FI_MIN, NULL));
+			       FI_INT32, FI_MIN, NULL));
     }
   gupcr_barrier_tx_put_count++;
   if (!GUPCR_FABRIC_RMA_EVENT ())
@@ -359,7 +359,7 @@ gupcr_barrier_notify_tr_put (void *src, int thread, void *dst, size_t trig)
   msg_atomic.addr = GUPCR_TARGET_ADDR (thread);
   msg_atomic.rma_iov = &endpt;
   msg_atomic.context = &trig_ctx[ctx_index];
-  msg_atomic.datatype = FI_UINT32;
+  msg_atomic.datatype = FI_INT32;
   msg_atomic.op = FI_MIN;
   gupcr_fabric_call_size (fi_atomicmsg, ret,
 			  (gupcr_barrier_ep.tx_ep, &msg_atomic, FI_TRIGGER));
