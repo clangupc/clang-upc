@@ -478,8 +478,12 @@ gupcr_fabric_init (void)
     if (gupcr_fi->caps & FI_TRIGGER)
       gupcr_enable_trigger = 1;
     /* Scalable MR is better for address filed to memory index conversion.  */
-    if (gupcr_fi->caps & FI_MR_SCALABLE)
+    if (gupcr_fi->domain_attr->mr_mode == FI_MR_SCALABLE ||
+	gupcr_fi->domain_attr->mr_mode == FI_MR_UNSPEC)
+      {
+	gupcr_fi->domain_attr->mr_mode = FI_MR_SCALABLE;
 	gupcr_enable_mr_scalable = 1;
+      }
   }
 
 #if GUPCR_FABRIC_SHARED_CTX
@@ -733,7 +737,8 @@ void
 gupcr_fabric_mr_exchg (const char *name, gupcr_memreg_t * keys,
 		       uint64_t mr_key, char *addr)
 {
-  struct gupcr_memreg mrkey = { addr, mr_key };;
+  struct gupcr_memreg mrkey = { addr, mr_key };
+  gupcr_debug (FC_FABRIC, "addr: %lx key: %lx", (uint64_t) addr, mr_key);
   if (gupcr_runtime_exchange
       (name, &mrkey, sizeof (struct gupcr_memreg), keys))
     gupcr_fatal_error ("cannot exchange memory registration for remote MRs");

@@ -423,9 +423,9 @@ gupcr_barrier_sup_init (void *bbase, int bsize)
 				    &gupcr_barrier_##phase##_ct->fid, \
 				    FI_REMOTE_WRITE));
   CREATE_BARRIER_TARGET_MR (notify, GUPCR_MR_BARRIER_NOTIFY);
-  GUPCR_GATHER_MR_KEYS (notify, gupcr_barrier_notify_mr, &gupcr_bbase);
+  GUPCR_GATHER_MR_KEYS (notify, gupcr_barrier_notify_mr, gupcr_bbase);
   CREATE_BARRIER_TARGET_MR (wait, GUPCR_MR_BARRIER_WAIT);
-  GUPCR_GATHER_MR_KEYS (wait, gupcr_barrier_wait_mr, &gupcr_bbase);
+  GUPCR_GATHER_MR_KEYS (wait, gupcr_barrier_wait_mr, gupcr_bbase);
 
   /* There is only one completion queue for event errors.  */
   cq_attr.size = GUPCR_CQ_ERROR_SIZE;

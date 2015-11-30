@@ -113,25 +113,25 @@ static int gupcr_barrier_active = 0;
 int gupcr_barrier_id;
 
 /** Barrier memory region  */
-static struct
+static struct barreg
 {
   /** Thread's barrier ID for upstream push */
-  int value;
+  int value __attribute__ ((aligned (16)));
   /** Maximum barrier ID used to re-initialize notify barrier ID.  */
-  int value_max;
+  int value_max __attribute__ ((aligned (16)));
   /** Min value barrier ID among thread and its children */
-  int notify;
+  int notify __attribute__ ((aligned (16)));
   /** notify_completion signal field */
-  int notify_signal;
+  int notify_signal __attribute__ ((aligned (16)));
   /** Consensus barrier ID among all threads */
-  int wait;
+  int wait __attribute__ ((aligned (16)));
   /** Wait completion signal field */
-  int wait_signal;
+  int wait_signal __attribute__ ((aligned (16)));
   /** Broadcast signal location.  */
-  int bcast_signal;
+  int bcast_signal __attribute__ ((aligned (16)));
   /** Broadcast received value memory buffer.  */
-  char bcast[GUPCR_MAX_BROADCAST_SIZE];
-} barreg;
+  char bcast[GUPCR_MAX_BROADCAST_SIZE] __attribute__ ((aligned (16)));
+} barreg __attribute__ ((aligned (16)));
 
 /* Trigger events.  */
 #define NOTIFY_EVENT 0		/* Value written into notify filed.  */
