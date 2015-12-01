@@ -104,7 +104,9 @@ gupcr_barrier_wait_put (void *src, int thread, void *dst, size_t count)
   gupcr_debug (FC_BARRIER, "%lx -> %d:%lx (%ld)", (unsigned long) src,
 	       thread, GUPCR_REMOTE_OFFSET (dst), (unsigned long) count);
 
-  if (sizeof (int) <= GUPCR_MAX_OPTIM_SIZE)
+  /* TODO - GNI does not support atomic inject yet */
+  if (gupcr_fabric_prov_id != GUPCR_FABRIC_PROV_GNI &&
+      count <= GUPCR_MAX_OPTIM_SIZE)
     {
       gupcr_fabric_call_size (fi_inject_write, ret,
 			      (gupcr_barrier_ep.tx_ep, (const void *) src,
@@ -198,7 +200,9 @@ gupcr_barrier_notify_put (void *src, int thread, void *dst)
   gupcr_debug (FC_BARRIER, "%lx -> %d:%lx", (unsigned long) src, thread,
 	       GUPCR_REMOTE_OFFSET (dst));
 
-  if (sizeof (int) <= GUPCR_MAX_OPTIM_SIZE)
+  /* TODO - GNI does not support atomic inject yet */
+  if (gupcr_fabric_prov_id != GUPCR_FABRIC_PROV_GNI &&
+      sizeof (int) <= GUPCR_MAX_OPTIM_SIZE)
     {
       gupcr_fabric_call_size (fi_inject_atomic, ret,
 			      (gupcr_barrier_ep.tx_ep, (const void *) src, 1,

@@ -66,6 +66,8 @@ static const char *ifname = GUPCR_FABRIC_DEVICE;
 static const char *fab_name = GUPCR_FABRIC_NAME;
 /** Libfabric provider */
 static const char *fab_prov_name = GUPCR_FABRIC_PROVIDER;
+/** Libfabric provider ID */
+int gupcr_fabric_prov_id = GUPCR_FABRIC_PROV_NONE;
 /** Libfabric shared context (disabled by default) */
 int gupcr_enable_shared_tx_ctx = 0;
 int gupcr_enable_shared_rx_ctx = 0;
@@ -449,6 +451,10 @@ gupcr_fabric_init (void)
   /* Choose provider.  */
   hints->fabric_attr->name = strdup (fab_name);
   hints->fabric_attr->prov_name = strdup (fab_prov_name);
+  if (!strcmp (fab_prov_name, "gni"))
+    gupcr_fabric_prov_id = GUPCR_FABRIC_PROV_GNI;
+  if (!strcmp (fab_prov_name, "socket"))
+    gupcr_fabric_prov_id = GUPCR_FABRIC_PROV_SOCKET;
 
   /* Default buffer alignment.  Set the configured one as fabric
      providers do not provide info on optimal alignment.  */
@@ -464,7 +470,18 @@ gupcr_fabric_init (void)
       gupcr_log (FC_FABRIC, "enabled SCALABLE endpoint context");
     }
   /* Check for capabilities we care about.  */
-  {
+  if (gupcr_fabric_prov_id == GUPCR_FABRIC_PROV_GNI)
+    {
+      /* TODO: GNI issues -
+         - does not return supported features
+	 - no RMA events
+	 - no RMA triggers
+	 - no scalable MR
+      */
+      gupcr_fi->caps = FI_RMA | FI_ATOMIC;
+    }
+  else
+    {
     uint64_t req_caps = FI_RMA | FI_ATOMIC |
 	FI_READ | FI_WRITE | FI_REMOTE_READ | FI_REMOTE_WRITE;
     if ((gupcr_fi->caps & req_caps) != req_caps)

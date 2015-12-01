@@ -140,6 +140,12 @@ extern int gupcr_enable_mr_scalable;
 /** Default size for the error CW */
 #define GUPCR_CQ_ERROR_SIZE 10
 
+/** Libfabric provider */
+#define GUPCR_FABRIC_PROV_NONE 0
+#define GUPCR_FABRIC_PROV_SOCKET 1
+#define GUPCR_FABRIC_PROV_GNI 2
+extern int gupcr_fabric_prov_id;
+
 //end lib_fabric
 
 /** Execute fabric call and abort if error */
