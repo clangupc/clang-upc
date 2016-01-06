@@ -276,7 +276,7 @@ gupcr_atomic_init (void)
   /* Use FI_SELECTIVE_COMPLETION flag to report errors only.  */
   gupcr_fabric_call (fi_ep_bind,
 		     (gupcr_atomic_ep.tx_ep, &gupcr_atomic_cq->fid,
-		      FI_WRITE | FI_READ | FI_SELECTIVE_COMPLETION));
+		      FI_TRANSMIT | FI_RECV | FI_SELECTIVE_COMPLETION));
 
 #if LOCAL_MR_NEEDED
   /* NOTE: Create a local memory region before enabling endpoint.  */

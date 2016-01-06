@@ -281,7 +281,7 @@ gupcr_lock_init (void)
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_lock_lcq, NULL));
   /* Use FI_SELECTIVE_COMPLETION flag to report errors only.  */
   gupcr_fabric_call (fi_ep_bind, (gupcr_lock_ep.tx_ep, &gupcr_lock_lcq->fid,
-				  FI_WRITE | FI_READ |
+				  FI_TRANSMIT | FI_RECV |
 				  FI_SELECTIVE_COMPLETION));
 
 #if LOCAL_MR_NEEDED

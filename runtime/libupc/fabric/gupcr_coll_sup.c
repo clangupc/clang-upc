@@ -402,7 +402,7 @@ gupcr_coll_init (void)
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_coll_lcq, NULL));
   /* Use FI_SELECTIVE_COMPLETION flag to report errors only.  */
   gupcr_fabric_call (fi_ep_bind, (gupcr_coll_ep.tx_ep, &gupcr_coll_lcq->fid,
-				  FI_WRITE | FI_READ |
+				  FI_TRANSMIT | FI_RECV |
 				  FI_SELECTIVE_COMPLETION));
 
 #if LOCAL_MR_NEEDED

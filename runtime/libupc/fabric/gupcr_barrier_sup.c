@@ -407,7 +407,7 @@ gupcr_barrier_sup_init (void *bbase, int bsize)
 				  &gupcr_barrier_tx_put_cq, NULL));
   gupcr_fabric_call (fi_ep_bind, (gupcr_barrier_ep.tx_ep,
 				  &gupcr_barrier_tx_put_cq->fid,
-				  FI_WRITE | FI_SELECTIVE_COMPLETION));
+				  FI_TRANSMIT | FI_SELECTIVE_COMPLETION));
   /* Initialize target side of the endpoint.  */
   /* Two memory regions with separate counters is being used.  */
 #define CREATE_BARRIER_TARGET_MR(phase,mr_phase) \

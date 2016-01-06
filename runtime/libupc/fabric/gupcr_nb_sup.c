@@ -582,7 +582,7 @@ gupcr_nb_init (void)
   gupcr_fabric_call (fi_cq_open, (gupcr_fd, &cq_attr, &gupcr_nbi_cq, NULL));
   /* Use FI_SELECTIVE_COMPLETION flag to report errors only.  */
   gupcr_fabric_call (fi_ep_bind, (gupcr_nbi_ep.tx_ep, &gupcr_nbi_cq->fid,
-				  FI_READ | FI_WRITE |
+				  FI_TRANSMIT | FI_RECV |
 				  FI_SELECTIVE_COMPLETION));
 
 #if LOCAL_MR_NEEDED

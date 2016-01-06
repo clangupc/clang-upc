@@ -324,7 +324,7 @@ gupcr_shutdown_init (void)
   /* Use FI_SELECTIVE_COMPLETION flag to report errors only.  */
   gupcr_fabric_call (fi_ep_bind, (gupcr_shutdown_ep.tx_ep,
 				  &gupcr_shutdown_lcq->fid,
-				  FI_WRITE | FI_READ |
+				  FI_TRANSMIT | FI_RECV |
 				  FI_SELECTIVE_COMPLETION));
 
 #if LOCAL_MR_NEEDED
