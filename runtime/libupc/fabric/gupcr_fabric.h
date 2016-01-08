@@ -20,6 +20,7 @@
 #include <rdma/fi_prov.h>
 #include <rdma/fi_rma.h>
 #include <rdma/fi_trigger.h>
+#include <rdma/fi_tagged.h>
 
 /**
  * @file gupcr_fabric.h
@@ -73,6 +74,9 @@
 #define	GUPCR_MR_NB		9
 #define	GUPCR_MR_ATOMIC		10
 #define	GUPCR_MR_COUNT		11
+
+/* GUPCR Tags for tagged transfers */
+#define GUPCR_SHUTDOWN_TAG 1
 
 //begin lib_fabric
 
@@ -135,8 +139,10 @@ extern int gupcr_enable_rma_event;
 /** Support for scalable MR (FI_MR_SCALABLE) */
 extern int gupcr_enable_mr_scalable;
 #define GUPCR_FABRIC_MR_SCALABLE() (gupcr_enable_mr_scalable != 0)
-/** Max time to wait for operation complete (10s) */
+/** Max time to wait for operation complete (no-timeout) */
 #define GUPCR_TRANSFER_TIMEOUT -1
+/** No time-out for operation complete */
+#define GUPCR_TRANSFER_NO_TIMEOUT -1
 /** Default size for the error CW */
 #define GUPCR_CQ_ERROR_SIZE 10
 
