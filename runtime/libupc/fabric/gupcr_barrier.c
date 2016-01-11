@@ -235,7 +235,7 @@ __upc_notify (int barrier_id)
 #else
   /* The UPC runtime barrier implementation that does not use
      fabric triggered operations does not support split phase barriers.
-     In this case, all Portals actions related to the barrier
+     In this case, all fabric actions related to the barrier
      are performed in the __upc_wait() function.  */
 #endif
   gupcr_trace (FC_BARRIER, "BARRIER NOTIFY EXIT %d", barrier_id);
@@ -300,8 +300,8 @@ __upc_wait (int barrier_id)
   /* Use the barrier maximum ID number if the barrier ID is "match all".
      This effectively excludes the thread from setting the minimum ID
      among the threads.  */
-  barreg.value = (barrier_id == BARRIER_ANONYMOUS) ?
-    BARRIER_ID_MAX : barrier_id;
+  barreg.value = (gupcr_barrier_id == BARRIER_ANONYMOUS) ?
+    BARRIER_ID_MAX : gupcr_barrier_id;
 
   if (LEAF_THREAD)
     {
@@ -360,7 +360,7 @@ __upc_wait (int barrier_id)
 #endif /* GUPCR_USE_TRIGGERED_OPS */
 
   /* Verify that the barrier ID matches.  */
-  if (barrier_id != INT_MIN &&
+  if (barrier_id != BARRIER_ANONYMOUS &&
       barrier_id != barreg.wait && barreg.wait != BARRIER_ID_MAX)
     gupcr_error ("thread %d: UPC barrier identifier mismatch among threads - "
 		 "expected %d, received %d",
