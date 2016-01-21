@@ -3680,6 +3680,17 @@ PPC64_SVR4_ABIInfo::classifyReturnType(QualType RetTy) const {
     }
   }
 
+  // UPC shared pointer is returned in register for
+  // packed pointer representation, otherwise indirectly
+  // for struct representation.
+  if (Kind == ELFv1 &&
+      RetTy->hasPointerToSharedRepresentation()) {
+    if (getContext().getLangOpts().UPCPtsRep == 0)
+      return ABIArgInfo::getIndirect(0);
+    else
+      return ABIArgInfo::getDirect();
+  }
+
   if (isAggregateTypeForABI(RetTy)) {
     // ELFv2 homogeneous aggregates are returned as array types.
     const Type *Base = nullptr;
