@@ -93,9 +93,10 @@ namespace clang {
     UETT_SizeOf,
     UETT_AlignOf,
     UETT_VecStep,
+    UETT_OpenMPRequiredSimdAlign,
     UETT_UPC_LocalSizeOf,
     UETT_UPC_BlockSizeOf,
-    UETT_UPC_ElemSizeOf
+    UETT_UPC_ElemSizeOf,
   };
 }
 

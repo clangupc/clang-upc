@@ -46,7 +46,7 @@ struct PrintingPolicy {
       SuppressStrongLifetime(false), SuppressLifetimeQualifiers(false),
       Bool(LO.Bool), TerseOutput(false), PolishForDeclaration(false),
       Half(LO.Half), MSWChar(LO.MicrosoftExt && !LO.WChar),
-      IncludeNewlines(true),
+      IncludeNewlines(true), MSVCFormatting(false),
       IncludeTagDefinition(false), IncludeLineDirectives(false),
       SM(0), Helper(0) { }
 
@@ -115,7 +115,7 @@ struct PrintingPolicy {
   /// \brief Whether we should print the sizes of constant array expressions
   /// as written in the sources.
   ///
-  /// This flag is determines whether arrays types declared as
+  /// This flag determines whether array types declared as
   ///
   /// \code
   /// int a[4+10*10];
@@ -169,6 +169,11 @@ struct PrintingPolicy {
 
   /// \brief When true, include newlines after statements like "break", etc.
   unsigned IncludeNewlines : 1;
+
+  /// \brief Use whitespace and punctuation like MSVC does. In particular, this
+  /// prints anonymous namespaces as `anonymous namespace' and does not insert
+  /// spaces after template arguments.
+  bool MSVCFormatting : 1;
 
   bool IncludeTagDefinition : 1;
 
