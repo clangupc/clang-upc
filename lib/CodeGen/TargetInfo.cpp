@@ -1108,7 +1108,7 @@ ABIArgInfo X86_32ABIInfo::classifyReturnType(QualType RetTy,
   // for struct representation.
   if (RetTy->hasPointerToSharedRepresentation()) {
     if (getContext().getLangOpts().UPCPtsRep == 0)
-      return ABIArgInfo::getIndirect(0);
+      return ABIArgInfo::getIndirect(CharUnits::fromQuantity(0));
     else
       return ABIArgInfo::getDirect();
   }
@@ -4140,7 +4140,7 @@ PPC64_SVR4_ABIInfo::classifyReturnType(QualType RetTy) const {
   if (Kind == ELFv1 &&
       RetTy->hasPointerToSharedRepresentation()) {
     if (getContext().getLangOpts().UPCPtsRep == 0)
-      return ABIArgInfo::getIndirect(0);
+      return ABIArgInfo::getIndirect(CharUnits::fromQuantity(0));
     else
       return ABIArgInfo::getDirect();
   }

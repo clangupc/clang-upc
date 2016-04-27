@@ -324,7 +324,7 @@ ComplexPairTy ComplexExprEmitter::EmitLoadOfLValue(LValue lvalue,
   if (lvalue.isShared()) {
     llvm::Type *CTy = CGF.ConvertTypeForMem(lvalue.getType());
     llvm::Value *Value = CGF.EmitUPCLoad(lvalue.getAddress(), lvalue.isStrict(),
-					 CTy, lvalue.getAlignment(), lvalue.getLoc());
+					 CTy, lvalue.getLoc());
     llvm::Value *Real = Builder.CreateExtractValue(Value, 0);
     llvm::Value *Imag = Builder.CreateExtractValue(Value, 1);
     return ComplexPairTy(Real, Imag);
@@ -361,7 +361,7 @@ void ComplexExprEmitter::EmitStoreOfComplex(ComplexPairTy Val, LValue lvalue,
     llvm::Value *Value = llvm::UndefValue::get(CTy);
     Value = Builder.CreateInsertValue(Value, Val.first, 0);
     Value = Builder.CreateInsertValue(Value, Val.second, 1);
-    CGF.EmitUPCStore(Value, lvalue.getAddress(), lvalue.isStrict(),
+    CGF.EmitUPCStore(Value, lvalue.getPointer(), lvalue.isStrict(),
 		     lvalue.getAlignment(), lvalue.getLoc());
     return;
   }

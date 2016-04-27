@@ -25,8 +25,8 @@ static void getFileAndLine(CodeGenFunction &CGF, SourceLocation Loc,
                            llvm::SmallVectorImpl<llvm::Value*> *Out) {
   PresumedLoc PLoc = CGF.CGM.getContext().getSourceManager().getPresumedLoc(Loc);
   llvm::Constant *File =
-    CGF.CGM.GetAddrOfConstantCString(PLoc.isValid()? PLoc.getFilename() : "(unknown)");
-  Out->push_back(CGF.Builder.CreateConstInBoundsGEP2_32(File, 0, 0));
+    CGF.CGM.GetAddrOfConstantCString(PLoc.isValid()? PLoc.getFilename() : "(unknown)").getPointer();
+  Out->push_back(CGF.Builder.CreateConstInBoundsGEP2_32(nullptr, File, 0, 0));
   Out->push_back(llvm::ConstantInt::get(CGF.IntTy, PLoc.isValid()? PLoc.getLine() : 0));
 }
 
@@ -106,7 +106,7 @@ llvm::Value *CodeGenFunction::EmitUPCPointerToInt(llvm::Value *Pointer, llvm::Ty
   llvm::Type *TmpTy = SrcTy;
   if(CGM.getDataLayout().getTypeSizeInBits(SrcTy) < CGM.getDataLayout().getTypeSizeInBits(DestTy))
     TmpTy = DestTy;
-  llvm::AllocaInst *Tmp = CreateTempAlloca(TmpTy);
+  Address Tmp = CreateDefaultAlignTempAlloca(TmpTy);
   InitTempAlloca(Tmp, llvm::Constant::getNullValue(TmpTy));
   Builder.CreateStore(Pointer, Builder.CreateBitCast(Tmp, SrcTy->getPointerTo()));
   return Builder.CreateLoad(Builder.CreateBitCast(Tmp, DestTy->getPointerTo()));
@@ -173,12 +173,11 @@ static const char * getUPCTypeID(CodeGenFunction& CGF,
     return 0;
 }
 
-llvm::Value *CodeGenFunction::EmitUPCLoad(llvm::Value *Addr,
+llvm::Value *CodeGenFunction::EmitUPCLoad(Address Addr,
                                           bool isStrict, QualType Ty,
-                                          CharUnits Align,
                                           SourceLocation Loc) {
   llvm::Type *DestLTy = ConvertTypeForMem(Ty);
-  return EmitFromMemory(EmitUPCLoad(Addr, isStrict, DestLTy, Align, Loc), Ty);
+  return EmitFromMemory(EmitUPCLoad(Addr, isStrict, DestLTy, Loc), Ty);
 }
 
 static const int UPCAddrSpace = UPC_IR_RP_ADDRSPACE;
@@ -201,19 +200,19 @@ static llvm::Value *ConvertPTStoLLVMPtr(CodeGenFunction& CGF,
   return CGF.Builder.CreateIntToPtr(IntVal, LLPtsTy);
 }
 
-llvm::Value *CodeGenFunction::EmitUPCLoad(llvm::Value *Addr,
+llvm::Value *CodeGenFunction::EmitUPCLoad(Address A,
                                           bool isStrict,
                                           llvm::Type *LTy,
-                                          CharUnits Align,
                                           SourceLocation Loc) {
   const LangOptions& Opts = getContext().getLangOpts();
+  llvm::Value * Addr = A.getPointer();
+  CharUnits Align = A.getAlignment();
   if (Opts.UPCGenIr) {
     llvm::Value *InternalAddr = ConvertPTStoLLVMPtr(*this, Addr, LTy);
-    llvm::LoadInst * Result = Builder.CreateLoad(InternalAddr);
+    llvm::LoadInst * Result = Builder.CreateLoad(Address(InternalAddr, Align));
     if(isStrict) {
       Result->setOrdering(llvm::SequentiallyConsistent);
     }
-    Result->setAlignment(Align.getQuantity());
     return Result;
   }
   const ASTContext& Context = getContext();
@@ -246,13 +245,12 @@ llvm::Value *CodeGenFunction::EmitUPCLoad(llvm::Value *Addr,
   } else {
     Name += "blk";
 
-    llvm::AllocaInst *Mem = CreateTempAlloca(LTy);
-    Mem->setAlignment(Target.getABITypeAlignment(LTy));
-    llvm::Value *Tmp = Builder.CreateBitCast(Mem, VoidPtrTy);
+    Address Mem = CreateDefaultAlignTempAlloca(LTy);
+    Address Tmp = Builder.CreateBitCast(Mem, VoidPtrTy);
     llvm::Value *SizeArg = llvm::ConstantInt::get(SizeTy, Size/Context.getCharWidth());
     
     CallArgList Args;
-    Args.add(RValue::get(Tmp), Context.VoidPtrTy);
+    Args.add(RValue::get(Tmp.getPointer()), Context.VoidPtrTy);
     Args.add(RValue::get(Addr), ArgTy);
     Args.add(RValue::get(SizeArg), Context.getSizeType());
     if (CGM.getCodeGenOpts().UPCDebug) {
@@ -268,6 +266,15 @@ llvm::Value *CodeGenFunction::EmitUPCLoad(llvm::Value *Addr,
 }
 
 void CodeGenFunction::EmitUPCStore(llvm::Value *Value,
+                                   Address Addr,
+                                   bool isStrict,
+                                   QualType Ty,
+                                   SourceLocation Loc) {
+  return EmitUPCStore(EmitToMemory(Value, Ty), Addr.getPointer(),
+                      isStrict, Addr.getAlignment(), Loc);
+}
+
+void CodeGenFunction::EmitUPCStore(llvm::Value *Value,
                                    llvm::Value *Addr,
                                    bool isStrict,
                                    QualType Ty,
@@ -278,6 +285,14 @@ void CodeGenFunction::EmitUPCStore(llvm::Value *Value,
 }
 
 void CodeGenFunction::EmitUPCStore(llvm::Value *Value,
+                                   Address Addr,
+                                   bool isStrict,
+                                   SourceLocation Loc) {
+  return EmitUPCStore(Value, Addr.getPointer(),
+                      isStrict, Addr.getAlignment(), Loc);
+}
+
+void CodeGenFunction::EmitUPCStore(llvm::Value *Value,
                                    llvm::Value *Addr,
                                    bool isStrict,
                                    CharUnits Align,
@@ -285,11 +300,10 @@ void CodeGenFunction::EmitUPCStore(llvm::Value *Value,
   const LangOptions& Opts = getContext().getLangOpts();
   if (Opts.UPCGenIr) {
     llvm::Value *InternalAddr = ConvertPTStoLLVMPtr(*this, Addr, Value->getType());
-    llvm::StoreInst * Result = Builder.CreateStore(Value, InternalAddr);
+    llvm::StoreInst * Result = Builder.CreateStore(Value, Address(InternalAddr, Align));
     if(isStrict) {
       Result->setOrdering(llvm::SequentiallyConsistent);
     }
-    Result->setAlignment(Align.getQuantity());
     return;
   }
   const ASTContext& Context = getContext();
@@ -326,15 +340,14 @@ void CodeGenFunction::EmitUPCStore(llvm::Value *Value,
   } else {
     Name += "blk";
 
-    llvm::AllocaInst *Mem = CreateTempAlloca(Value->getType());
-    Mem->setAlignment(Target.getABITypeAlignment(Value->getType()));
+    Address Mem = CreateDefaultAlignTempAlloca(Value->getType());
     Builder.CreateStore(Value, Mem);
-    llvm::Value *Tmp = Builder.CreateBitCast(Mem, VoidPtrTy);
+    Address Tmp = Builder.CreateBitCast(Mem, VoidPtrTy);
     llvm::Value *SizeArg = llvm::ConstantInt::get(SizeTy, Size/Context.getCharWidth());
     
     CallArgList Args;
     Args.add(RValue::get(Addr), AddrTy);
-    Args.add(RValue::get(Tmp), Context.VoidPtrTy);
+    Args.add(RValue::get(Tmp.getPointer()), Context.VoidPtrTy);
     Args.add(RValue::get(SizeArg), Context.getSizeType());
     if (CGM.getCodeGenOpts().UPCDebug) {
       getFileAndLine(*this, Loc, &Args);
@@ -512,7 +525,8 @@ llvm::Value *CodeGenFunction::EmitUPCPointer(llvm::Value *Phase, llvm::Value *Th
   return Result;
 }
 
-llvm::Constant *CodeGenModule::getUPCThreads() {
+ConstantAddress CodeGenModule::getUPCThreads() {
+  CharUnits Align = getContext().getTypeAlignInChars(getContext().IntTy);
   if (!UPCThreads) {
     if (getModule().getNamedGlobal("THREADS"))
       UPCThreads = getModule().getOrInsertGlobal("THREADS", IntTy);
@@ -521,10 +535,11 @@ llvm::Constant *CodeGenModule::getUPCThreads() {
                                             llvm::GlobalValue::ExternalLinkage, 0,
                                             "THREADS");
   }
-  return UPCThreads;
+  return ConstantAddress(UPCThreads, Align);
 }
 
-llvm::Constant *CodeGenModule::getUPCMyThread() {
+ConstantAddress CodeGenModule::getUPCMyThread() {
+  CharUnits Align = getContext().getTypeAlignInChars(getContext().IntTy);
   if (!UPCMyThread) {
     if (getModule().getNamedGlobal("MYTHREAD"))
       UPCMyThread = getModule().getOrInsertGlobal("MYTHREAD", IntTy);
@@ -533,7 +548,7 @@ llvm::Constant *CodeGenModule::getUPCMyThread() {
                                              llvm::GlobalValue::ExternalLinkage, 0,
                                              "MYTHREAD");
   }
-  return UPCMyThread;
+  return ConstantAddress(UPCMyThread, Align);
 }
 
 llvm::Value *CodeGenFunction::EmitUPCThreads() {

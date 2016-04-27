@@ -1390,18 +1390,18 @@ Value *ScalarExprEmitter::VisitCastExpr(CastExpr *CE) {
 
   case CK_LValueBitCast:
   case CK_ObjCObjectLValueCast: {
-    LValue LV = EmitLValue(E);
-    if (LV.isBitField()) {
+    LValue LV1 = EmitLValue(E);
+    if (LV1.isBitField()) {
       // This can only be the qualifier conversion
       // used to add strict/relaxed
       assert(DestTy->getCanonicalTypeUnqualified() ==
              E->getType()->getCanonicalTypeUnqualified());
       return EmitLoadOfLValue(LValue::MakeBitfield(
-        LV.getBitFieldAddr(), LV.getBitFieldInfo(),
-        DestTy, LV.getAlignment(), CE->getExprLoc()),
+        LV1.getBitFieldAddress(), LV1.getBitFieldInfo(),
+        DestTy, LV1.getAlignmentSource(), CE->getExprLoc()),
 	CE->getExprLoc());
     }
-    Address Addr = EmitLValue(E).getAddress();
+    Address Addr = LV1.getAddress();
     Addr = Builder.CreateElementBitCast(Addr, CGF.ConvertTypeForMem(DestTy));
     LValue LV = CGF.MakeAddrLValue(Addr, DestTy, CE->getExprLoc());
     return EmitLoadOfLValue(LV, CE->getExprLoc());
@@ -1883,7 +1883,7 @@ ScalarExprEmitter::EmitScalarPrePostIncDec(const UnaryOperator *E, LValue LV,
     llvm::Value *success;
     if(LV.isShared()) {
       auto pair = CGF.EmitUPCAtomicCmpXchg(
-        LV.getAddress(), atomicPHI, CGF.EmitToMemory(value, type),
+        LV.getPointer(), atomicPHI, CGF.EmitToMemory(value, type),
         E->getExprLoc());
       old = Builder.CreateExtractValue(pair, 0);
       success = Builder.CreateExtractValue(pair, 1);
@@ -2261,7 +2261,7 @@ LValue ScalarExprEmitter::EmitCompoundAssignLValue(
     llvm::Value *success;
     if (LHSLV.isShared()) {
       auto pair = CGF.EmitUPCAtomicCmpXchg(
-        LHSLV.getAddress(), atomicPHI, CGF.EmitToMemory(Result, LHSTy),
+        LHSLV.getPointer(), atomicPHI, CGF.EmitToMemory(Result, LHSTy),
         E->getExprLoc());
       old = Builder.CreateExtractValue(pair, 0);
       success = Builder.CreateExtractValue(pair, 1);

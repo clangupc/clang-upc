@@ -410,7 +410,7 @@ public:
     R.V = vecAddress.getPointer();
     R.VectorIdx = Idx;
     R.Initialize(type, type.getQualifiers(), vecAddress.getAlignment(),
-                 alignSource, Loc);
+                 alignSource, nullptr, Loc);
     return R;
   }
 
@@ -422,7 +422,7 @@ public:
     R.V = vecAddress.getPointer();
     R.VectorElts = Elts;
     R.Initialize(type, type.getQualifiers(), vecAddress.getAlignment(),
-                 alignSource, Loc);
+                 alignSource, nullptr, Loc);
     return R;
   }
 
@@ -441,7 +441,7 @@ public:
     R.LVType = BitField;
     R.V = Addr.getPointer();
     R.BitFieldInfo = &Info;
-    R.Initialize(type, type.getQualifiers(), Addr.getAlignment(), alignSource, Loc);
+    R.Initialize(type, type.getQualifiers(), Addr.getAlignment(), alignSource, nullptr, Loc);
     return R;
   }
 

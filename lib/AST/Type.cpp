@@ -3602,6 +3602,7 @@ bool Type::canHaveNullability() const {
   case Type::ConstantArray:
   case Type::IncompleteArray:
   case Type::VariableArray:
+  case Type::UPCThreadArray:
   case Type::DependentSizedArray:
   case Type::DependentSizedExtVector:
   case Type::Vector:

@@ -5655,6 +5655,7 @@ QualType ASTReader::readTypeRecord(unsigned Index) {
     return Context.getUPCThreadArrayType(ElementType, Size, HasThread,
                                          ASM, IndexTypeQuals);
 
+  }
   case TYPE_PIPE: {
     if (Record.size() != 1) {
       Error("Incorrect encoding of pipe type");

@@ -1418,7 +1418,7 @@ public:
   // Iterators
   child_range children() {
     if (IdExpr) return child_range(&IdExpr, &IdExpr+1);
-    return child_range();
+    return child_range(child_iterator(), child_iterator());
   }
 };
 
@@ -1453,7 +1453,7 @@ public:
   // Iterators
   child_range children() {
     if (IdExpr) return child_range(&IdExpr, &IdExpr+1);
-    return child_range();
+    return child_range(child_iterator(), child_iterator());
   }
 };
 
@@ -1488,7 +1488,7 @@ public:
   // Iterators
   child_range children() {
     if (IdExpr) return child_range(&IdExpr, &IdExpr+1);
-    return child_range();
+    return child_range(child_iterator(), child_iterator());
   }
 };
 
@@ -1513,7 +1513,7 @@ public:
   SourceLocation getLocEnd() const LLVM_READONLY { return FenceLoc; }
 
   // Iterators
-  child_range children() { return child_range(); }
+  child_range children() { return child_range(child_iterator(), child_iterator()); }
 };
 
 class UPCPragmaStmt : public Stmt {
@@ -1541,7 +1541,7 @@ public:
   SourceLocation getLocEnd() const LLVM_READONLY { return PragmaLoc; }
 
   // Iterators
-  child_range children() { return child_range(); }
+  child_range children() { return child_range(child_iterator(), child_iterator()); }
 };
 
 

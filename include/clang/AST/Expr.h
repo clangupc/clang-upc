@@ -1624,7 +1624,7 @@ public:
   static bool classof(const UPCThreadExpr *) { return true; }
 
   // Iterators
-  child_range children() { return child_range(); }
+  child_range children() { return child_range(child_iterator(), child_iterator()); }
 };
 
 class UPCMyThreadExpr : public Expr {
@@ -1651,7 +1651,7 @@ public:
   static bool classof(const UPCMyThreadExpr *) { return true; }
 
   // Iterators
-  child_range children() { return child_range(); }
+  child_range children() { return child_range(child_iterator(), child_iterator()); }
 };
 
 /// ParenExpr - This represents a parethesized expression, e.g. "(1)".  This

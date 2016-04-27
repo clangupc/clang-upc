@@ -54,6 +54,9 @@ struct CodeGenTypeCache {
     llvm::PointerType *Int8PtrTy;
   };
 
+  // shared void*
+  llvm::Type *GenericPtsTy;
+
   /// void** in address space 0
   union {
     llvm::PointerType *VoidPtrPtrTy;

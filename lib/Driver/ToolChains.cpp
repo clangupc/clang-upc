@@ -3826,7 +3826,7 @@ Linux::Linux(const Driver &D, const llvm::Triple &Triple, const ArgList &Args)
       addPathIfExists(D, LibPath, Paths);
   }
 
-  addPathIfExists(getDriver().Dir + "/../lib" + getUPCLibDir(Triple), Paths);
+  addPathIfExists(D, getDriver().Dir + "/../lib" + getUPCLibDir(Triple), Paths);
 
   // Similar to the logic for GCC above, if we are currently running Clang
   // inside of the requested system root, add its parent library path to those

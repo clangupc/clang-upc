@@ -25,8 +25,8 @@ static void getFileAndLine(CodeGenFunction &CGF, SourceLocation Loc,
                            llvm::SmallVectorImpl<llvm::Value*> *Out) {
   PresumedLoc PLoc = CGF.CGM.getContext().getSourceManager().getPresumedLoc(Loc);
   llvm::Constant *File =
-    CGF.CGM.GetAddrOfConstantCString(PLoc.isValid()? PLoc.getFilename() : "(unknown)");
-  Out->push_back(CGF.Builder.CreateConstInBoundsGEP2_32(File, 0, 0));
+    CGF.CGM.GetAddrOfConstantCString(PLoc.isValid()? PLoc.getFilename() : "(unknown)").getPointer();
+  Out->push_back(CGF.Builder.CreateConstInBoundsGEP2_32(nullptr, File, 0, 0));
   Out->push_back(llvm::ConstantInt::get(CGF.IntTy, PLoc.isValid()? PLoc.getLine() : 0));
 }
 
@@ -61,7 +61,8 @@ void CodeGenFunction::EmitUPCBarrierStmt(const UPCBarrierStmt &S) {
   EmitUPCBarrier(*this, "__upc_barrier", S.getIdValue(), S.getBarrierLoc());
 }
 
-llvm::Constant *CodeGenModule::getUPCFenceVar() {
+ConstantAddress CodeGenModule::getUPCFenceVar() {
+  CharUnits Align = getContext().getTypeAlignInChars(getContext().IntTy);
   if (!UPCFenceVar) {
     llvm::GlobalVariable * GV =
       new llvm::GlobalVariable(getModule(), IntTy, false,
@@ -73,21 +74,22 @@ llvm::Constant *CodeGenModule::getUPCFenceVar() {
       GV->setSection("__DATA,upc_shared");
     else
       GV->setSection("upc_shared");
+    GV->setAlignment(Align.getQuantity());
     UPCFenceVar = GV;
   }
-  return UPCFenceVar;
+  return ConstantAddress(UPCFenceVar, Align);
 }
 
 void CodeGenFunction::EmitUPCFenceStmt(const UPCFenceStmt &S) {
-  llvm::Value *FencePtr = CGM.getUPCFenceVar();
-  CharUnits Align = getContext().getTypeAlignInChars(getContext().IntTy);
-  FencePtr = EmitSharedVarDeclLValue(FencePtr, Align, getContext().IntTy).getAddress();
-  llvm::Value *Val = EmitUPCLoad(FencePtr, /*strict*/true, getContext().IntTy, Align, S.getFenceLoc());
-  EmitUPCStore(Val, FencePtr, /*strict*/true, getContext().IntTy, Align, S.getFenceLoc());
+  Address FencePtr = CGM.getUPCFenceVar();
+  FencePtr = EmitSharedVarDeclLValue(FencePtr, getContext().IntTy).getAddress();
+  llvm::Value *Val = EmitUPCLoad(FencePtr, /*strict*/true, getContext().IntTy, S.getFenceLoc());
+  EmitUPCStore(Val, FencePtr, /*strict*/true, getContext().IntTy, S.getFenceLoc());
 }
 
-llvm::Constant *getUPCForAllDepth(CodeGenModule& CGM) {
-  return CGM.getModule().getOrInsertGlobal("__upc_forall_depth", CGM.IntTy);
+ConstantAddress getUPCForAllDepth(CodeGenModule& CGM) {
+  CharUnits Align = CGM.getContext().getTypeAlignInChars(CGM.getContext().IntTy);
+  return ConstantAddress(CGM.getModule().getOrInsertGlobal("__upc_forall_depth", CGM.IntTy), Align);
 }
 
 namespace {
@@ -109,7 +111,7 @@ void CodeGenFunction::EmitUPCForAllStmt(const UPCForAllStmt &S) {
 
   llvm::Value *Depth = 0;
   if (S.getAfnty()) {
-    llvm::Value *DepthAddr = getUPCForAllDepth(CGM);
+    Address DepthAddr = getUPCForAllDepth(CGM);
     Depth = Builder.CreateLoad(DepthAddr);
     Builder.CreateStore(Builder.CreateNUWAdd(Depth,
                                              llvm::ConstantInt::get(IntTy, 1),

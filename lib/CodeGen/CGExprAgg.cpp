@@ -308,7 +308,7 @@ void AggExprEmitter::EmitCopy(QualType type, const AggValueSlot &dest,
       CGF.getContext().getQualifiedType(UnqualTy, dest.getQualifiers());
     QualType SrcTy =
       CGF.getContext().getQualifiedType(UnqualTy, src.getQualifiers());
-    CGF.EmitUPCAggregateCopy(dest.getAddr(), src.getAddr(),
+    CGF.EmitUPCAggregateCopy(dest.getPointer(), src.getPointer(),
                              DestTy, SrcTy, Loc);
     return;
   }

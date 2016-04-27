@@ -32,7 +32,7 @@ static void EmitDeclInit(CodeGenFunction &CGF, const VarDecl &D,
   QualType type = D.getType();
 
   // Deduce UPC strict or relaxed from context, if needed
-  if (Context.getLangOpts().UPC) {
+  if (CGF.getContext().getLangOpts().UPC) {
       Qualifiers Quals = type.getQualifiers();
       if (Quals.hasShared() && !Quals.hasStrict() && !Quals.hasRelaxed()) {
         if (D.isUPCInitStrict())
@@ -40,13 +40,13 @@ static void EmitDeclInit(CodeGenFunction &CGF, const VarDecl &D,
         else
           Quals.addRelaxed();
 
-        type = Context.getQualifiedType(type.getUnqualifiedType(), Quals);
+        type = CGF.getContext().getQualifiedType(type.getUnqualifiedType(), Quals);
       }
   }
 
   LValue lv;
   if(type.getQualifiers().hasShared())
-    lv = CGF.EmitSharedVarDeclLValue(DeclPtr, alignment, type);
+    lv = CGF.EmitSharedVarDeclLValue(DeclPtr, type);
   else
     lv = CGF.MakeAddrLValue(DeclPtr, type);
 

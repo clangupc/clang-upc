@@ -882,9 +882,9 @@ public:
   llvm::Constant *CreateRuntimeVariable(llvm::Type *Ty,
                                         StringRef Name);
 
-  llvm::Constant *getUPCThreads();
-  llvm::Constant *getUPCMyThread();
-  llvm::Constant *getUPCFenceVar();
+  ConstantAddress getUPCThreads();
+  ConstantAddress getUPCMyThread();
+  ConstantAddress getUPCFenceVar();
 
   ///@name Custom Blocks Runtime Interfaces
   ///@{

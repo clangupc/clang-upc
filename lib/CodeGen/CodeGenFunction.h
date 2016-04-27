@@ -1555,6 +1555,12 @@ public:
                             CGM.getTBAAInfo(T));
   }
 
+  LValue MakeAddrLValue(Address Addr, QualType T,
+                        SourceLocation Loc) {
+    return LValue::MakeAddr(Addr, T, getContext(), AlignmentSource::Type,
+                            CGM.getTBAAInfo(T));
+  }
+
   LValue MakeAddrLValue(llvm::Value *V, QualType T, CharUnits Alignment,
                         AlignmentSource AlignSource = AlignmentSource::Type,
                         SourceLocation Loc = SourceLocation()) {
@@ -1966,10 +1972,14 @@ public:
   llvm::Value *EmitUPCPointerToBoolConversion(llvm::Value *Pointer);
   llvm::Value *EmitUPCPointerToInt(llvm::Value *Pointer, llvm::Type *DestTy);
   llvm::Value *EmitUPCNullPointer(QualType DestTy);
-  llvm::Value *EmitUPCLoad(llvm::Value *Addr, bool isStrict, QualType Ty,
-                           CharUnits Align, SourceLocation Loc);
-  llvm::Value *EmitUPCLoad(llvm::Value *Addr, bool isStrict, llvm::Type *LTy,
-                           CharUnits Align, SourceLocation Loc);
+  llvm::Value *EmitUPCLoad(Address Addr, bool isStrict, QualType Ty,
+                           SourceLocation Loc);
+  llvm::Value *EmitUPCLoad(Address Addr, bool isStrict, llvm::Type *LTy,
+                           SourceLocation Loc);
+  void EmitUPCStore(llvm::Value *Value, Address Addr, bool isStrict,
+                    QualType Ty, SourceLocation Loc);
+  void EmitUPCStore(llvm::Value *Value, Address Addr, bool isStrict,
+                    SourceLocation Loc);
   void EmitUPCStore(llvm::Value *Value, llvm::Value *Addr, bool isStrict,
                     QualType Ty, CharUnits Align, SourceLocation Loc);
   void EmitUPCStore(llvm::Value *Value, llvm::Value *Addr, bool isStrict,
@@ -2585,7 +2595,7 @@ public:
   LValue EmitCallExprLValue(const CallExpr *E);
   // Note: only available for agg return types
   LValue EmitVAArgExprLValue(const VAArgExpr *E);
-  LValue EmitSharedVarDeclLValue(llvm::Value *V, CharUnits Alignment, QualType T);
+  LValue EmitSharedVarDeclLValue(Address Addr, QualType T);
   LValue EmitDeclRefLValue(const DeclRefExpr *E);
   LValue EmitStringLiteralLValue(const StringLiteral *E);
   LValue EmitObjCEncodeExprLValue(const ObjCEncodeExpr *E);

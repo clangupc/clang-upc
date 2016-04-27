@@ -1722,7 +1722,7 @@ Parser::ParseExprAfterUnaryExprOrTypeTrait(const Token &OpTok,
                        tok::kw_alignof, tok::kw__Alignof, tok::kw_vec_step,
                        tok::kw___builtin_omp_required_simd_align,
                        tok::kw_upc_localsizeof, tok::kw_upc_blocksizeof,
-                       toLLkw_upc_elemsizeof) &&
+                       tok::kw_upc_elemsizeof) &&
          "Not a typeof/sizeof/alignof/vec_step expression!");
 
   ExprResult Operand;

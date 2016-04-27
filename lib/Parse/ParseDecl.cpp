@@ -5116,7 +5116,7 @@ void Parser::ParseDeclaratorInternal(Declarator &D,
                                                 DS.getAtomicSpecLoc(),
                                                 DS.getSharedSpecLoc(),
                                                 DS.getRelaxedSpecLoc(),
-                                                DS.getStrictSpecLoc())),
+                                                DS.getStrictSpecLoc()),
                     DS.getAttributes(),
                     SourceLocation());
     else

@@ -7366,9 +7366,9 @@ void darwin::Linker::ConstructJob(Compilation &C, const JobAction &JA,
   }
 
   if (!Args.hasArg(options::OPT_nostdlib, options::OPT_nostartfiles)) {
-    if (D.CCCIsUPC()) {
+    if (getToolChain().getDriver().CCCIsUPC()) {
       const char *upc_crtend = GetUPCEndFile(Args);
-      CmdArgs.push_back(Args.MakeArgString(ToolChain.GetFilePath(upc_crtend)));
+      CmdArgs.push_back(Args.MakeArgString(getToolChain().GetFilePath(upc_crtend)));
     }
     // endfile_spec is empty.
   }
@@ -7739,6 +7739,7 @@ void openbsd::Linker::ConstructJob(Compilation &C, const JobAction &JA,
 #ifdef LIBUPC_ENABLE_OMP_CHECKS
     CmdArgs.push_back("-lpthread");
 #endif
+  }
 
   if (!Args.hasArg(options::OPT_nostdlib, options::OPT_nodefaultlibs)) {
     if (D.CCCIsCXX()) {

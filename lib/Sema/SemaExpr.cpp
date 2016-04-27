@@ -4002,6 +4002,7 @@ Sema::CreateUnaryExprOrTypeTraitExpr(Expr *E, SourceLocation OpLoc,
     case UETT_UPC_LocalSizeOf: kind = 3;
     case UETT_UPC_BlockSizeOf: kind = 4;
     case UETT_UPC_ElemSizeOf: kind = 5;
+    default: llvm_unreachable("Wrong ExprKind.");
     }
     Diag(E->getExprLoc(), diag::err_sizeof_alignof_typeof_bitfield) << kind;
     isInvalid = true;
