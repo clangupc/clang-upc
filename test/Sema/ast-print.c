@@ -51,5 +51,5 @@ struct pair_t {
   int b;
 };
 
-// CHECK: struct pair_t p = {a: 3, .b = 4};
+// CHECK: } p = {a: 3, .b = 4};
 struct pair_t p = {a: 3, .b = 4};

@@ -10,20 +10,20 @@ int f2() __attribute__((no_sanitize(1))); // expected-error{{'no_sanitize' attri
 
 // DUMP-LABEL: FunctionDecl {{.*}} f3
 // DUMP: NoSanitizeAttr {{.*}} address
-// PRINT: int f3() __attribute__((no_sanitize("address")))
+// PRINT: __attribute__((no_sanitize("address")))int f3()
 int f3() __attribute__((no_sanitize("address")));
 
 // DUMP-LABEL: FunctionDecl {{.*}} f4
 // DUMP: NoSanitizeAttr {{.*}} thread
-// PRINT: int f4() {{\[\[}}clang::no_sanitize("thread")]]
+// PRINT: {{\[\[}}clang::no_sanitize("thread")]]int f4()
 [[clang::no_sanitize("thread")]] int f4();
 
 // DUMP-LABEL: FunctionDecl {{.*}} f5
 // DUMP: NoSanitizeAttr {{.*}} address thread
-// PRINT: int f5() __attribute__((no_sanitize("address", "thread")))
+// PRINT: __attribute__((no_sanitize("address", "thread")))int f5()
 int f5() __attribute__((no_sanitize("address", "thread")));
 
 // DUMP-LABEL: FunctionDecl {{.*}} f6
 // DUMP: NoSanitizeAttr {{.*}} unknown
-// PRINT: int f6() __attribute__((no_sanitize("unknown")))
+// PRINT: __attribute__((no_sanitize("unknown")))int f6()
 int f6() __attribute__((no_sanitize("unknown"))); // expected-warning{{unknown sanitizer 'unknown' ignored}}

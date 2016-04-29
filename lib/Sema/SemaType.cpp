@@ -1642,6 +1642,9 @@ static QualType ConvertDeclSpecToType(TypeProcessingState &state) {
               : diag::warn_typecheck_function_qualifiers_unspecified);
       // No diagnostic for 'restrict' or '_Atomic' applied to a
       // function type; we'll diagnose those later, in BuildQualifiedType.
+      if (TypeQuals & DeclSpec::TQ_shared)
+        S.Diag(DS.getSharedSpecLoc(), diag::err_upc_function_shared)
+          << Result << DS.getSourceRange();
     }
 
     // C++11 [dcl.ref]p1:

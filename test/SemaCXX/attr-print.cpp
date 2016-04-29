@@ -26,7 +26,7 @@ int small __attribute__((mode(byte)));
 // CHECK: int v __attribute__((visibility("hidden")));
 int v __attribute__((visibility("hidden")));
 
-// CHECK: char *PR24565() __attribute__((malloc))
+// CHECK: __attribute__((malloc))char *PR24565()
 char *PR24565() __attribute__((__malloc__));
 
 // CHECK: class __attribute__((consumable("unknown"))) AttrTester1
