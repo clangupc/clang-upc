@@ -175,6 +175,10 @@ public:
   /// preserving information like the alignment and address space.
   Address CreateElementBitCast(Address Addr, llvm::Type *Ty,
                                const llvm::Twine &Name = "") {
+    // Handle pointers to shared.
+    if(!Addr.getPointer()->getType()->isPointerTy()) {
+      return Addr;
+    }
     auto PtrTy = Ty->getPointerTo(Addr.getAddressSpace());
     return CreateBitCast(Addr, PtrTy, Name);
   }

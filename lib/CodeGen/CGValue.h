@@ -396,7 +396,8 @@ public:
 
     LValue R;
     R.LVType = Simple;
-    assert(address.getPointer()->getType()->isPointerTy());
+    // Can also be a pointer to shared.
+    //assert(address.getPointer()->getType()->isPointerTy());
     R.V = address.getPointer();
     R.Initialize(type, qs, address.getAlignment(), alignSource, TBAAInfo, Loc);
     return R;

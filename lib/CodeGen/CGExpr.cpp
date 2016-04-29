@@ -778,12 +778,17 @@ EmitComplexPrePostIncDec(const UnaryOperator *E, LValue LV,
 
 void CodeGenModule::EmitExplicitCastExprType(const ExplicitCastExpr *E,
                                              CodeGenFunction *CGF) {
+  EmitExplicitCastExprType(E->getType(), CGF);
+}
+
+void CodeGenModule::EmitExplicitCastExprType(QualType Ty,
+                                             CodeGenFunction *CGF) {
   // Bind VLAs in the cast type.
-  if (CGF && E->getType()->isVariablyModifiedType())
-    CGF->EmitVariablyModifiedType(E->getType());
+  if (CGF && Ty->isVariablyModifiedType())
+    CGF->EmitVariablyModifiedType(Ty);
 
   if (CGDebugInfo *DI = getModuleDebugInfo())
-    DI->EmitExplicitCastType(E->getType());
+    DI->EmitExplicitCastType(Ty);
 }
 
 //===----------------------------------------------------------------------===//
@@ -2682,6 +2687,12 @@ Address CodeGenFunction::EmitArrayToPointerDecay(const Expr *E,
   Address Addr = LV.getAddress();
   if (AlignSource) *AlignSource = LV.getAlignmentSource();
 
+  // Pointers to shared are typeless in llvm and
+  // don't require any casting.
+  if(E->getType().getQualifiers().hasShared()) {
+    return Addr;
+  }
+
   // If the array type was an incomplete type, we need to make sure
   // the decay ends up being the right type.
   llvm::Type *NewTy = ConvertType(E->getType());
@@ -2689,7 +2700,7 @@ Address CodeGenFunction::EmitArrayToPointerDecay(const Expr *E,
 
   // Note that VLA pointers are always decayed, so we don't need to do
   // anything here.
-  if (!E->getType()->isVariableArrayType() && !E->getType().getQualifiers().hasShared()) {
+  if (!E->getType()->isVariableArrayType()) {
     assert(isa<llvm::ArrayType>(Addr.getElementType()) &&
            "Expected pointer to array");
     Addr = Builder.CreateStructGEP(Addr, 0, CharUnits::Zero(), "arraydecay");
@@ -3326,9 +3337,11 @@ LValue CodeGenFunction::EmitLValueForField(LValue base,
   // for both unions and structs.  A union needs a bitcast, a struct element
   // will need a bitcast if the LLVM type laid out doesn't match the desired
   // type.
+  if (!base.isShared()) {
   addr = Builder.CreateElementBitCast(addr,
                                       CGM.getTypes().ConvertTypeForMem(type),
                                       field->getName());
+  }
 
   if (field->hasAttr<AnnotateAttr>())
     addr = EmitFieldAnnotations(field, addr);
@@ -3629,7 +3642,7 @@ LValue CodeGenFunction::EmitCastLValue(const CastExpr *E) {
       Ty = getContext().getPointerType(E->getType());
     }
 
-    CGM.EmitExplicitCastExprType(CE, this);
+    CGM.EmitExplicitCastExprType(E->getType(), this);
     LValue LV = EmitLValue(E->getSubExpr());
     if (LV.isBitField()) {
       // This can only be the qualifier conversion
@@ -3639,7 +3652,7 @@ LValue CodeGenFunction::EmitCastLValue(const CastExpr *E) {
         E->getType(), LV.getAlignmentSource(), LV.getLoc());
     }
     Address V = Builder.CreateBitCast(LV.getAddress(),
-                                      ConvertType(CE->getTypeAsWritten()));
+                                      ConvertType(Ty));
 
     if (SanOpts.has(SanitizerKind::CFIUnrelatedCast))
       EmitVTablePtrCheckForCast(E->getType(), V.getPointer(),

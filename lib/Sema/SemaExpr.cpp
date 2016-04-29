@@ -3998,10 +3998,10 @@ Sema::CreateUnaryExprOrTypeTraitExpr(Expr *E, SourceLocation OpLoc,
   } else if (E->refersToBitField()) {  // C99 6.5.3.4p1.
     int kind;
     switch(ExprKind) {
-    case UETT_SizeOf: kind = 0;
-    case UETT_UPC_LocalSizeOf: kind = 3;
-    case UETT_UPC_BlockSizeOf: kind = 4;
-    case UETT_UPC_ElemSizeOf: kind = 5;
+    case UETT_SizeOf: kind = 0; break;
+    case UETT_UPC_LocalSizeOf: kind = 3; break;
+    case UETT_UPC_BlockSizeOf: kind = 4; break;
+    case UETT_UPC_ElemSizeOf: kind = 5; break;
     default: llvm_unreachable("Wrong ExprKind.");
     }
     Diag(E->getExprLoc(), diag::err_sizeof_alignof_typeof_bitfield) << kind;

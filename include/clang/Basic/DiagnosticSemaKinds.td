@@ -4899,15 +4899,15 @@ def err_atomic_specifier_bad_type : Error<
 
 // Expressions.
 def ext_sizeof_alignof_function_type : Extension<
-  "invalid application of '%select{sizeof|alignof|vec_step|"
+  "invalid application of '%select{sizeof|alignof|vec_step|__builtin_omp_required_simd_align|"
   "upc_localsizeof|upc_blocksizeof|upc_elemsizeof}0' to a function type">,
   InGroup<PointerArith>;
 def ext_sizeof_alignof_void_type : Extension<
-  "invalid application of '%select{sizeof|alignof|vec_step|"
+  "invalid application of '%select{sizeof|alignof|vec_step|__builtin_omp_required_simd_align|"
   "upc_localsizeof|upc_blocksizeof|upc_elemsizeof}0' to a void "
   "type">, InGroup<PointerArith>;
 def err_opencl_sizeof_alignof_type : Error<
-  "invalid application of '%select{sizeof|alignof|vec_step|__builtin_omp_required_simd_align}0' to a void type">;
+  "invalid application of '%select{sizeof|alignof|vec_step|__builtin_omp_required_simd_align|upc_localsizeof|upc_blocksizeof|upc_elemsizeof}0' to a void type">;
 def err_sizeof_alignof_incomplete_type : Error<
   "invalid application of '%select{sizeof|alignof|vec_step|__builtin_omp_required_simd_align|upc_localsizeof|upc_blocksizeof|upc_elemsizeof}0' to an "
   "incomplete type %1">;
@@ -7728,7 +7728,7 @@ def err_upc_layout_qualifier_on_void : Error<
 def err_upc_reference_type_qualifier_requires_shared : Error<
   "'%1' illegal on shared-unqualified type %0">;
 def err_upc_xsizeof_applied_to_non_shared : Error<
-  "invalid application of 'upc_%select{|||local|block|elem}0sizeof' to a shared-unqualified type">;
+  "invalid application of 'upc_%select{||||local|block|elem}0sizeof' to a shared-unqualified type">;
 def err_upc_barrier_not_int : Error<
   "argument of '%0' has non-integer type %1">;
 
