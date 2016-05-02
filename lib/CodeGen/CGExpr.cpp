@@ -2876,9 +2876,12 @@ LValue CodeGenFunction::EmitArraySubscriptExpr(const ArraySubscriptExpr *E,
       Idx = Builder.CreateNSWMul(Idx, numElements);
     }
 
-    Addr = emitArraySubscriptGEP(*this, Addr, Idx, vla->getElementType(),
-                                 !getLangOpts().isSignedOverflowDefined());
-
+    if (E->getType().getQualifiers().hasShared()) {
+      Addr = Address(EmitUPCPointerArithmetic(Addr.getPointer(), Idx, getContext().getPointerType(vla->getElementType()), IdxTy, false), getArrayElementAlign(Addr.getAlignment(), Idx, getContext().getTypeSizeInChars(vla->getElementType())));
+    } else {
+      Addr = emitArraySubscriptGEP(*this, Addr, Idx, vla->getElementType(),
+                                   !getLangOpts().isSignedOverflowDefined());
+    }
   } else if (const ObjCObjectType *OIT = E->getType()->getAs<ObjCObjectType>()){
     // Indexing over an interface, as in "NSString *P; P[4];"
     CharUnits InterfaceSize = getContext().getTypeSizeInChars(OIT);
