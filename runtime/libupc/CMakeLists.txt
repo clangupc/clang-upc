@@ -1,5 +1,7 @@
 # Silence warning for project()
+if(POLICY CMP0048)
 cmake_policy(SET CMP0048 OLD)
+endif()
 
 project(libupc C)
 cmake_minimum_required(VERSION 2.8)
