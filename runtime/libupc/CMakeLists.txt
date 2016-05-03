@@ -1,8 +1,5 @@
-# See www/CMake.html for instructions on how to build libupc with CMake.
-
-#===============================================================================
-# Setup Project
-#===============================================================================
+# Silence warning for project()
+cmake_policy(SET CMP0048 OLD)
 
 project(libupc C)
 cmake_minimum_required(VERSION 2.8)
