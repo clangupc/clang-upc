@@ -7722,7 +7722,12 @@ void openbsd::Linker::ConstructJob(Compilation &C, const JobAction &JA,
   CmdArgs.push_back(
       Args.MakeArgString("-L/usr/lib/gcc-lib/" + Triple + "/4.2.1"));
 
-  Args.AddAllArgs(CmdArgs, {options::OPT_L, options::OPT_T_Group,
+  Args.AddAllArgs(CmdArgs, options::OPT_L);
+  const ToolChain::path_list Paths = getToolChain().getFilePaths();
+  for (ToolChain::path_list::const_iterator i = Paths.begin(), e = Paths.end();
+       i != e; ++i)
+    CmdArgs.push_back(Args.MakeArgString(StringRef("-L") + *i));
+  Args.AddAllArgs(CmdArgs, {options::OPT_T_Group,
                             options::OPT_e, options::OPT_s, options::OPT_t,
                             options::OPT_Z_Flag, options::OPT_r});
 
