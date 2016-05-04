@@ -7312,6 +7312,22 @@ void darwin::Linker::ConstructJob(Compilation &C, const JobAction &JA,
 
   Args.AddAllArgs(CmdArgs, options::OPT_L);
 
+  const ToolChain::path_list Paths = getToolChain().getFilePaths();
+  for (ToolChain::path_list::const_iterator i = Paths.begin(), e = Paths.end();
+       i != e; ++i)
+    CmdArgs.push_back(Args.MakeArgString(StringRef("-L") + *i));
+
+  {
+    const ToolChain& ToolChain = getToolChain();
+    const Driver &D = ToolChain.getDriver();
+    if (D.CCCIsUPC() && !Args.hasArg(options::OPT_nostdlib)) {
+      CmdArgs.push_back(GetUPCLibOption(Args));
+#ifdef LIBUPC_ENABLE_OMP_CHECKS
+      CmdArgs.push_back("-lpthread");
+#endif
+    }
+  }
+
   AddLinkerInputs(getToolChain(), Inputs, Args, CmdArgs);
   // Build the input file for -filelist (list of linker input files) in case we
   // need it later
