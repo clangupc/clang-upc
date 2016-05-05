@@ -1510,16 +1510,28 @@ bool Generic_GCC::GCCInstallationDetector::getBiarchSibling(Multilib &M) const {
 
   // Solaris.
   static const char *const SolarisSPARCLibDirs[] = {"/gcc"};
-  static const char *const SolarisSPARCTriples[] = {"sparc-sun-solaris2.11",
-                                                    "i386-pc-solaris2.11"};
+  static const char *const SolarisSPARCTriples[] = {"sparc-sun-solaris2.11"};
+
+  static const char *const SolarisX86LibDirs[] = {"/gcc"};
+  static const char *const SolarisX86Triples[] = {"i386-pc-solaris2.11"};
 
   using std::begin;
   using std::end;
 
   if (TargetTriple.getOS() == llvm::Triple::Solaris) {
-    LibDirs.append(begin(SolarisSPARCLibDirs), end(SolarisSPARCLibDirs));
-    TripleAliases.append(begin(SolarisSPARCTriples), end(SolarisSPARCTriples));
-    return;
+    switch(TargetTriple.getArch()) {
+    case llvm::Triple::sparc:
+      LibDirs.append(begin(SolarisSPARCLibDirs), end(SolarisSPARCLibDirs));
+      TripleAliases.append(begin(SolarisSPARCTriples), end(SolarisSPARCTriples));
+      break;
+    case llvm::Triple::x86:
+      LibDirs.append(begin(SolarisX86LibDirs), end(SolarisX86LibDirs));
+      TripleAliases.append(begin(SolarisX86Triples), end(SolarisX86Triples));
+      break;
+    default:
+      break;
+    }
+    goto handle_default_triple;
   }
 
   switch (TargetTriple.getArch()) {
@@ -1636,6 +1648,8 @@ bool Generic_GCC::GCCInstallationDetector::getBiarchSibling(Multilib &M) const {
     // triple.
     break;
   }
+
+ handle_default_triple:
 
   // Always append the drivers target triple to the end, in case it doesn't
   // match any of our aliases.
