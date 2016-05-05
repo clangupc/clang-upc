@@ -2239,6 +2239,20 @@ void Generic_GCC::GCCInstallationDetector::scanLibDirForGCCTripleSolaris(
     GCCInstallPath += "/" + Version.Text;
     GCCParentLibPath = GCCInstallPath + "/../../../../";
 
+    switch (TargetArch.getArch()) {
+    case llvm::Triple::x86:
+    case llvm::Triple::sparc:
+      break;
+    case llvm::Triple::x86_64:
+      GCCInstallPath += "/amd64";
+      break;
+    case llvm::Triple::sparcv9:
+      GCCInstallPath += "/sparcv9";
+      break;
+    default:
+      llvm_unreachable("Unsupported architecture");
+    }
+
     IsValid = true;
   }
 }
