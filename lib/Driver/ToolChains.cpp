@@ -1521,17 +1521,20 @@ bool Generic_GCC::GCCInstallationDetector::getBiarchSibling(Multilib &M) const {
   if (TargetTriple.getOS() == llvm::Triple::Solaris) {
     switch(TargetTriple.getArch()) {
     case llvm::Triple::sparc:
+    case llvm::Triple::sparcv9:
       LibDirs.append(begin(SolarisSPARCLibDirs), end(SolarisSPARCLibDirs));
       TripleAliases.append(begin(SolarisSPARCTriples), end(SolarisSPARCTriples));
       break;
     case llvm::Triple::x86:
+    case llvm::Triple::x86_64:
       LibDirs.append(begin(SolarisX86LibDirs), end(SolarisX86LibDirs));
       TripleAliases.append(begin(SolarisX86Triples), end(SolarisX86Triples));
       break;
     default:
+      llvm_unreachable("Unsupported architecture");
       break;
     }
-    goto handle_default_triple;
+    return;
   }
 
   switch (TargetTriple.getArch()) {
@@ -1648,8 +1651,6 @@ bool Generic_GCC::GCCInstallationDetector::getBiarchSibling(Multilib &M) const {
     // triple.
     break;
   }
-
- handle_default_triple:
 
   // Always append the drivers target triple to the end, in case it doesn't
   // match any of our aliases.
