@@ -2206,9 +2206,6 @@ void Generic_GCC::GCCInstallationDetector::scanLibDirForGCCTripleSolaris(
     StringRef VersionText = llvm::sys::path::filename(LI->getName());
     GCCVersion CandidateVersion = GCCVersion::Parse(VersionText);
 
-    if (CandidateVersion.Major != -1) // Filter obviously bad entries.
-      if (!CandidateGCCInstallPaths.insert(LI->getName()).second)
-        continue; // Saw this path before; no need to look at it again.
     if (CandidateVersion.isOlderThan(4, 1, 1))
       continue;
     if (CandidateVersion <= Version)
@@ -2216,6 +2213,9 @@ void Generic_GCC::GCCInstallationDetector::scanLibDirForGCCTripleSolaris(
 
     GCCInstallPath =
         LibDir + "/" + VersionText.str() + "/lib/gcc/" + CandidateTriple.str();
+    if (CandidateVersion.Major != -1) // Filter obviously bad entries.
+      if (!CandidateGCCInstallPaths.insert(GCCInstallPath).second)
+        continue; // Saw this path before; no need to look at it again.
     if (!D.getVFS().exists(GCCInstallPath))
       continue;
 
