@@ -3367,6 +3367,7 @@ Solaris::Solaris(const Driver &D, const llvm::Triple &Triple,
     addPathIfExists(D, getDriver().Dir, Paths);
 
   addPathIfExists(D, getDriver().SysRoot + getDriver().Dir + "/../lib", Paths);
+  addPathIfExists(D, getDriver().SysRoot + getDriver().Dir + "/../lib" + getUPCLibDir(Triple), Paths);
 
   std::string LibPath = "/usr/lib/";
   switch (Triple.getArch()) {
