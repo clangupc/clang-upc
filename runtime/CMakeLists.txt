@@ -4,7 +4,6 @@ include(ExternalProject)
 
 set(known_subdirs
   "libcxx"
-  "libupc"
   )
 
 foreach (dir ${known_subdirs})
@@ -12,6 +11,11 @@ foreach (dir ${known_subdirs})
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/${dir})
   endif()
 endforeach()
+
+set(ENABLE_CLANG_UPC_RUNTIME TRUE CACHE BOOL "enable UPC runtime library")
+if (ENABLE_CLANG_UPC_RUNTIME)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libupc)
+endif()
 
 function(get_ext_project_build_command out_var target)
   if (CMAKE_GENERATOR MATCHES "Make")
