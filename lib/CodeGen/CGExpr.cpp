@@ -2700,7 +2700,8 @@ Address CodeGenFunction::EmitArrayToPointerDecay(const Expr *E,
 
   // Note that VLA pointers are always decayed, so we don't need to do
   // anything here.
-  if (!E->getType()->isVariableArrayType()) {
+  if (!E->getType()->isVariableArrayType() &&
+      !E->getType()->isUPCThreadArrayType()) {
     assert(isa<llvm::ArrayType>(Addr.getElementType()) &&
            "Expected pointer to array");
     Addr = Builder.CreateStructGEP(Addr, 0, CharUnits::Zero(), "arraydecay");
@@ -2720,7 +2721,8 @@ static const Expr *isSimpleArrayDecayOperand(const Expr *E) {
 
   // If this is a decay from variable width array, bail out.
   const Expr *SubExpr = CE->getSubExpr();
-  if (SubExpr->getType()->isVariableArrayType())
+  if (SubExpr->getType()->isVariableArrayType() ||
+      SubExpr->getType()->isUPCThreadArrayType())
     return nullptr;
 
   // If this is a UPC shared array, bail out.
