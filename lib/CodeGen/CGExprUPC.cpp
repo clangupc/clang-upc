@@ -40,11 +40,11 @@ static void getFileAndLine(CodeGenFunction &CGF, SourceLocation Loc,
   Out->add(RValue::get(Tmp[1]), Ctx.IntTy);
 }
 
-RValue EmitUPCCall(CodeGenFunction &CGF,
+RValue CodeGenFunction::EmitUPCCall(
                    llvm::StringRef Name,
                    QualType ResultTy,
                    const CallArgList& Args) {
-  ASTContext &Context = CGF.CGM.getContext();
+  ASTContext &Context = CGM.getContext();
   llvm::SmallVector<QualType, 5> ArgTypes;
 
   for (CallArgList::const_iterator iter = Args.begin(),
@@ -57,12 +57,12 @@ RValue EmitUPCCall(CodeGenFunction &CGF,
                             ArgTypes,
                             FunctionProtoType::ExtProtoInfo());
     const CGFunctionInfo &Info =
-      CGF.getTypes().arrangeFreeFunctionCall(Args, FuncType->castAs<FunctionType>(), false);
+      getTypes().arrangeFreeFunctionCall(Args, FuncType->castAs<FunctionType>(), false);
     llvm::FunctionType * FTy =
-      cast<llvm::FunctionType>(CGF.ConvertType(FuncType));
-    llvm::Value * Fn = CGF.CGM.CreateRuntimeFunction(FTy, Name);
+      cast<llvm::FunctionType>(ConvertType(FuncType));
+    llvm::Value * Fn = CGM.CreateRuntimeFunction(FTy, Name);
 
-    return CGF.EmitCall(Info, Fn, ReturnValueSlot(), Args);
+    return EmitCall(Info, Fn, ReturnValueSlot(), Args);
 }
 
 llvm::Value *CodeGenFunction::EmitUPCCastSharedToLocal(llvm::Value *Value,
@@ -81,7 +81,7 @@ llvm::Value *CodeGenFunction::EmitUPCCastSharedToLocal(llvm::Value *Value,
     FnName = "__getaddrg";
   }
 
-  RValue Result = EmitUPCCall(*this, FnName, ResultTy, Args);
+  RValue Result = EmitUPCCall(FnName, ResultTy, Args);
 
   return Builder.CreateBitCast(Result.getScalarVal(), ConvertType(DestTy));
 }
@@ -235,7 +235,7 @@ llvm::Value *CodeGenFunction::EmitUPCLoad(Address A,
     } else {
       Name += '2';
     }
-    RValue Result = EmitUPCCall(*this, Name, ResultTy, Args);
+    RValue Result = EmitUPCCall(Name, ResultTy, Args);
     llvm::Value *Value = Result.getScalarVal();
     if (LTy->isPointerTy())
       Value = Builder.CreateIntToPtr(Value, LTy);
@@ -259,7 +259,7 @@ llvm::Value *CodeGenFunction::EmitUPCLoad(Address A,
     } else {
       Name += '3';
     }
-    EmitUPCCall(*this, Name, getContext().VoidTy, Args);
+    EmitUPCCall(Name, getContext().VoidTy, Args);
 
     return Builder.CreateLoad(Mem);
   }
@@ -336,7 +336,7 @@ void CodeGenFunction::EmitUPCStore(llvm::Value *Value,
       Name += '2';
     }
 
-    EmitUPCCall(*this, Name, Context.VoidTy, Args);
+    EmitUPCCall(Name, Context.VoidTy, Args);
   } else {
     Name += "blk";
 
@@ -355,7 +355,7 @@ void CodeGenFunction::EmitUPCStore(llvm::Value *Value,
     } else {
       Name += '3';
     }
-    EmitUPCCall(*this, Name, getContext().VoidTy, Args);
+    EmitUPCCall(Name, getContext().VoidTy, Args);
   }
 }
 
@@ -404,7 +404,7 @@ void CodeGenFunction::EmitUPCAggregateCopy(llvm::Value *Dest, llvm::Value *Src,
   } else {
     Name += '3';
   }
-  EmitUPCCall(*this, Name, Context.VoidTy, Args);
+  EmitUPCCall(Name, Context.VoidTy, Args);
 }
 
 llvm::Value *CodeGenFunction::EmitUPCAtomicCmpXchg(llvm::Value *Addr,

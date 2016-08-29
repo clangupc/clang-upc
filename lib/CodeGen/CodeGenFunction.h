@@ -1966,6 +1966,9 @@ public:
   ComplexPairTy EmitComplexPrePostIncDec(const UnaryOperator *E, LValue LV,
                                          bool isInc, bool isPre);
   
+
+  RValue EmitUPCCall(llvm::StringRef Name, QualType ResultTy,
+                     const CallArgList& Args);
   llvm::Value *EmitUPCCastSharedToLocal(llvm::Value *Value, QualType DestTy,
                                         SourceLocation Loc);
   llvm::Value *EmitUPCBitCastZeroPhase(llvm::Value *Value, QualType DestTy);

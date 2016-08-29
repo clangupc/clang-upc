@@ -30,23 +30,32 @@ static void getFileAndLine(CodeGenFunction &CGF, SourceLocation Loc,
   Out->push_back(llvm::ConstantInt::get(CGF.IntTy, PLoc.isValid()? PLoc.getLine() : 0));
 }
 
+static void getFileAndLine(CodeGenFunction &CGF, SourceLocation Loc,
+                           CallArgList *Out)
+{
+  ASTContext &Ctx = CGF.CGM.getContext();
+  llvm::SmallVector<llvm::Value *, 2> Tmp;
+  getFileAndLine(CGF, Loc, &Tmp);
+  Out->add(RValue::get(Tmp[0]), Ctx.getPointerType(Ctx.getConstType(Ctx.CharTy)));
+  Out->add(RValue::get(Tmp[1]), Ctx.IntTy);
+}
+
 static void EmitUPCBarrier(CodeGenFunction& CGF, StringRef Name,
                            const Expr *E, SourceLocation Loc) {
-  llvm::SmallVector<llvm::Value*, 3> Args;
-  llvm::SmallVector<llvm::Type*, 3> ArgTypes;
+  ASTContext &Context = CGF.CGM.getContext();
+  llvm::SmallString<16> N(Name);
+  CallArgList Args;
+
   llvm::Value *Id = E ? CGF.EmitScalarExpr(E) :
     llvm::ConstantInt::get(CGF.IntTy, 0x80000000);
-  llvm::SmallString<16> N(Name);
-  Args.push_back(Id);
-  ArgTypes.push_back(CGF.IntTy);
+  Args.add(RValue::get(Id), Context.IntTy);
+
   if (CGF.CGM.getCodeGenOpts().UPCDebug) {
     getFileAndLine(CGF, Loc, &Args);
-    ArgTypes.push_back(CGF.Int8PtrTy);
-    ArgTypes.push_back(CGF.IntTy);
     N += 'g';
   }
-  llvm::FunctionType *FTy = llvm::FunctionType::get(CGF.VoidTy, ArgTypes, false);
-  CGF.EmitCallOrInvoke(CGF.CGM.CreateRuntimeFunction(FTy, N), Args);
+
+  CGF.EmitUPCCall(N, Context.VoidTy, Args);
 }
 
 void CodeGenFunction::EmitUPCNotifyStmt(const UPCNotifyStmt &S) {
