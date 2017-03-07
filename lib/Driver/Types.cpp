@@ -208,6 +208,7 @@ types::ID types::lookupTypeForExtension(const char *Ext) {
            .Case("gch", TY_PCH)
            .Case("upc", TY_UPC)
            .Case("upci", TY_PP_UPC)
+           .Case("rs", TY_RenderScript)
            .Default(TY_INVALID);
 }
 
@@ -236,8 +237,7 @@ void types::getCompilationPhases(ID Id, llvm::SmallVectorImpl<phases::ID> &P) {
         P.push_back(phases::Compile);
         P.push_back(phases::Backend);
       }
-      if (Id != TY_CUDA_DEVICE)
-        P.push_back(phases::Assemble);
+      P.push_back(phases::Assemble);
     }
   }
 
@@ -246,7 +246,6 @@ void types::getCompilationPhases(ID Id, llvm::SmallVectorImpl<phases::ID> &P) {
   }
   assert(0 < P.size() && "Not enough phases in list");
   assert(P.size() <= phases::MaxNumberOfPhases && "Too many phases in list");
-  return;
 }
 
 ID types::lookupCXXTypeForCType(ID Id) {
