@@ -1680,7 +1680,7 @@ void Qualifiers::print(raw_ostream &OS, const PrintingPolicy& Policy,
     OS << "shared";
     if (hasLayoutQualifier()) {
       OS << " [";
-      OS << llvm::utostr_32(getLayoutQualifier());
+      OS << llvm::utostr(getLayoutQualifier());
       OS << "]";
     }
     if (hasLayoutQualifierStar()) {

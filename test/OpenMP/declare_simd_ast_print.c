@@ -16,6 +16,6 @@ void add_1(float *d, int s1, float *s2, double b[]) __attribute__((cold));
 // CHECK-NEXT: #pragma omp declare simd inbranch uniform(d) linear(val(s1): 32) linear(val(s2): 32)
 // CHECK-NEXT: #pragma omp declare simd simdlen(32) aligned(d) aligned(b)
 // CHECK-NEXT: #pragma omp declare simd aligned(b: 64)
-// CHECK-NEXT: void add_1(float *d, int s1, float *s2, double b[]) __attribute__((cold))
+// CHECK-NEXT: __attribute__((cold))void add_1(float *d, int s1, float *s2, double b[])
 
 #endif

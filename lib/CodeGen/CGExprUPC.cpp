@@ -211,7 +211,7 @@ llvm::Value *CodeGenFunction::EmitUPCLoad(Address A,
     llvm::Value *InternalAddr = ConvertPTStoLLVMPtr(*this, Addr, LTy);
     llvm::LoadInst * Result = Builder.CreateLoad(Address(InternalAddr, Align));
     if(isStrict) {
-      Result->setOrdering(llvm::SequentiallyConsistent);
+      Result->setOrdering(llvm::AtomicOrdering::SequentiallyConsistent);
     }
     return Result;
   }
@@ -302,7 +302,7 @@ void CodeGenFunction::EmitUPCStore(llvm::Value *Value,
     llvm::Value *InternalAddr = ConvertPTStoLLVMPtr(*this, Addr, Value->getType());
     llvm::StoreInst * Result = Builder.CreateStore(Value, Address(InternalAddr, Align));
     if(isStrict) {
-      Result->setOrdering(llvm::SequentiallyConsistent);
+      Result->setOrdering(llvm::AtomicOrdering::SequentiallyConsistent);
     }
     return;
   }

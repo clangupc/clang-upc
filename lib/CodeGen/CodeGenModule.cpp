@@ -4010,7 +4010,7 @@ void CodeGenModule::EmitTopLevelDecl(Decl *D) {
 
   case Decl::OMPDeclareReduction:
     EmitOMPDeclareReduction(cast<OMPDeclareReductionDecl>(D));
-    break
+    break;
 
   // Decl is place-holder for a PUPC pragma - no codegen
   case Decl::PragmaPupc:

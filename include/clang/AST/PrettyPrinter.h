@@ -55,7 +55,7 @@ struct PrintingPolicy {
       TerseOutput(false), PolishForDeclaration(false),
       Half(LO.Half), MSWChar(LO.MicrosoftExt && !LO.WChar),
       IncludeNewlines(true), MSVCFormatting(false),
-      IncludeTagDefinition(false), IncludeLineDirectives(false),
+      IncludeLineDirectives(false),
       SM(0), Helper(0) { }
 
   /// \brief Adjust this printing policy for cases where it's known that
@@ -206,8 +206,6 @@ struct PrintingPolicy {
   /// prints anonymous namespaces as `anonymous namespace' and does not insert
   /// spaces after template arguments.
   bool MSVCFormatting : 1;
-
-  bool IncludeTagDefinition : 1;
 
   // Print #line directives.  Requires SM to be set.
   bool IncludeLineDirectives : 1;

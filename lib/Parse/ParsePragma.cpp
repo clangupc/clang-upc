@@ -1166,14 +1166,14 @@ void PragmaUPCHandler::HandlePragma(Preprocessor &PP,
       sizeof(Sema::PragmaUPCKind), llvm::alignOf<Sema::PragmaUPCKind>());
   new (Info) Sema::PragmaUPCKind(Kind);
 
-  Token *Toks = new Token[1];
+  MutableArrayRef<Token> Toks(PP.getPreprocessorAllocator().Allocate<Token>(1),
+                              1);
   Toks[0].startToken();
   Toks[0].setKind(tok::annot_pragma_upc);
   Toks[0].setLocation(UPCLoc);
   Toks[0].setAnnotationValue(
                           const_cast<void*>(static_cast<const void*>(Info)));
-  PP.EnterTokenStream(Toks, 1, /*DisableMacroExpansion=*/true,
-                      /*OwnsTokens=*/true);
+  PP.EnterTokenStream(Toks, /*DisableMacroExpansion=*/true);
 }
 
 void PragmaPUPCHandler::HandlePragma(Preprocessor &PP, 
@@ -1214,14 +1214,14 @@ void PragmaPUPCHandler::HandlePragma(Preprocessor &PP,
       sizeof(Sema::PragmaPUPCKind), llvm::alignOf<Sema::PragmaPUPCKind>());
   new (Info) Sema::PragmaPUPCKind(Kind);
 
-  Token *Toks = new Token[1];
+  MutableArrayRef<Token> Toks(PP.getPreprocessorAllocator().Allocate<Token>(1),
+                              1);
   Toks[0].startToken();
   Toks[0].setKind(tok::annot_pragma_pupc);
   Toks[0].setLocation(PUPCLoc);
   Toks[0].setAnnotationValue(
                           const_cast<void*>(static_cast<const void*>(Info)));
-  PP.EnterTokenStream(Toks, 1, /*DisableMacroExpansion=*/true,
-                      /*OwnsTokens=*/true);
+  PP.EnterTokenStream(Toks, /*DisableMacroExpansion=*/true);
 }
 
 // #pragma ms_struct on

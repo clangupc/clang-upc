@@ -1315,12 +1315,12 @@ public:
   /// By default, performs semantic analysis to build the new statement.
   /// Subclasses may override this routine to provide different behavior.
   StmtResult RebuildUPCForAllStmt(SourceLocation ForLoc, SourceLocation LParenLoc,
-                                  Stmt *Init, Sema::FullExprArg Cond, 
-                                  VarDecl *CondVar, Sema::FullExprArg Inc,
+                                  Stmt *Init, Sema::ConditionResult Cond, 
+                                  Sema::FullExprArg Inc,
                                   Sema::FullExprArg Afnty,
                                   SourceLocation RParenLoc, Stmt *Body) {
     return getSema().ActOnUPCForAllStmt(ForLoc, LParenLoc, Init, Cond, 
-                                        CondVar, Inc, Afnty, RParenLoc, Body);
+                                        Inc, Afnty, RParenLoc, Body);
   }
 
   /// \brief Build a new declaration statement.
@@ -6669,35 +6669,10 @@ TreeTransform<Derived>::TransformUPCForAllStmt(UPCForAllStmt *S) {
     return StmtError();
 
   // Transform the condition
-  ExprResult Cond;
-  VarDecl *ConditionVar = 0;
-  if (S->getConditionVariable()) {
-    ConditionVar 
-      = cast_or_null<VarDecl>(
-                   getDerived().TransformDefinition(
-                                      S->getConditionVariable()->getLocation(),
-                                                    S->getConditionVariable()));
-    if (!ConditionVar)
-      return StmtError();
-  } else {
-    Cond = getDerived().TransformExpr(S->getCond());
-    
-    if (Cond.isInvalid())
-      return StmtError();
-
-    if (S->getCond()) {
-      // Convert the condition to a boolean value.
-      ExprResult CondE = getSema().ActOnBooleanCondition(0, S->getForLoc(), 
-                                                         Cond.get());
-      if (CondE.isInvalid())
-        return StmtError();
-
-      Cond = CondE.get();
-    }
-  }
-
-  Sema::FullExprArg FullCond(getSema().MakeFullExpr(Cond.get()));  
-  if (!S->getConditionVariable() && S->getCond() && !FullCond.get())
+  Sema::ConditionResult Cond = getDerived().TransformCondition(
+      S->getForLoc(), S->getConditionVariable(), S->getCond(),
+      Sema::ConditionKind::Boolean);
+  if (Cond.isInvalid())
     return StmtError();
 
   // Transform the increment
@@ -6725,14 +6700,14 @@ TreeTransform<Derived>::TransformUPCForAllStmt(UPCForAllStmt *S) {
 
   if (!getDerived().AlwaysRebuild() &&
       Init.get() == S->getInit() &&
-      FullCond.get() == S->getCond() &&
+      Cond.get() == std::make_pair(S->getConditionVariable(),S->getCond()) &&
       Inc.get() == S->getInc() &&
       Afnty.get() == S->getAfnty() &&
       Body.get() == S->getBody())
     return S;
 
   return getDerived().RebuildUPCForAllStmt(S->getForLoc(), S->getLParenLoc(),
-                                           Init.get(), FullCond, ConditionVar,
+                                           Init.get(), Cond,
                                            FullInc, FullAfnty, S->getRParenLoc(), Body.get());
 }
 

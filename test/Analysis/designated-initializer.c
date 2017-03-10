@@ -31,7 +31,7 @@ void test() {
 // CHECK:  11: struct LUQ var = {getUQ(), .uq.q.a = 100};
 // CHECK:  12: 1
 // CHECK:  13: 2
-// CHECK:  14: /*implicit*/0
+// CHECK:  14: 0
 // CHECK:  15: {[B1.12], [B1.13]}
 // CHECK:  18: /*no init*/
 // CHECK:  19: /*no init*/

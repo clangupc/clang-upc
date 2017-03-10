@@ -14,7 +14,7 @@ void add_1(float *d) __attribute__((cold));
 // CHECK: #pragma omp declare simd notinbranch
 // CHECK-NEXT: #pragma omp declare simd inbranch simdlen(32)
 // CHECK-NEXT: #pragma omp declare simd linear(val(d): 8)
-// CHECK-NEXT: void add_1(float *d) __attribute__((cold));
+// CHECK-NEXT: __attribute__((cold))void add_1(float *d);
 //
 
 #pragma omp declare simd aligned(hp, hp2)
@@ -49,7 +49,7 @@ void h(int *hp, int *hp2, int *hq, int *lin)
 
 class VV {
   // CHECK: #pragma omp declare simd uniform(this, a) linear(val(b): a)
-  // CHECK-NEXT: int add(int a, int b) __attribute__((cold))    {
+  // CHECK-NEXT: __attribute__((cold))int add(int a, int b)    {
   // CHECK-NEXT: return a + b;
   // CHECK-NEXT: }
   #pragma omp declare simd uniform(this, a) linear(val(b): a)

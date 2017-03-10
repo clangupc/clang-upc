@@ -223,49 +223,49 @@ void ASTStmtWriter::VisitReturnStmt(ReturnStmt *S) {
 
 void ASTStmtWriter::VisitUPCNotifyStmt(UPCNotifyStmt *S) {
   VisitStmt(S);
-  Writer.AddStmt(S->getIdValue());
-  Writer.AddSourceLocation(S->getNotifyLoc(), Record);
+  Record.AddStmt(S->getIdValue());
+  Record.AddSourceLocation(S->getNotifyLoc());
   Code = serialization::STMT_UPC_NOTIFY;
 }
 
 void ASTStmtWriter::VisitUPCWaitStmt(UPCWaitStmt *S) {
   VisitStmt(S);
-  Writer.AddStmt(S->getIdValue());
-  Writer.AddSourceLocation(S->getWaitLoc(), Record);
+  Record.AddStmt(S->getIdValue());
+  Record.AddSourceLocation(S->getWaitLoc());
   Code = serialization::STMT_UPC_NOTIFY;
 }
 
 void ASTStmtWriter::VisitUPCBarrierStmt(UPCBarrierStmt *S) {
   VisitStmt(S);
-  Writer.AddStmt(S->getIdValue());
-  Writer.AddSourceLocation(S->getBarrierLoc(), Record);
+  Record.AddStmt(S->getIdValue());
+  Record.AddSourceLocation(S->getBarrierLoc());
   Code = serialization::STMT_UPC_NOTIFY;
 }
 
 void ASTStmtWriter::VisitUPCFenceStmt(UPCFenceStmt *S) {
   VisitStmt(S);
-  Writer.AddSourceLocation(S->getFenceLoc(), Record);
+  Record.AddSourceLocation(S->getFenceLoc());
   Code = serialization::STMT_UPC_NOTIFY;
 }
 
 void ASTStmtWriter::VisitUPCPragmaStmt(UPCPragmaStmt *S) {
   VisitStmt(S);
   Record.push_back(S->getStrict()? 1 : 0);
-  Writer.AddSourceLocation(S->getPragmaLoc(), Record);
+  Record.AddSourceLocation(S->getPragmaLoc());
   Code = serialization::STMT_UPC_PRAGMA;
 }
 
 void ASTStmtWriter::VisitUPCForAllStmt(UPCForAllStmt *S) {
   VisitStmt(S);
-  Writer.AddStmt(S->getInit());
-  Writer.AddStmt(S->getCond());
-  Writer.AddDeclRef(S->getConditionVariable(), Record);
-  Writer.AddStmt(S->getInc());
-  Writer.AddStmt(S->getAfnty());
-  Writer.AddStmt(S->getBody());
-  Writer.AddSourceLocation(S->getForLoc(), Record);
-  Writer.AddSourceLocation(S->getLParenLoc(), Record);
-  Writer.AddSourceLocation(S->getRParenLoc(), Record);
+  Record.AddStmt(S->getInit());
+  Record.AddStmt(S->getCond());
+  Record.AddDeclRef(S->getConditionVariable());
+  Record.AddStmt(S->getInc());
+  Record.AddStmt(S->getAfnty());
+  Record.AddStmt(S->getBody());
+  Record.AddSourceLocation(S->getForLoc());
+  Record.AddSourceLocation(S->getLParenLoc());
+  Record.AddSourceLocation(S->getRParenLoc());
   Code = serialization::STMT_UPC_FORALL;
 }
 
@@ -512,13 +512,13 @@ void ASTStmtWriter::VisitCharacterLiteral(CharacterLiteral *E) {
 
 void ASTStmtWriter::VisitUPCThreadExpr(UPCThreadExpr *E) {
   VisitExpr(E);
-  Writer.AddSourceLocation(E->getLocation(), Record);
+  Record.AddSourceLocation(E->getLocation());
   Code = serialization::EXPR_UPC_THREAD;
 }
 
 void ASTStmtWriter::VisitUPCMyThreadExpr(UPCMyThreadExpr *E) {
   VisitExpr(E);
-  Writer.AddSourceLocation(E->getLocation(), Record);
+  Record.AddSourceLocation(E->getLocation());
   Code = serialization::EXPR_UPC_MYTHREAD;
 }
 

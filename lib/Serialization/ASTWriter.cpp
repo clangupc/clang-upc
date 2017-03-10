@@ -104,7 +104,7 @@ namespace clang {
       if (T.hasLocalNonFastQualifiers()) {
         Qualifiers Qs = T.getLocalQualifiers();
         Record.AddTypeRef(T.getLocalUnqualifiedType());
-        Record.push_back(Qs.getAsOpaqueValue());
+        Qs.toOpaqueSequence(Record);
         Code = TYPE_EXT_QUAL;
         AbbrevToUse = Writer.TypeExtQualAbbrev;
       } else {
@@ -190,7 +190,7 @@ void ASTTypeWriter::VisitConstantArrayType(const ConstantArrayType *T) {
 
 void ASTTypeWriter::VisitUPCThreadArrayType(const UPCThreadArrayType *T) {
   VisitArrayType(T);
-  Writer.AddAPInt(T->getSize(), Record);
+  Record.AddAPInt(T->getSize());
   Record.push_back(T->getThread()? 1 : 0);
   Code = TYPE_UPC_THREAD_ARRAY;
 }

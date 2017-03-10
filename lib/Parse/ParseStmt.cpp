@@ -1857,7 +1857,8 @@ StmtResult Parser::ParseUPCForAllStatement(SourceLocation *TrailingElseLoc) {
     return StmtError();
   }
 
-  bool C99orCXXorObjC = getLangOpts().C99 || getLangOpts().CPlusPlus || getLangOpts().ObjC1;
+  bool C99orCXXorObjC = getLangOpts().C99 || getLangOpts().CPlusPlus ||
+    getLangOpts().ObjC1;
 
   // C99 6.8.5p5 - In C99, the for statement is a block.  This is not
   // the case for C90.  Start the loop scope.
@@ -1889,13 +1890,11 @@ StmtResult Parser::ParseUPCForAllStatement(SourceLocation *TrailingElseLoc) {
   ExprResult Value;
 
   StmtResult FirstPart;
-  bool SecondPartIsInvalid = false;
-  FullExprArg SecondPart(Actions);
+  Sema::ConditionResult SecondPart;
   ExprResult Collection;
   ForRangeInit ForRangeInit;
   FullExprArg ThirdPart(Actions);
   FullExprArg FourthPart(Actions);
-  Decl *SecondVar = 0;
 
   if (Tok.is(tok::code_completion)) {
     Actions.CodeCompleteOrdinaryName(getCurScope(),
@@ -1905,8 +1904,12 @@ StmtResult Parser::ParseUPCForAllStatement(SourceLocation *TrailingElseLoc) {
     return StmtError();
   }
 
+  ParsedAttributesWithRange attrs(AttrFactory);
+  MaybeParseCXX11Attributes(attrs);
+
   // Parse the first part of the for specifier.
   if (Tok.is(tok::semi)) {  // for (;
+    ProhibitAttributes(attrs);
     // no first part, eat the ';'.
     ConsumeToken();
   } else if (isForInitDeclaration()) {  // for (int X = 4;
@@ -1914,21 +1917,21 @@ StmtResult Parser::ParseUPCForAllStatement(SourceLocation *TrailingElseLoc) {
     if (!C99orCXXorObjC)   // Use of C99-style for loops in C90 mode?
       Diag(Tok, diag::ext_c99_variable_decl_in_for_loop);
 
-    ParsedAttributesWithRange attrs(AttrFactory);
-    MaybeParseCXX11Attributes(attrs);
+    ColonProtectionRAIIObject ColonProtection(*this, false);
 
     SourceLocation DeclStart = Tok.getLocation(), DeclEnd;
-    DeclGroupPtrTy DG = ParseSimpleDeclaration(Declarator::ForContext,
-                                               DeclEnd, attrs, false, nullptr);
+    DeclGroupPtrTy DG = ParseSimpleDeclaration(
+        Declarator::ForContext, DeclEnd, attrs, false,
+        nullptr);
     FirstPart = Actions.ActOnDeclStmt(DG, DeclStart, Tok.getLocation());
-
     if (Tok.is(tok::semi)) {  // for (int x = 4;
       ConsumeToken();
     } else {
       Diag(Tok, diag::err_expected_semi_for);
     }
   } else {
-    Value = ParseExpression();
+    ProhibitAttributes(attrs);
+    Value = Actions.CorrectDelayedTyposInExpr(ParseExpression());
 
     // Turn the expression into a stmt.
     if (!Value.isInvalid()) {
@@ -1949,29 +1952,30 @@ StmtResult Parser::ParseUPCForAllStatement(SourceLocation *TrailingElseLoc) {
     }
   }
 
-  assert(!SecondPart.get() && "Shouldn't have a second expression yet.");
   // Parse the second part of the for specifier.
   getCurScope()->AddFlags(Scope::BreakScope | Scope::ContinueScope);
+  // Parse the second part of the for specifier.
   if (Tok.is(tok::semi)) {  // for (...;;
     // no second part.
   } else if (Tok.is(tok::r_paren)) {
     // missing both semicolons.
   } else {
-    ExprResult Second;
     if (getLangOpts().CPlusPlus)
-      ParseCXXCondition(Second, SecondVar, ForLoc, true);
+      SecondPart =
+        ParseCXXCondition(nullptr, ForLoc, Sema::ConditionKind::Boolean);
     else {
-      Second = ParseExpression();
-      if (!Second.isInvalid())
-        Second = Actions.ActOnBooleanCondition(getCurScope(), ForLoc,
-                                               Second.get());
+      ExprResult SecondExpr = ParseExpression();
+      if (SecondExpr.isInvalid())
+        SecondPart = Sema::ConditionError();
+      else
+        SecondPart =
+          Actions.ActOnCondition(getCurScope(), ForLoc, SecondExpr.get(),
+                                 Sema::ConditionKind::Boolean);
     }
-    SecondPartIsInvalid = Second.isInvalid();
-    SecondPart = Actions.MakeFullExpr(Second.get());
   }
 
   if (Tok.isNot(tok::semi)) {
-    if (!SecondPartIsInvalid || SecondVar)
+    if (!SecondPart.isInvalid())
       Diag(Tok, diag::err_expected_semi_for);
     else
       // Skip until semicolon or rparen, don't consume it.
@@ -1983,13 +1987,11 @@ StmtResult Parser::ParseUPCForAllStatement(SourceLocation *TrailingElseLoc) {
   }
 
   // Parse the third part of the for specifier.
-  if (Tok.is(tok::semi)) {
-    // no third part
-  } else if (Tok.is(tok::r_paren)) {
-    // missing both semicolons
-  } else {
+  if (Tok.isNot(tok::r_paren) && Tok.isNot(tok::semi)) {   // for (...;...;)
     ExprResult Third = ParseExpression();
-    ThirdPart = Actions.MakeFullExpr(Third.get());
+    // FIXME: The C++11 standard doesn't actually say that this is a
+    // discarded-value expression, but it clearly should be.
+    ThirdPart = Actions.MakeFullDiscardedValueExpr(Third.get());
   }
 
   if (Tok.is(tok::semi)) {
@@ -2009,7 +2011,13 @@ StmtResult Parser::ParseUPCForAllStatement(SourceLocation *TrailingElseLoc) {
   // Match the ')'.
   T.consumeClose();
 
-  // C99 6.8.5p5 - In C99, the body of the if statement is a scope, even if
+  // In OpenMP loop region loop control variable must be captured and be
+  // private. Perform analysis of first part (if any).
+  if (getLangOpts().OpenMP && FirstPart.isUsable()) {
+    Actions.ActOnOpenMPLoopInitialization(ForLoc, FirstPart.get());
+  }
+
+  // C99 6.8.5p5 - In C99, the body of the for statement is a scope, even if
   // there is no compound stmt.  C90 does not have this clause.  We only do this
   // if the body isn't a compound statement to avoid push/pop in common cases.
   //
@@ -2020,8 +2028,15 @@ StmtResult Parser::ParseUPCForAllStatement(SourceLocation *TrailingElseLoc) {
   // See comments in ParseIfStatement for why we create a scope for
   // for-init-statement/condition and a new scope for substatement in C++.
   //
-  ParseScope InnerScope(this, Scope::DeclScope,
-                        C99orCXXorObjC && Tok.isNot(tok::l_brace));
+  ParseScope InnerScope(this, Scope::DeclScope, C99orCXXorObjC,
+                        Tok.is(tok::l_brace));
+
+  // The body of the for loop has the same local mangling number as the
+  // for-init-statement.
+  // It will only be incremented if the body contains other things that would
+  // normally increment the mangling number (like a compound statement).
+  if (C99orCXXorObjC)
+    getCurScope()->decrementMSManglingNumber();
 
   // Read the body statement.
   StmtResult Body(ParseStatement(TrailingElseLoc));
@@ -2036,7 +2051,7 @@ StmtResult Parser::ParseUPCForAllStatement(SourceLocation *TrailingElseLoc) {
     return StmtError();
 
   return Actions.ActOnUPCForAllStmt(ForLoc, T.getOpenLocation(), FirstPart.get(),
-                                    SecondPart, SecondVar, ThirdPart, FourthPart,
+                                    SecondPart, ThirdPart, FourthPart,
                                     T.getCloseLocation(), Body.get());
 }
 

@@ -489,7 +489,7 @@ void JumpScopeChecker::BuildScopeInformation(Stmt *S,
                                diag::warn_upc_enter_upc_forall,
                                diag::warn_upc_exits_upc_forall,
                                FS->getSourceRange().getBegin()));
-    BuildScopeInformation(FS->getSubStmt(), NewParentScope);
+    BuildScopeInformation(FS->getBody(), NewParentScope);
     return;
   }
 

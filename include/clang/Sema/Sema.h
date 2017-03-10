@@ -3437,8 +3437,8 @@ public:
                           Stmt *Body);
   StmtResult ActOnUPCForAllStmt(SourceLocation ForLoc,
                                 SourceLocation LParenLoc,
-                                Stmt *First, FullExprArg Second,
-                                Decl *SecondVar,
+                                Stmt *First,
+                                ConditionResult Second,
                                 FullExprArg Third,
                                 FullExprArg Fourth,
                                 SourceLocation RParenLoc,

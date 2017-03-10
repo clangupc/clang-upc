@@ -642,7 +642,7 @@ bool EmitAssemblyHelper::AddEmitPasses(legacy::PassManager &CodeGenPasses,
     case Backend_EmitBC:
       break;
     default:
-      PM->add(llvm::createLowerUPCPointersPass());
+      CodeGenPasses.add(llvm::createLowerUPCPointersPass());
     }
   }
 

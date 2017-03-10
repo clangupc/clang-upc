@@ -616,15 +616,15 @@ private:
 
   // bits:     |012|3|4 .. 5|6  ..  8|  9   |  10  |  11   |12..13|41  ...   63|
   //           |CRV|U|GCAttr|Lifetime|Shared|Strict|Relaxed|LQType|AddressSpace|
-  uint32_t Mask;
+  uint64_t Mask;
   uint32_t LayoutQualifier;
 
-  static const uint32_t UMask = 0x8;
-  static const uint32_t UShift = 3;
-  static const uint32_t GCAttrMask = 0x30;
-  static const uint32_t GCAttrShift = 4;
-  static const uint32_t LifetimeMask = 0x1C0;
-  static const uint32_t LifetimeShift = 6;
+  static const uint64_t UMask = 0x8;
+  static const uint64_t UShift = 3;
+  static const uint64_t GCAttrMask = 0x30;
+  static const uint64_t GCAttrShift = 4;
+  static const uint64_t LifetimeMask = 0x1C0;
+  static const uint64_t LifetimeShift = 6;
   static const uint64_t LQMask = 0x3000;
   static const uint64_t LQShift = 12;
   static const uint64_t AddressSpaceMask = ~(((uint64_t)1 << 41) - 1);

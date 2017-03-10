@@ -1702,7 +1702,7 @@ StmtResult Sema::ActOnForStmt(SourceLocation ForLoc, SourceLocation LParenLoc,
 
 StmtResult
 Sema::ActOnUPCForAllStmt(SourceLocation ForLoc, SourceLocation LParenLoc,
-                         Stmt *First, FullExprArg second, Decl *secondVar,
+                         Stmt *First, ConditionResult Second,
                          FullExprArg third, FullExprArg fourth,
                          SourceLocation RParenLoc, Stmt *Body) {
   if (!getLangOpts().CPlusPlus) {
@@ -1722,14 +1722,18 @@ Sema::ActOnUPCForAllStmt(SourceLocation ForLoc, SourceLocation LParenLoc,
     }
   }
 
-  ExprResult SecondResult(second.release());
-  VarDecl *ConditionVar = 0;
-  if (secondVar) {
-    ConditionVar = cast<VarDecl>(secondVar);
-    SecondResult = CheckConditionVariable(ConditionVar, ForLoc, true);
-    if (SecondResult.isInvalid())
-      return StmtError();
-  }
+  CheckBreakContinueBinding(Second.get().second);
+  CheckBreakContinueBinding(third.get());
+
+  if (!Second.get().first)
+    CheckForLoopConditionalStatement(*this, Second.get().second, third.get(),
+                                     Body);
+  CheckForRedundantIteration(*this, third.get(), Body);
+
+  if (Second.get().second &&
+      !Diags.isIgnored(diag::warn_comma_operator,
+                       Second.get().second->getExprLoc()))
+    CommaVisitor(*this).Visit(Second.get().second);
 
   Expr *Third  = third.release().getAs<Expr>();
 
@@ -1765,7 +1769,7 @@ Sema::ActOnUPCForAllStmt(SourceLocation ForLoc, SourceLocation LParenLoc,
   getCurFunction()->setHasBranchProtectedScope();
 
   return new (Context) UPCForAllStmt(Context, First,
-                                     SecondResult.get(), ConditionVar,
+                                     Second.get().second, Second.get().first,
                                      Third, Fourth, Body, ForLoc, LParenLoc,
                                      RParenLoc);
 }
