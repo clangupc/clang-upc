@@ -798,7 +798,11 @@ void CodeGenModule::EmitUPCInits(const CtorList &Fns, const char *GlobalName) {
     llvm::ArrayType *AT = llvm::ArrayType::get(CtorPFTy, Ctors.size());
     llvm::GlobalVariable *GV =
       new llvm::GlobalVariable(TheModule, AT, false,
-                             llvm::GlobalValue::AppendingLinkage,
+                             // Should be AppendingLinkage,
+                             // but as of 3.9 llvm refuses to accept
+                             // AppendingLinkage for anything besides
+                             // llvm.global.[c|d]tors
+                             llvm::GlobalValue::PrivateLinkage,
                              llvm::ConstantArray::get(AT, Ctors),
                              GlobalName);
     if(isTargetDarwin())
