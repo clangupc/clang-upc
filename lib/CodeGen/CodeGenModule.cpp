@@ -809,6 +809,7 @@ void CodeGenModule::EmitUPCInits(const CtorList &Fns, const char *GlobalName) {
       GV->setSection("__DATA,upc_init_array");
     else
       GV->setSection("upc_init_array");
+    addUsedGlobal(GV);
   }
 }
 
