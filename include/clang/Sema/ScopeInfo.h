@@ -109,10 +109,14 @@ public:
   bool HasDroppedStmt : 1;
 
   /// \brief True if current scope is for OpenMP declare reduction combiner.
-  bool HasOMPDeclareReductionCombiner;
+  bool HasOMPDeclareReductionCombiner : 1;
 
   /// \brief Whether there is a fallthrough statement in this function.
   bool HasFallthroughStmt : 1;
+
+  /// \brief Whether we make reference to a declaration that could be
+  /// unavailable.
+  bool HasPotentialAvailabilityViolations : 1;
 
   /// A flag that is set when parsing a method that must call super's
   /// implementation, such as \c -dealloc, \c -finalize, or any method marked
@@ -384,6 +388,7 @@ public:
       HasDroppedStmt(false),
       HasOMPDeclareReductionCombiner(false),
       HasFallthroughStmt(false),
+      HasPotentialAvailabilityViolations(false),
       ObjCShouldCallSuper(false),
       ObjCIsDesignatedInit(false),
       ObjCWarnForNoDesignatedInitChain(false),
@@ -733,7 +738,16 @@ public:
   ///  to local variables that are usable as constant expressions and
   ///  do not involve an odr-use (they may still need to be captured
   ///  if the enclosing full-expression is instantiation dependent).
-  llvm::SmallSet<Expr*, 8> NonODRUsedCapturingExprs; 
+  llvm::SmallSet<Expr *, 8> NonODRUsedCapturingExprs;
+
+  /// Contains all of the variables defined in this lambda that shadow variables
+  /// that were defined in parent contexts. Used to avoid warnings when the
+  /// shadowed variables are uncaptured by this lambda.
+  struct ShadowedOuterDecl {
+    const VarDecl *VD;
+    const VarDecl *ShadowedDecl;
+  };
+  llvm::SmallVector<ShadowedOuterDecl, 4> ShadowingDecls;
 
   SourceLocation PotentialThisCaptureLocation;
 

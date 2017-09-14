@@ -113,8 +113,9 @@ namespace {
     KEYOBJC2    = 0x20000,
     KEYZVECTOR  = 0x40000,
     KEYCOROUTINES = 0x80000,
-    KEYUPC = 0x100000,
-    KEYALL = (0x1fffff & ~KEYNOMS18 &
+    KEYMODULES = 0x100000,
+    KEYUPC = 0x200000,
+    KEYALL = (0x3fffff & ~KEYNOMS18 &
               ~KEYNOOPENCL) // KEYNOMS18 and KEYNOOPENCL are used to exclude.
   };
 
@@ -149,9 +150,10 @@ static KeywordStatus getKeywordStatus(const LangOptions &LangOpts,
   // We treat bridge casts as objective-C keywords so we can warn on them
   // in non-arc mode.
   if (LangOpts.ObjC2 && (Flags & KEYARC)) return KS_Enabled;
-  if (LangOpts.ConceptsTS && (Flags & KEYCONCEPTS)) return KS_Enabled;
   if (LangOpts.ObjC2 && (Flags & KEYOBJC2)) return KS_Enabled;
-  if (LangOpts.Coroutines && (Flags & KEYCOROUTINES)) return KS_Enabled;
+  if (LangOpts.ConceptsTS && (Flags & KEYCONCEPTS)) return KS_Enabled;
+  if (LangOpts.CoroutinesTS && (Flags & KEYCOROUTINES)) return KS_Enabled;
+  if (LangOpts.ModulesTS && (Flags & KEYMODULES)) return KS_Enabled;
   if (LangOpts.CPlusPlus && (Flags & KEYCXX11)) return KS_Future;
   return KS_Disabled;
 }
@@ -443,9 +445,11 @@ std::string Selector::getAsString() const {
   if (getIdentifierInfoFlag() < MultiArg) {
     IdentifierInfo *II = getAsIdentifierInfo();
 
-    // If the number of arguments is 0 then II is guaranteed to not be null.
-    if (getNumArgs() == 0)
+    if (getNumArgs() == 0) {
+      assert(II && "If the number of arguments is 0 then II is guaranteed to "
+                   "not be null.");
       return II->getName();
+    }
 
     if (!II)
       return ":";
@@ -621,8 +625,8 @@ Selector SelectorTable::getSelector(unsigned nKeys, IdentifierInfo **IIV) {
   // variable size array (for parameter types) at the end of them.
   unsigned Size = sizeof(MultiKeywordSelector) + nKeys*sizeof(IdentifierInfo *);
   MultiKeywordSelector *SI =
-    (MultiKeywordSelector*)SelTabImpl.Allocator.Allocate(Size,
-                                         llvm::alignOf<MultiKeywordSelector>());
+      (MultiKeywordSelector *)SelTabImpl.Allocator.Allocate(
+          Size, alignof(MultiKeywordSelector));
   new (SI) MultiKeywordSelector(nKeys, IIV);
   SelTabImpl.Table.InsertNode(SI, InsertPos);
   return Selector(SI);

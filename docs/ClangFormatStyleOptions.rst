@@ -670,6 +670,9 @@ the configuration (without a prefix: ``Auto``).
 **SpaceAfterCStyleCast** (``bool``)
   If ``true``, a space may be inserted after C style casts.
 
+**SpaceAfterTemplateKeyword** (``bool``)
+  If ``true``, a space will be inserted after the 'template' keyword.
+
 **SpaceBeforeAssignmentOperators** (``bool``)
   If ``false``, spaces will be removed before assignment operators.
 
@@ -731,7 +734,8 @@ the configuration (without a prefix: ``Auto``).
     Use C++03-compatible syntax.
 
   * ``LS_Cpp11`` (in configuration: ``Cpp11``)
-    Use features of C++11 (e.g. ``A<A<int>>`` instead of ``A<A<int> >``).
+    Use features of C++11, C++14 and C++1z (e.g. ``A<A<int>>`` instead of 
+    ``A<A<int> >``).
 
   * ``LS_Auto`` (in configuration: ``Auto``)
     Automatic detection based on the input.
