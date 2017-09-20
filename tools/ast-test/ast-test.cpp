@@ -220,7 +220,7 @@ namespace {
 
   template<typename Type>
   class DirectiveMatchBase : public Directive,
-                             public llvm::RefCountedBaseVPTR {
+                             public llvm::RefCountedBase<DirectiveMatchBase<Type> > {
     virtual bool MatchImpl(Type const * T, std::string & OutGot) const = 0;
 
     static void Dumper(void const * V) {

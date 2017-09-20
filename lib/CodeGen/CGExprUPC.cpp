@@ -60,9 +60,9 @@ RValue CodeGenFunction::EmitUPCCall(
       getTypes().arrangeFreeFunctionCall(Args, FuncType->castAs<FunctionType>(), false);
     llvm::FunctionType * FTy =
       cast<llvm::FunctionType>(ConvertType(FuncType));
-    llvm::Value * Fn = CGM.CreateRuntimeFunction(FTy, Name);
+    llvm::Constant * Fn = CGM.CreateRuntimeFunction(FTy, Name);
 
-    return EmitCall(Info, Fn, ReturnValueSlot(), Args);
+    return EmitCall(Info, CGCallee::forDirect(Fn), ReturnValueSlot(), Args);
 }
 
 llvm::Value *CodeGenFunction::EmitUPCCastSharedToLocal(llvm::Value *Value,

@@ -263,45 +263,45 @@ void ASTStmtReader::VisitReturnStmt(ReturnStmt *S) {
 
 void ASTStmtReader::VisitUPCNotifyStmt(UPCNotifyStmt *S) {
   VisitStmt(S);
-  S->setIdValue(Reader.ReadSubExpr());
-  S->setNotifyLoc(ReadSourceLocation(Record, Idx));
+  S->setIdValue(Record.readSubExpr());
+  S->setNotifyLoc(ReadSourceLocation());
 }
 
 void ASTStmtReader::VisitUPCWaitStmt(UPCWaitStmt *S) {
   VisitStmt(S);
-  S->setIdValue(Reader.ReadSubExpr());
-  S->setWaitLoc(ReadSourceLocation(Record, Idx));
+  S->setIdValue(Record.readSubExpr());
+  S->setWaitLoc(ReadSourceLocation());
 }
 
 void ASTStmtReader::VisitUPCBarrierStmt(UPCBarrierStmt *S) {
   VisitStmt(S);
-  S->setIdValue(Reader.ReadSubExpr());
-  S->setBarrierLoc(ReadSourceLocation(Record, Idx));
+  S->setIdValue(Record.readSubExpr());
+  S->setBarrierLoc(ReadSourceLocation());
 }
 
 void ASTStmtReader::VisitUPCFenceStmt(UPCFenceStmt *S) {
   VisitStmt(S);
-  S->setFenceLoc(ReadSourceLocation(Record, Idx));
+  S->setFenceLoc(ReadSourceLocation());
 }
 
 void ASTStmtReader::VisitUPCPragmaStmt(UPCPragmaStmt *S) {
   VisitStmt(S);
-  S->setStrict(Record[Idx++] != 0);
-  S->setPragmaLoc(ReadSourceLocation(Record, Idx));
+  S->setStrict(Record.readInt() != 0);
+  S->setPragmaLoc(ReadSourceLocation());
 }
 
 void ASTStmtReader::VisitUPCForAllStmt(UPCForAllStmt *S) {
   VisitStmt(S);
-  S->setInit(Reader.ReadSubStmt());
-  S->setCond(Reader.ReadSubExpr());
-  S->setConditionVariable(Reader.getContext(),
-                          ReadDeclAs<VarDecl>(Record, Idx));
-  S->setInc(Reader.ReadSubExpr());
-  S->setAfnty(Reader.ReadSubExpr());
-  S->setBody(Reader.ReadSubStmt());
-  S->setForLoc(ReadSourceLocation(Record, Idx));
-  S->setLParenLoc(ReadSourceLocation(Record, Idx));
-  S->setRParenLoc(ReadSourceLocation(Record, Idx));
+  S->setInit(Record.readSubStmt());
+  S->setCond(Record.readSubExpr());
+  S->setConditionVariable(Record.getContext(),
+                          ReadDeclAs<VarDecl>());
+  S->setInc(Record.readSubExpr());
+  S->setAfnty(Record.readSubExpr());
+  S->setBody(Record.readSubStmt());
+  S->setForLoc(ReadSourceLocation());
+  S->setLParenLoc(ReadSourceLocation());
+  S->setRParenLoc(ReadSourceLocation());
 }
 
 void ASTStmtReader::VisitDeclStmt(DeclStmt *S) {
@@ -553,12 +553,12 @@ void ASTStmtReader::VisitCharacterLiteral(CharacterLiteral *E) {
 
 void ASTStmtReader::VisitUPCThreadExpr(UPCThreadExpr *E) {
   VisitExpr(E);
-  E->setLocation(ReadSourceLocation(Record, Idx));
+  E->setLocation(ReadSourceLocation());
 }
 
 void ASTStmtReader::VisitUPCMyThreadExpr(UPCMyThreadExpr *E) {
   VisitExpr(E);
-  E->setLocation(ReadSourceLocation(Record, Idx));
+  E->setLocation(ReadSourceLocation());
 }
 
 void ASTStmtReader::VisitParenExpr(ParenExpr *E) {

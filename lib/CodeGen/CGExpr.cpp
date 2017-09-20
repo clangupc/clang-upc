@@ -3116,6 +3116,7 @@ LValue CodeGenFunction::EmitArraySubscriptExpr(const ArraySubscriptExpr *E,
     // it.  It needs to be emitted first in case it's what captures
     // the VLA bounds.
     Addr = EmitPointerWithAlignment(E->getBase(), &AlignSource);
+    auto *Idx = EmitIdxAfterBase(/*Promote*/true);
 
     // The element count here is the total number of non-VLA elements.
     llvm::Value *numElements = getVLASize(E->getType()).first;
@@ -3131,7 +3132,7 @@ LValue CodeGenFunction::EmitArraySubscriptExpr(const ArraySubscriptExpr *E,
     }
 
     if (E->getType().getQualifiers().hasShared()) {
-      Addr = Address(EmitUPCPointerArithmetic(Addr.getPointer(), Idx, getContext().getPointerType(vla->getElementType()), IdxTy, false), getArrayElementAlign(Addr.getAlignment(), Idx, getContext().getTypeSizeInChars(vla->getElementType())));
+      Addr = Address(EmitUPCPointerArithmetic(Addr.getPointer(), Idx, getContext().getPointerType(vla->getElementType()), E->getIdx()->getType(), false), getArrayElementAlign(Addr.getAlignment(), Idx, getContext().getTypeSizeInChars(vla->getElementType())));
     } else {
       Addr = emitArraySubscriptGEP(*this, Addr, Idx, vla->getElementType(),
                                    !getLangOpts().isSignedOverflowDefined());
@@ -3192,7 +3193,7 @@ LValue CodeGenFunction::EmitArraySubscriptExpr(const ArraySubscriptExpr *E,
     Addr = EmitPointerWithAlignment(E->getBase(), &AlignSource);
     auto *Idx = EmitIdxAfterBase(/*Promote*/true);
     if (E->getType().getQualifiers().hasShared()) {
-      Addr = Address(EmitUPCPointerArithmetic(Addr.getPointer(), Idx, E->getBase()->getType(), IdxTy, false), getArrayElementAlign(Addr.getAlignment(), Idx, getContext().getTypeSizeInChars(E->getType())));
+      Addr = Address(EmitUPCPointerArithmetic(Addr.getPointer(), Idx, E->getBase()->getType(), E->getIdx()->getType(), false), getArrayElementAlign(Addr.getAlignment(), Idx, getContext().getTypeSizeInChars(E->getType())));
     } else {
       Addr = emitArraySubscriptGEP(*this, Addr, Idx, E->getType(),
                                    !getLangOpts().isSignedOverflowDefined());

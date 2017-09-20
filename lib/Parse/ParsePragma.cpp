@@ -1201,8 +1201,7 @@ void PragmaUPCHandler::HandlePragma(Preprocessor &PP,
   }
 
   Sema::PragmaUPCKind *Info = 
-    (Sema::PragmaUPCKind*) PP.getPreprocessorAllocator().Allocate(
-      sizeof(Sema::PragmaUPCKind), llvm::alignOf<Sema::PragmaUPCKind>());
+    PP.getPreprocessorAllocator().Allocate<Sema::PragmaUPCKind>();
   new (Info) Sema::PragmaUPCKind(Kind);
 
   MutableArrayRef<Token> Toks(PP.getPreprocessorAllocator().Allocate<Token>(1),
@@ -1249,8 +1248,7 @@ void PragmaPUPCHandler::HandlePragma(Preprocessor &PP,
   }
 
   Sema::PragmaPUPCKind *Info = 
-    (Sema::PragmaPUPCKind*) PP.getPreprocessorAllocator().Allocate(
-      sizeof(Sema::PragmaPUPCKind), llvm::alignOf<Sema::PragmaPUPCKind>());
+    PP.getPreprocessorAllocator().Allocate<Sema::PragmaPUPCKind>();
   new (Info) Sema::PragmaPUPCKind(Kind);
 
   MutableArrayRef<Token> Toks(PP.getPreprocessorAllocator().Allocate<Token>(1),

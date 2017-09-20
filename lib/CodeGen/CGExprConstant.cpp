@@ -1641,7 +1641,7 @@ static llvm::Constant *EmitNullConstantForBase(CodeGenModule &CGM,
 }
 
 llvm::Constant *CodeGenModule::EmitNullConstant(QualType T) {
-  if (T->getAs<PointerType>())
+  if (T->getAs<PointerType>() && !T->hasPointerToSharedRepresentation())
     return getNullPointer(
         cast<llvm::PointerType>(getTypes().ConvertTypeForMem(T)), T);
 
