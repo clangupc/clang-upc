@@ -6272,7 +6272,7 @@ void CGOpenMPRuntime::emitTargetDataCalls(
   // arguments of the runtime call by reference because they are used in the
   // closing of the region.
   auto &&BeginThenGen = [&D, &CGF, Device, &Info, &CodeGen, &NoPrivAction](
-      CodeGenFunction &CGF, PrePostActionTy &) {
+      CodeGenFunction &CGF_, PrePostActionTy &) {
     // Fill up the arrays with all the mapped variables.
     MappableExprsHandler::MapBaseValuesArrayTy BasePointers;
     MappableExprsHandler::MapValuesArrayTy Pointers;
@@ -6318,7 +6318,7 @@ void CGOpenMPRuntime::emitTargetDataCalls(
   };
 
   // Generate code for the closing of the data region.
-  auto &&EndThenGen = [&CGF, Device, &Info](CodeGenFunction &CGF,
+  auto &&EndThenGen = [&CGF, Device, &Info](CodeGenFunction &CGF_,
                                             PrePostActionTy &) {
     assert(Info.isValid() && "Invalid data environment closing arguments.");
 
@@ -6397,7 +6397,7 @@ void CGOpenMPRuntime::emitTargetDataStandAloneCall(
          "Expecting either target enter, exit data, or update directives.");
 
   // Generate the code for the opening of the data environment.
-  auto &&ThenGen = [&D, &CGF, Device](CodeGenFunction &CGF, PrePostActionTy &) {
+  auto &&ThenGen = [&D, &CGF, Device](CodeGenFunction &CGF_, PrePostActionTy &) {
     // Fill up the arrays with all the mapped variables.
     MappableExprsHandler::MapBaseValuesArrayTy BasePointers;
     MappableExprsHandler::MapValuesArrayTy Pointers;
