@@ -1,9 +1,8 @@
 //===--- CloneChecker.cpp - Clone detection checker -------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 ///
@@ -13,7 +12,7 @@
 ///
 //===----------------------------------------------------------------------===//
 
-#include "ClangSACheckers.h"
+#include "clang/StaticAnalyzer/Checkers/BuiltinCheckerRegistration.h"
 #include "clang/Analysis/CloneDetection.h"
 #include "clang/Basic/Diagnostic.h"
 #include "clang/StaticAnalyzer/Core/BugReporter/BugType.h"
@@ -28,6 +27,13 @@ using namespace ento;
 namespace {
 class CloneChecker
     : public Checker<check::ASTCodeBody, check::EndOfTranslationUnit> {
+public:
+  // Checker options.
+  int MinComplexity;
+  bool ReportNormalClones;
+  StringRef IgnoredFilesPattern;
+
+private:
   mutable CloneDetector Detector;
   mutable std::unique_ptr<BugType> BT_Exact, BT_Suspicious;
 
@@ -38,14 +44,15 @@ public:
   void checkEndOfTranslationUnit(const TranslationUnitDecl *TU,
                                  AnalysisManager &Mgr, BugReporter &BR) const;
 
-  /// \brief Reports all clones to the user.
+  /// Reports all clones to the user.
   void reportClones(BugReporter &BR, AnalysisManager &Mgr,
-                    int MinComplexity) const;
+                    std::vector<CloneDetector::CloneGroup> &CloneGroups) const;
 
-  /// \brief Reports only suspicious clones to the user along with informaton
-  ///        that explain why they are suspicious.
-  void reportSuspiciousClones(BugReporter &BR, AnalysisManager &Mgr,
-                              int MinComplexity) const;
+  /// Reports only suspicious clones to the user along with information
+  /// that explain why they are suspicious.
+  void reportSuspiciousClones(
+      BugReporter &BR, AnalysisManager &Mgr,
+      std::vector<CloneDetector::CloneGroup> &CloneGroups) const;
 };
 } // end anonymous namespace
 
@@ -62,21 +69,31 @@ void CloneChecker::checkEndOfTranslationUnit(const TranslationUnitDecl *TU,
   // At this point, every statement in the translation unit has been analyzed by
   // the CloneDetector. The only thing left to do is to report the found clones.
 
-  int MinComplexity = Mgr.getAnalyzerOptions().getOptionAsInteger(
-      "MinimumCloneComplexity", 10, this);
-  assert(MinComplexity >= 0);
+  // Let the CloneDetector create a list of clones from all the analyzed
+  // statements. We don't filter for matching variable patterns at this point
+  // because reportSuspiciousClones() wants to search them for errors.
+  std::vector<CloneDetector::CloneGroup> AllCloneGroups;
 
-  bool ReportSuspiciousClones = Mgr.getAnalyzerOptions().getBooleanOption(
-      "ReportSuspiciousClones", true, this);
+  Detector.findClones(
+      AllCloneGroups, FilenamePatternConstraint(IgnoredFilesPattern),
+      RecursiveCloneTypeIIHashConstraint(), MinGroupSizeConstraint(2),
+      MinComplexityConstraint(MinComplexity),
+      RecursiveCloneTypeIIVerifyConstraint(), OnlyLargestCloneConstraint());
 
-  bool ReportNormalClones = Mgr.getAnalyzerOptions().getBooleanOption(
-      "ReportNormalClones", true, this);
+  reportSuspiciousClones(BR, Mgr, AllCloneGroups);
 
-  if (ReportSuspiciousClones)
-    reportSuspiciousClones(BR, Mgr, MinComplexity);
+  // We are done for this translation unit unless we also need to report normal
+  // clones.
+  if (!ReportNormalClones)
+    return;
 
-  if (ReportNormalClones)
-    reportClones(BR, Mgr, MinComplexity);
+  // Now that the suspicious clone detector has checked for pattern errors,
+  // we also filter all clones who don't have matching patterns
+  CloneDetector::constrainClones(AllCloneGroups,
+                                 MatchingVariablePatternConstraint(),
+                                 MinGroupSizeConstraint(2));
+
+  reportClones(BR, Mgr, AllCloneGroups);
 }
 
 static PathDiagnosticLocation makeLocation(const StmtSequence &S,
@@ -87,37 +104,55 @@ static PathDiagnosticLocation makeLocation(const StmtSequence &S,
       Mgr.getAnalysisDeclContext(ACtx.getTranslationUnitDecl()));
 }
 
-void CloneChecker::reportClones(BugReporter &BR, AnalysisManager &Mgr,
-                                int MinComplexity) const {
-
-  std::vector<CloneDetector::CloneGroup> CloneGroups;
-  Detector.findClones(CloneGroups, MinComplexity);
+void CloneChecker::reportClones(
+    BugReporter &BR, AnalysisManager &Mgr,
+    std::vector<CloneDetector::CloneGroup> &CloneGroups) const {
 
   if (!BT_Exact)
     BT_Exact.reset(new BugType(this, "Exact code clone", "Code clone"));
 
-  for (CloneDetector::CloneGroup &Group : CloneGroups) {
+  for (const CloneDetector::CloneGroup &Group : CloneGroups) {
     // We group the clones by printing the first as a warning and all others
     // as a note.
-    auto R = llvm::make_unique<BugReport>(
-        *BT_Exact, "Duplicate code detected",
-        makeLocation(Group.Sequences.front(), Mgr));
-    R->addRange(Group.Sequences.front().getSourceRange());
+    auto R = llvm::make_unique<BugReport>(*BT_Exact, "Duplicate code detected",
+                                          makeLocation(Group.front(), Mgr));
+    R->addRange(Group.front().getSourceRange());
 
-    for (unsigned i = 1; i < Group.Sequences.size(); ++i)
-      R->addNote("Similar code here",
-                      makeLocation(Group.Sequences[i], Mgr),
-                      Group.Sequences[i].getSourceRange());
+    for (unsigned i = 1; i < Group.size(); ++i)
+      R->addNote("Similar code here", makeLocation(Group[i], Mgr),
+                 Group[i].getSourceRange());
     BR.emitReport(std::move(R));
   }
 }
 
-void CloneChecker::reportSuspiciousClones(BugReporter &BR,
-                                          AnalysisManager &Mgr,
-                                          int MinComplexity) const {
+void CloneChecker::reportSuspiciousClones(
+    BugReporter &BR, AnalysisManager &Mgr,
+    std::vector<CloneDetector::CloneGroup> &CloneGroups) const {
+  std::vector<VariablePattern::SuspiciousClonePair> Pairs;
 
-  std::vector<CloneDetector::SuspiciousClonePair> Clones;
-  Detector.findSuspiciousClones(Clones, MinComplexity);
+  for (const CloneDetector::CloneGroup &Group : CloneGroups) {
+    for (unsigned i = 0; i < Group.size(); ++i) {
+      VariablePattern PatternA(Group[i]);
+
+      for (unsigned j = i + 1; j < Group.size(); ++j) {
+        VariablePattern PatternB(Group[j]);
+
+        VariablePattern::SuspiciousClonePair ClonePair;
+        // For now, we only report clones which break the variable pattern just
+        // once because multiple differences in a pattern are an indicator that
+        // those differences are maybe intended (e.g. because it's actually a
+        // different algorithm).
+        // FIXME: In very big clones even multiple variables can be unintended,
+        // so replacing this number with a percentage could better handle such
+        // cases. On the other hand it could increase the false-positive rate
+        // for all clones if the percentage is too high.
+        if (PatternA.countPatternDifferences(PatternB, &ClonePair) == 1) {
+          Pairs.push_back(ClonePair);
+          break;
+        }
+      }
+    }
+  }
 
   if (!BT_Suspicious)
     BT_Suspicious.reset(
@@ -128,7 +163,7 @@ void CloneChecker::reportSuspiciousClones(BugReporter &BR,
   AnalysisDeclContext *ADC =
       Mgr.getAnalysisDeclContext(ACtx.getTranslationUnitDecl());
 
-  for (CloneDetector::SuspiciousClonePair &Pair : Clones) {
+  for (VariablePattern::SuspiciousClonePair &Pair : Pairs) {
     // FIXME: We are ignoring the suggestions currently, because they are
     // only 50% accurate (even if the second suggestion is unavailable),
     // which may confuse the user.
@@ -157,5 +192,22 @@ void CloneChecker::reportSuspiciousClones(BugReporter &BR,
 //===----------------------------------------------------------------------===//
 
 void ento::registerCloneChecker(CheckerManager &Mgr) {
-  Mgr.registerChecker<CloneChecker>();
+  auto *Checker = Mgr.registerChecker<CloneChecker>();
+
+  Checker->MinComplexity = Mgr.getAnalyzerOptions().getCheckerIntegerOption(
+      Checker, "MinimumCloneComplexity");
+
+  if (Checker->MinComplexity < 0)
+    Mgr.reportInvalidCheckerOptionValue(
+        Checker, "MinimumCloneComplexity", "a non-negative value");
+
+  Checker->ReportNormalClones = Mgr.getAnalyzerOptions().getCheckerBooleanOption(
+      Checker, "ReportNormalClones");
+
+  Checker->IgnoredFilesPattern = Mgr.getAnalyzerOptions()
+    .getCheckerStringOption(Checker, "IgnoredFilesPattern");
+}
+
+bool ento::shouldRegisterCloneChecker(const LangOptions &LO) {
+  return true;
 }

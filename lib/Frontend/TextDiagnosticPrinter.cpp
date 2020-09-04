@@ -1,9 +1,8 @@
 //===--- TextDiagnosticPrinter.cpp - Diagnostic Printer -------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -44,7 +43,7 @@ void TextDiagnosticPrinter::EndSourceFile() {
   TextDiag.reset();
 }
 
-/// \brief Print any diagnostic option information to a raw_ostream.
+/// Print any diagnostic option information to a raw_ostream.
 ///
 /// This implements all of the logic for adding diagnostic options to a message
 /// (via OS). Each relevant option is comma separated and all are enclosed in
@@ -150,10 +149,9 @@ void TextDiagnosticPrinter::HandleDiagnostic(DiagnosticsEngine::Level Level,
          "Unexpected diagnostic with no source manager");
   assert(TextDiag && "Unexpected diagnostic outside source file processing");
 
-  TextDiag->emitDiagnostic(Info.getLocation(), Level, DiagMessageStream.str(),
-                           Info.getRanges(),
-                           Info.getFixItHints(),
-                           &Info.getSourceManager());
+  TextDiag->emitDiagnostic(
+      FullSourceLoc(Info.getLocation(), Info.getSourceManager()), Level,
+      DiagMessageStream.str(), Info.getRanges(), Info.getFixItHints());
 
   OS.flush();
 }

@@ -1,9 +1,8 @@
 //===--- LangStandards.cpp - Language Standard Definitions ----------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -13,15 +12,15 @@
 using namespace clang;
 using namespace clang::frontend;
 
-#define LANGSTANDARD(id, name, desc, features) \
-  static const LangStandard Lang_##id = { name, desc, features };
+#define LANGSTANDARD(id, name, lang, desc, features) \
+static const LangStandard Lang_##id = { name, desc, features, InputKind::lang };
 #include "clang/Frontend/LangStandards.def"
 
 const LangStandard &LangStandard::getLangStandardForKind(Kind K) {
   switch (K) {
   case lang_unspecified:
     llvm::report_fatal_error("getLangStandardForKind() on unspecified kind");
-#define LANGSTANDARD(id, name, desc, features) \
+#define LANGSTANDARD(id, name, lang, desc, features) \
     case lang_##id: return Lang_##id;
 #include "clang/Frontend/LangStandards.def"
   }
@@ -30,7 +29,7 @@ const LangStandard &LangStandard::getLangStandardForKind(Kind K) {
 
 const LangStandard *LangStandard::getLangStandardForName(StringRef Name) {
   Kind K = llvm::StringSwitch<Kind>(Name)
-#define LANGSTANDARD(id, name, desc, features) \
+#define LANGSTANDARD(id, name, lang, desc, features) \
     .Case(name, lang_##id)
 #include "clang/Frontend/LangStandards.def"
     .Default(lang_unspecified);

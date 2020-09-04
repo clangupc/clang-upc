@@ -1,9 +1,8 @@
 //= ProgramState.cpp - Path-Sensitive "State" for tracking values --*- C++ -*--=
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -13,10 +12,12 @@
 
 #include "clang/StaticAnalyzer/Core/PathSensitive/ProgramState.h"
 #include "clang/Analysis/CFG.h"
+#include "clang/Basic/JsonSupport.h"
+#include "clang/StaticAnalyzer/Core/PathSensitive/AnalysisManager.h"
 #include "clang/StaticAnalyzer/Core/PathSensitive/CallEvent.h"
+#include "clang/StaticAnalyzer/Core/PathSensitive/DynamicTypeMap.h"
 #include "clang/StaticAnalyzer/Core/PathSensitive/ProgramStateTrait.h"
 #include "clang/StaticAnalyzer/Core/PathSensitive/SubEngine.h"
-#include "clang/StaticAnalyzer/Core/PathSensitive/TaintManager.h"
 #include "llvm/Support/raw_ostream.h"
 
 using namespace clang;
@@ -67,6 +68,10 @@ ProgramState::~ProgramState() {
     stateMgr->getStoreManager().decrementReferenceCount(store);
 }
 
+int64_t ProgramState::getID() const {
+  return getStateManager().Alloc.identifyKnownAlignedObject<ProgramState>(this);
+}
+
 ProgramStateManager::ProgramStateManager(ASTContext &Ctx,
                                          StoreManagerCreator CreateSMgr,
                                          ConstraintManagerCreator CreateCMgr,
@@ -111,25 +116,37 @@ ProgramStateManager::removeDeadBindings(ProgramStateRef state,
   return ConstraintMgr->removeDeadBindings(Result, SymReaper);
 }
 
-ProgramStateRef ProgramState::bindLoc(Loc LV, SVal V, bool notifyChanges) const {
+ProgramStateRef ProgramState::bindLoc(Loc LV,
+                                      SVal V,
+                                      const LocationContext *LCtx,
+                                      bool notifyChanges) const {
   ProgramStateManager &Mgr = getStateManager();
   ProgramStateRef newState = makeWithStore(Mgr.StoreMgr->Bind(getStore(),
                                                              LV, V));
   const MemRegion *MR = LV.getAsRegion();
-  if (MR && Mgr.getOwningEngine() && notifyChanges)
-    return Mgr.getOwningEngine()->processRegionChange(newState, MR);
+  if (MR && notifyChanges)
+    return Mgr.getOwningEngine().processRegionChange(newState, MR, LCtx);
 
   return newState;
 }
 
-ProgramStateRef ProgramState::bindDefault(SVal loc, SVal V) const {
+ProgramStateRef
+ProgramState::bindDefaultInitial(SVal loc, SVal V,
+                                 const LocationContext *LCtx) const {
   ProgramStateManager &Mgr = getStateManager();
   const MemRegion *R = loc.castAs<loc::MemRegionVal>().getRegion();
-  const StoreRef &newStore = Mgr.StoreMgr->BindDefault(getStore(), R, V);
+  const StoreRef &newStore = Mgr.StoreMgr->BindDefaultInitial(getStore(), R, V);
   ProgramStateRef new_state = makeWithStore(newStore);
-  return Mgr.getOwningEngine() ?
-           Mgr.getOwningEngine()->processRegionChange(new_state, R) :
-           new_state;
+  return Mgr.getOwningEngine().processRegionChange(new_state, R, LCtx);
+}
+
+ProgramStateRef
+ProgramState::bindDefaultZero(SVal loc, const LocationContext *LCtx) const {
+  ProgramStateManager &Mgr = getStateManager();
+  const MemRegion *R = loc.castAs<loc::MemRegionVal>().getRegion();
+  const StoreRef &newStore = Mgr.StoreMgr->BindDefaultZero(getStore(), R);
+  ProgramStateRef new_state = makeWithStore(newStore);
+  return Mgr.getOwningEngine().processRegionChange(new_state, R, LCtx);
 }
 
 typedef ArrayRef<const MemRegion *> RegionList;
@@ -174,41 +191,34 @@ ProgramState::invalidateRegionsImpl(ValueList Values,
                                     RegionAndSymbolInvalidationTraits *ITraits,
                                     const CallEvent *Call) const {
   ProgramStateManager &Mgr = getStateManager();
-  SubEngine* Eng = Mgr.getOwningEngine();
+  SubEngine &Eng = Mgr.getOwningEngine();
 
-  InvalidatedSymbols Invalidated;
+  InvalidatedSymbols InvalidatedSyms;
   if (!IS)
-    IS = &Invalidated;
+    IS = &InvalidatedSyms;
 
   RegionAndSymbolInvalidationTraits ITraitsLocal;
   if (!ITraits)
     ITraits = &ITraitsLocal;
 
-  if (Eng) {
-    StoreManager::InvalidatedRegions TopLevelInvalidated;
-    StoreManager::InvalidatedRegions Invalidated;
-    const StoreRef &newStore
-    = Mgr.StoreMgr->invalidateRegions(getStore(), Values, E, Count, LCtx, Call,
-                                      *IS, *ITraits, &TopLevelInvalidated,
-                                      &Invalidated);
+  StoreManager::InvalidatedRegions TopLevelInvalidated;
+  StoreManager::InvalidatedRegions Invalidated;
+  const StoreRef &newStore
+  = Mgr.StoreMgr->invalidateRegions(getStore(), Values, E, Count, LCtx, Call,
+                                    *IS, *ITraits, &TopLevelInvalidated,
+                                    &Invalidated);
 
-    ProgramStateRef newState = makeWithStore(newStore);
+  ProgramStateRef newState = makeWithStore(newStore);
 
-    if (CausedByPointerEscape) {
-      newState = Eng->notifyCheckersOfPointerEscape(newState, IS,
-                                                    TopLevelInvalidated,
-                                                    Invalidated, Call,
-                                                    *ITraits);
-    }
-
-    return Eng->processRegionChanges(newState, IS, TopLevelInvalidated,
-                                     Invalidated, Call);
+  if (CausedByPointerEscape) {
+    newState = Eng.notifyCheckersOfPointerEscape(newState, IS,
+                                                 TopLevelInvalidated,
+                                                 Call,
+                                                 *ITraits);
   }
 
-  const StoreRef &newStore =
-  Mgr.StoreMgr->invalidateRegions(getStore(), Values, E, Count, LCtx, Call,
-                                  *IS, *ITraits, nullptr, nullptr);
-  return makeWithStore(newStore);
+  return Eng.processRegionChanges(newState, IS, TopLevelInvalidated,
+                                  Invalidated, LCtx, Call);
 }
 
 ProgramStateRef ProgramState::killBinding(Loc LV) const {
@@ -249,13 +259,15 @@ SVal ProgramState::getSValAsScalarOrLoc(const MemRegion *R) const {
 }
 
 SVal ProgramState::getSVal(Loc location, QualType T) const {
-  SVal V = getRawSVal(cast<Loc>(location), T);
+  SVal V = getRawSVal(location, T);
 
   // If 'V' is a symbolic value that is *perfectly* constrained to
   // be a constant value, use that value instead to lessen the burden
   // on later analysis stages (so we have less symbolic values to reason
   // about).
-  if (!T.isNull()) {
+  // We only go into this branch if we can convert the APSInt value we have
+  // to the type of T, which is not always the case (e.g. for void).
+  if (!T.isNull() && (T->isIntegralOrEnumerationType() || Loc::isLocType(T))) {
     if (SymbolRef sym = V.getAsSymbol()) {
       if (const llvm::APSInt *Int = getStateManager()
                                     .getConstraintManager()
@@ -317,9 +329,8 @@ ProgramStateRef ProgramState::assumeInBound(DefinedOrUnknownSVal Idx,
 
   // Get the offset: the minimum value of the array index type.
   BasicValueFactory &BVF = svalBuilder.getBasicValueFactory();
-  // FIXME: This should be using ValueManager::ArrayindexTy...somehow.
   if (indexTy.isNull())
-    indexTy = Ctx.IntTy;
+    indexTy = svalBuilder.getArrayIndexType();
   nonloc::ConcreteInt Min(BVF.getMinValue(indexTy));
 
   // Adjust the index.
@@ -345,6 +356,17 @@ ProgramStateRef ProgramState::assumeInBound(DefinedOrUnknownSVal Idx,
   // Finally, let the constraint manager take care of it.
   ConstraintManager &CM = SM.getConstraintManager();
   return CM.assume(this, inBound.castAs<DefinedSVal>(), Assumption);
+}
+
+ConditionTruthVal ProgramState::isNonNull(SVal V) const {
+  ConditionTruthVal IsNull = isNull(V);
+  if (IsNull.isUnderconstrained())
+    return IsNull;
+  return ConditionTruthVal(!IsNull.getValue());
+}
+
+ConditionTruthVal ProgramState::areEqual(SVal Lhs, SVal Rhs) const {
+  return stateMgr->getSValBuilder().areEqual(this, Lhs, Rhs);
 }
 
 ConditionTruthVal ProgramState::isNull(SVal V) const {
@@ -419,44 +441,44 @@ void ProgramState::setStore(const StoreRef &newStore) {
 //  State pretty-printing.
 //===----------------------------------------------------------------------===//
 
-void ProgramState::print(raw_ostream &Out,
-                         const char *NL, const char *Sep) const {
-  // Print the store.
+void ProgramState::printJson(raw_ostream &Out, const LocationContext *LCtx,
+                             const char *NL, unsigned int Space,
+                             bool IsDot) const {
+  Indent(Out, Space, IsDot) << "\"program_state\": {" << NL;
+  ++Space;
+
   ProgramStateManager &Mgr = getStateManager();
-  Mgr.getStoreManager().print(getStore(), Out, NL, Sep);
+
+  // Print the store.
+  Mgr.getStoreManager().printJson(Out, getStore(), NL, Space, IsDot);
 
   // Print out the environment.
-  Env.print(Out, NL, Sep);
+  Env.printJson(Out, Mgr.getContext(), LCtx, NL, Space, IsDot);
 
   // Print out the constraints.
-  Mgr.getConstraintManager().print(this, Out, NL, Sep);
+  Mgr.getConstraintManager().printJson(Out, this, NL, Space, IsDot);
+
+  // Print out the tracked dynamic types.
+  printDynamicTypeInfoJson(Out, this, NL, Space, IsDot);
 
   // Print checker-specific data.
-  Mgr.getOwningEngine()->printState(Out, this, NL, Sep);
+  Mgr.getOwningEngine().printJson(Out, this, LCtx, NL, Space, IsDot);
+
+  --Space;
+  Indent(Out, Space, IsDot) << '}';
 }
 
-void ProgramState::printDOT(raw_ostream &Out) const {
-  print(Out, "\\l", "\\|");
+void ProgramState::printDOT(raw_ostream &Out, const LocationContext *LCtx,
+                            unsigned int Space) const {
+  printJson(Out, LCtx, /*NL=*/"\\l", Space, /*IsDot=*/true);
 }
 
 LLVM_DUMP_METHOD void ProgramState::dump() const {
-  print(llvm::errs());
+  printJson(llvm::errs());
 }
 
-void ProgramState::printTaint(raw_ostream &Out,
-                              const char *NL, const char *Sep) const {
-  TaintMapImpl TM = get<TaintMap>();
-
-  if (!TM.isEmpty())
-    Out <<"Tainted Symbols:" << NL;
-
-  for (TaintMapImpl::iterator I = TM.begin(), E = TM.end(); I != E; ++I) {
-    Out << I->first << " : " << I->second << NL;
-  }
-}
-
-void ProgramState::dumpTaint() const {
-  printTaint(llvm::errs());
+AnalysisManager& ProgramState::getAnalysisManager() const {
+  return stateMgr->getOwningEngine().getAnalysisManager();
 }
 
 //===----------------------------------------------------------------------===//
@@ -612,128 +634,13 @@ bool ProgramState::scanReachableSymbols(SVal val, SymbolVisitor& visitor) const 
   return S.scan(val);
 }
 
-bool ProgramState::scanReachableSymbols(const SVal *I, const SVal *E,
-                                   SymbolVisitor &visitor) const {
+bool ProgramState::scanReachableSymbols(
+    llvm::iterator_range<region_iterator> Reachable,
+    SymbolVisitor &visitor) const {
   ScanReachableSymbols S(this, visitor);
-  for ( ; I != E; ++I) {
-    if (!S.scan(*I))
+  for (const MemRegion *R : Reachable) {
+    if (!S.scan(R))
       return false;
   }
   return true;
 }
-
-bool ProgramState::scanReachableSymbols(const MemRegion * const *I,
-                                   const MemRegion * const *E,
-                                   SymbolVisitor &visitor) const {
-  ScanReachableSymbols S(this, visitor);
-  for ( ; I != E; ++I) {
-    if (!S.scan(*I))
-      return false;
-  }
-  return true;
-}
-
-ProgramStateRef ProgramState::addTaint(const Stmt *S,
-                                           const LocationContext *LCtx,
-                                           TaintTagType Kind) const {
-  if (const Expr *E = dyn_cast_or_null<Expr>(S))
-    S = E->IgnoreParens();
-
-  SymbolRef Sym = getSVal(S, LCtx).getAsSymbol();
-  if (Sym)
-    return addTaint(Sym, Kind);
-
-  const MemRegion *R = getSVal(S, LCtx).getAsRegion();
-  addTaint(R, Kind);
-
-  // Cannot add taint, so just return the state.
-  return this;
-}
-
-ProgramStateRef ProgramState::addTaint(const MemRegion *R,
-                                           TaintTagType Kind) const {
-  if (const SymbolicRegion *SR = dyn_cast_or_null<SymbolicRegion>(R))
-    return addTaint(SR->getSymbol(), Kind);
-  return this;
-}
-
-ProgramStateRef ProgramState::addTaint(SymbolRef Sym,
-                                           TaintTagType Kind) const {
-  // If this is a symbol cast, remove the cast before adding the taint. Taint
-  // is cast agnostic.
-  while (const SymbolCast *SC = dyn_cast<SymbolCast>(Sym))
-    Sym = SC->getOperand();
-
-  ProgramStateRef NewState = set<TaintMap>(Sym, Kind);
-  assert(NewState);
-  return NewState;
-}
-
-bool ProgramState::isTainted(const Stmt *S, const LocationContext *LCtx,
-                             TaintTagType Kind) const {
-  if (const Expr *E = dyn_cast_or_null<Expr>(S))
-    S = E->IgnoreParens();
-
-  SVal val = getSVal(S, LCtx);
-  return isTainted(val, Kind);
-}
-
-bool ProgramState::isTainted(SVal V, TaintTagType Kind) const {
-  if (const SymExpr *Sym = V.getAsSymExpr())
-    return isTainted(Sym, Kind);
-  if (const MemRegion *Reg = V.getAsRegion())
-    return isTainted(Reg, Kind);
-  return false;
-}
-
-bool ProgramState::isTainted(const MemRegion *Reg, TaintTagType K) const {
-  if (!Reg)
-    return false;
-
-  // Element region (array element) is tainted if either the base or the offset
-  // are tainted.
-  if (const ElementRegion *ER = dyn_cast<ElementRegion>(Reg))
-    return isTainted(ER->getSuperRegion(), K) || isTainted(ER->getIndex(), K);
-
-  if (const SymbolicRegion *SR = dyn_cast<SymbolicRegion>(Reg))
-    return isTainted(SR->getSymbol(), K);
-
-  if (const SubRegion *ER = dyn_cast<SubRegion>(Reg))
-    return isTainted(ER->getSuperRegion(), K);
-
-  return false;
-}
-
-bool ProgramState::isTainted(SymbolRef Sym, TaintTagType Kind) const {
-  if (!Sym)
-    return false;
-
-  // Traverse all the symbols this symbol depends on to see if any are tainted.
-  bool Tainted = false;
-  for (SymExpr::symbol_iterator SI = Sym->symbol_begin(), SE =Sym->symbol_end();
-       SI != SE; ++SI) {
-    if (!isa<SymbolData>(*SI))
-      continue;
-
-    const TaintTagType *Tag = get<TaintMap>(*SI);
-    Tainted = (Tag && *Tag == Kind);
-
-    // If this is a SymbolDerived with a tainted parent, it's also tainted.
-    if (const SymbolDerived *SD = dyn_cast<SymbolDerived>(*SI))
-      Tainted = Tainted || isTainted(SD->getParentSymbol(), Kind);
-
-    // If memory region is tainted, data is also tainted.
-    if (const SymbolRegionValue *SRV = dyn_cast<SymbolRegionValue>(*SI))
-      Tainted = Tainted || isTainted(SRV->getRegion(), Kind);
-
-    // If If this is a SymbolCast from a tainted value, it's also tainted.
-    if (const SymbolCast *SC = dyn_cast<SymbolCast>(*SI))
-      Tainted = Tainted || isTainted(SC->getOperand(), Kind);
-
-    if (Tainted)
-      return true;
-  }
-
-  return Tainted;
-}
-

@@ -91,13 +91,13 @@ namespace integral {
   }
 
   void edge_cases() {
-    int a({0}); // expected-error {{list-initializer for non-class type 'int' must not be parenthesized}}
-    (void) int({0}); // expected-error {{list-initializer for non-class type 'int' must not be parenthesized}}
-    new int({0});  // expected-error {{list-initializer for non-class type 'int' must not be parenthesized}}
+    int a({0}); // expected-error {{cannot initialize non-class type 'int' with a parenthesized initializer list}}
+    (void) int({0}); // expected-error {{cannot initialize non-class type 'int' with a parenthesized initializer list}}
+    new int({0});  // expected-error {{cannot initialize non-class type 'int' with a parenthesized initializer list}}
 
-    int *b({0});  // expected-error {{list-initializer for non-class type 'int *' must not be parenthesized}}
+    int *b({0});  // expected-error {{cannot initialize non-class type 'int *' with a parenthesized initializer list}}
     typedef int *intptr;
-    int *c = intptr({0});  // expected-error {{list-initializer for non-class type 'intptr' (aka 'int *') must not be parenthesized}}
+    int *c = intptr({0});  // expected-error {{cannot initialize non-class type 'intptr' (aka 'int *') with a parenthesized initializer list}}
   }
 
   template<typename T> void dependent_edge_cases() {
@@ -126,4 +126,27 @@ namespace PR12118 {
     // to initializer_list is preferred
     static_assert(sizeof(f({0})) == sizeof(one), "bad overload");
   }
+}
+
+namespace excess_braces_sfinae {
+  using valid = int&;
+  using invalid = float&;
+
+  template<typename T> valid braces1(decltype(T{0})*);
+  template<typename T> invalid braces1(...);
+
+  template<typename T> valid braces2(decltype(T{{0}})*);
+  template<typename T> invalid braces2(...);
+
+  template<typename T> valid braces3(decltype(T{{{0}}})*);
+  template<typename T> invalid braces3(...);
+
+  valid a = braces1<int>(0);
+  invalid b = braces2<int>(0);
+  invalid c = braces3<int>(0);
+
+  struct X { int n; };
+  valid d = braces1<X>(0);
+  valid e = braces2<X>(0);
+  invalid f = braces3<X>(0);
 }

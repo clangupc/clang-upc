@@ -1,9 +1,8 @@
 //===--- BackendUtil.h - LLVM Backend Utilities -----------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -15,6 +14,8 @@
 #include <memory>
 
 namespace llvm {
+  class BitcodeModule;
+  template <typename T> class Expected;
   class Module;
   class MemoryBufferRef;
 }
@@ -44,6 +45,11 @@ namespace clang {
 
   void EmbedBitcode(llvm::Module *M, const CodeGenOptions &CGOpts,
                     llvm::MemoryBufferRef Buf);
+
+  llvm::Expected<llvm::BitcodeModule>
+  FindThinLTOModule(llvm::MemoryBufferRef MBRef);
+  llvm::BitcodeModule *
+  FindThinLTOModule(llvm::MutableArrayRef<llvm::BitcodeModule> BMs);
 }
 
 #endif

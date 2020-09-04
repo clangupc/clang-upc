@@ -1,7 +1,7 @@
 // REQUIRES: powerpc-registered-target
-// RUN: %clang_cc1 -faltivec -target-feature +power8-vector -triple powerpc64-unknown-unknown -emit-llvm %s -o - | FileCheck %s
-// RUN: %clang_cc1 -faltivec -target-feature +power8-vector -triple powerpc64le-unknown-unknown -emit-llvm %s -o - | FileCheck %s -check-prefix=CHECK-LE
-// RUN: not %clang_cc1 -faltivec -target-feature +vsx -triple powerpc64-unknown-unknown -emit-llvm %s -o - 2>&1 | FileCheck %s -check-prefix=CHECK-PPC
+// RUN: %clang_cc1 -target-feature +altivec -target-feature +power8-vector -triple powerpc64-unknown-unknown -emit-llvm %s -o - | FileCheck %s
+// RUN: %clang_cc1 -target-feature +altivec -target-feature +power8-vector -triple powerpc64le-unknown-unknown -emit-llvm %s -o - | FileCheck %s -check-prefix=CHECK-LE
+// RUN: not %clang_cc1 -target-feature +altivec -target-feature +vsx -triple powerpc64-unknown-unknown -emit-llvm %s -o - 2>&1 | FileCheck %s -check-prefix=CHECK-PPC
 // Added -target-feature +vsx above to avoid errors about "vector double" and to
 // generate the correct errors for functions that are only overloaded with VSX
 // (vec_cmpge, vec_cmple). Without this option, there is only one overload so
@@ -1066,13 +1066,17 @@ void test1() {
 
   /* vec_sr */
   res_vsll = vec_sr(vsll, vull);
-// CHECK: lshr <2 x i64>
-// CHECK-LE: lshr <2 x i64>
+// CHECK: [[UREM:[0-9a-zA-Z%.]+]] = urem <2 x i64> {{[0-9a-zA-Z%.]+}}, <i64 64, i64 64>
+// CHECK: lshr <2 x i64> {{[0-9a-zA-Z%.]+}}, [[UREM]]
+// CHECK-LE: [[UREM:[0-9a-zA-Z%.]+]] = urem <2 x i64> {{[0-9a-zA-Z%.]+}}, <i64 64, i64 64>
+// CHECK-LE: lshr <2 x i64> {{[0-9a-zA-Z%.]+}}, [[UREM]]
 // CHECK-PPC: error: call to 'vec_sr' is ambiguous
 
   res_vull = vec_sr(vull, vull);
-// CHECK: lshr <2 x i64>
-// CHECK-LE: lshr <2 x i64>
+// CHECK: [[UREM:[0-9a-zA-Z%.]+]] = urem <2 x i64> {{[0-9a-zA-Z%.]+}}, <i64 64, i64 64>
+// CHECK: lshr <2 x i64> {{[0-9a-zA-Z%.]+}}, [[UREM]]
+// CHECK-LE: [[UREM:[0-9a-zA-Z%.]+]] = urem <2 x i64> {{[0-9a-zA-Z%.]+}}, <i64 64, i64 64>
+// CHECK-LE: lshr <2 x i64> {{[0-9a-zA-Z%.]+}}, [[UREM]]
 // CHECK-PPC: error: call to 'vec_sr' is ambiguous
 
   /* vec_sra */

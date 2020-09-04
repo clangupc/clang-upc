@@ -55,6 +55,25 @@ auto b(bool k) {
   return "goodbye";
 }
 
+// Allow 'operator auto' to call only the explicit operator auto.
+struct BothOps {
+  template <typename T> operator T();
+  template <typename T> operator T *();
+  operator auto() { return 0; }
+  operator auto *() { return this; }
+};
+struct JustTemplateOp {
+  template <typename T> operator T();
+  template <typename T> operator T *();
+};
+
+auto c() {
+  BothOps().operator auto(); // ok
+  BothOps().operator auto *(); // ok
+  JustTemplateOp().operator auto(); // expected-error {{no member named 'operator auto' in 'JustTemplateOp'}}
+  JustTemplateOp().operator auto *(); // expected-error {{no member named 'operator auto *' in 'JustTemplateOp'}}
+}
+
 auto *ptr_1() {
   return 100; // expected-error {{cannot deduce return type 'auto *' from returned value of type 'int'}}
 }
@@ -314,7 +333,7 @@ namespace NoReturn {
 }
 
 namespace UseBeforeComplete {
-  auto n = n; // expected-error {{variable 'n' declared with 'auto' type cannot appear in its own initializer}}
+  auto n = n; // expected-error {{variable 'n' declared with deduced type 'auto' cannot appear in its own initializer}}
   auto f(); // expected-note {{declared here}}
   void g() { &f; } // expected-error {{function 'f' with deduced return type cannot be used before it is defined}}
   auto sum(int i) {
@@ -383,6 +402,33 @@ namespace MemberTemplatesWithDeduction {
   int Ninst = test<N>();
   
 }
+}
+
+// We resolve a wording bug here: 'decltype(auto)' should not be modeled as a
+// decltype-specifier, just as a simple-type-specifier. All the extra places
+// where a decltype-specifier can appear make no sense for 'decltype(auto)'.
+namespace DecltypeAutoShouldNotBeADecltypeSpecifier {
+  namespace NNS {
+    int n;
+    decltype(auto) i();
+    decltype(n) j();
+    struct X {
+      friend decltype(auto) ::DecltypeAutoShouldNotBeADecltypeSpecifier::NNS::i();
+      friend decltype(n) ::DecltypeAutoShouldNotBeADecltypeSpecifier::NNS::j(); // expected-error {{not a class}}
+    };
+  }
+
+  namespace Dtor {
+    struct A {};
+    void f(A a) { a.~decltype(auto)(); } // expected-error {{'decltype(auto)' not allowed here}}
+  }
+
+  namespace BaseClass {
+    struct A : decltype(auto) {}; // expected-error {{'decltype(auto)' not allowed here}}
+    struct B {
+      B() : decltype(auto)() {} // expected-error {{'decltype(auto)' not allowed here}}
+    };
+  }
 }
 
 namespace CurrentInstantiation {
@@ -505,4 +551,72 @@ namespace PR24989 {
 
 void forinit_decltypeauto() {
   for (decltype(auto) forinit_decltypeauto_inner();;) {} // expected-warning {{interpreted as a function}} expected-note {{replace}}
+}
+
+namespace PR33222 {
+  auto f1();
+  auto f2();
+
+  template<typename T> decltype(auto) g0(T x) { return x.n; }
+  template<typename T> decltype(auto) g1(T);
+  template<typename T> decltype(auto) g2(T);
+
+  struct X {
+    static auto f1();
+    static auto f2();
+
+    template<typename T> static decltype(auto) g0(T x) { return x.n; }
+    template<typename T> static decltype(auto) g1(T);
+    template<typename T> static decltype(auto) g2(T);
+  };
+
+  template<typename U> class A {
+    friend auto f1();
+    friend auto f2();
+
+    friend decltype(auto) g0<>(A);
+    template<typename T> friend decltype(auto) g1(T);
+    template<typename T> friend decltype(auto) g2(T);
+
+    friend auto X::f1();
+    friend auto X::f2();
+
+    // FIXME (PR38882): 'A' names the class template not the injected-class-name here!
+    friend decltype(auto) X::g0<>(A<U>);
+    // FIXME (PR38882): ::T hides the template parameter if both are named T here!
+    template<typename T_> friend decltype(auto) X::g1(T_);
+    template<typename T_> friend decltype(auto) X::g2(T_);
+
+    int n;
+  };
+
+  auto f1() { return A<int>().n; }
+  template<typename T> decltype(auto) g1(T x) { return A<int>().n; }
+
+  auto X::f1() { return A<int>().n; }
+  template<typename T> decltype(auto) X::g1(T x) { return A<int>().n; }
+
+  A<int> ai;
+  int k1 = g0(ai);
+  int k2 = X::g0(ai);
+
+  int k3 = g1(ai);
+  int k4 = X::g1(ai);
+
+  auto f2() { return A<int>().n; }
+  template<typename T> decltype(auto) g2(T x) { return A<int>().n; }
+
+  auto X::f2() { return A<int>().n; }
+  template<typename T> decltype(auto) X::g2(T x) { return A<int>().n; }
+
+  int k5 = g2(ai);
+  int k6 = X::g2(ai);
+
+  template<typename> struct B {
+    auto *q() { return (float*)0; } // expected-note 2{{previous}}
+  };
+  template<> auto *B<char[1]>::q() { return (int*)0; }
+  template<> auto B<char[2]>::q() { return (int*)0; } // expected-error {{return type}}
+  // FIXME: suppress this follow-on error: expected-error@-1 {{cannot initialize}}
+  template<> int B<char[3]>::q() { return 0; } // expected-error {{return type}}
 }

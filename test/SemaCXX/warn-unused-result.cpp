@@ -33,6 +33,36 @@ void test() {
   const S &s4 = g1();
 }
 
+void testSubstmts(int i) {
+  switch (i) {
+  case 0:
+    f(); // expected-warning {{ignoring return value}}
+  default:
+    f(); // expected-warning {{ignoring return value}}
+  }
+
+  if (i)
+    f(); // expected-warning {{ignoring return value}}
+  else
+    f(); // expected-warning {{ignoring return value}}
+
+  while (i)
+    f(); // expected-warning {{ignoring return value}}
+
+  do
+    f(); // expected-warning {{ignoring return value}}
+  while (i);
+
+  for (f(); // expected-warning {{ignoring return value}}
+       ;
+       f() // expected-warning {{ignoring return value}}
+      )
+    f(); // expected-warning {{ignoring return value}}
+
+  f(),  // expected-warning {{ignoring return value}}
+  (void)f();
+}
+
 struct X {
  int foo() __attribute__((warn_unused_result));
 };
@@ -160,3 +190,59 @@ void g() {
   (void)noexcept(f(), false); // Should not warn.
 }
 }
+
+namespace {
+// C++ Methods should warn even in their own class.
+struct [[clang::warn_unused_result]] S {
+  S DoThing() { return {}; };
+  S operator++(int) { return {}; };
+  S operator--(int) { return {}; };
+  // Improperly written prefix.
+  S operator++() { return {}; };
+  S operator--() { return {}; };
+};
+
+struct [[clang::warn_unused_result]] P {
+  P DoThing() { return {}; };
+};
+
+P operator++(const P &, int) { return {}; };
+P operator--(const P &, int) { return {}; };
+// Improperly written prefix.
+P operator++(const P &) { return {}; };
+P operator--(const P &) { return {}; };
+
+void f() {
+  S s;
+  P p;
+  s.DoThing(); // expected-warning {{ignoring return value}}
+  p.DoThing(); // expected-warning {{ignoring return value}}
+  // Only postfix is expected to warn when written correctly.
+  s++; // expected-warning {{ignoring return value}}
+  s--; // expected-warning {{ignoring return value}}
+  p++; // expected-warning {{ignoring return value}}
+  p--; // expected-warning {{ignoring return value}}
+  // Improperly written prefix operators should still warn.
+  ++s; // expected-warning {{ignoring return value}}
+  --s; // expected-warning {{ignoring return value}}
+  ++p; // expected-warning {{ignoring return value}}
+  --p; // expected-warning {{ignoring return value}}
+
+  // Silencing the warning by cast to void still works.
+  (void)s.DoThing();
+  (void)s++;
+  (void)p++;
+  (void)++s;
+  (void)++p;
+}
+} // namespace
+
+namespace PR39837 {
+[[clang::warn_unused_result]] int f(int);
+
+void g() {
+  int a[2];
+  for (int b : a)
+    f(b); // expected-warning {{ignoring return value}}
+}
+} // namespace PR39837

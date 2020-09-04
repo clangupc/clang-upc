@@ -1,9 +1,8 @@
 //==--- MacOSKeychainAPIChecker.cpp ------------------------------*- C++ -*-==//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 // This checker flags misuses of KeyChainAPI. In particular, the password data
@@ -12,10 +11,11 @@
 // to be freed using a call to SecKeychainItemFreeContent.
 //===----------------------------------------------------------------------===//
 
-#include "ClangSACheckers.h"
+#include "clang/StaticAnalyzer/Checkers/BuiltinCheckerRegistration.h"
 #include "clang/StaticAnalyzer/Core/BugReporter/BugType.h"
 #include "clang/StaticAnalyzer/Core/Checker.h"
 #include "clang/StaticAnalyzer/Core/CheckerManager.h"
+#include "clang/StaticAnalyzer/Core/PathSensitive/CallEvent.h"
 #include "clang/StaticAnalyzer/Core/PathSensitive/CheckerContext.h"
 #include "clang/StaticAnalyzer/Core/PathSensitive/ProgramState.h"
 #include "clang/StaticAnalyzer/Core/PathSensitive/ProgramStateTrait.h"
@@ -28,7 +28,9 @@ using namespace ento;
 namespace {
 class MacOSKeychainAPIChecker : public Checker<check::PreStmt<CallExpr>,
                                                check::PostStmt<CallExpr>,
-                                               check::DeadSymbols> {
+                                               check::DeadSymbols,
+                                               check::PointerEscape,
+                                               eval::Assume> {
   mutable std::unique_ptr<BugType> BT;
 
 public:
@@ -57,6 +59,14 @@ public:
   void checkPreStmt(const CallExpr *S, CheckerContext &C) const;
   void checkPostStmt(const CallExpr *S, CheckerContext &C) const;
   void checkDeadSymbols(SymbolReaper &SR, CheckerContext &C) const;
+  ProgramStateRef checkPointerEscape(ProgramStateRef State,
+                                     const InvalidatedSymbols &Escaped,
+                                     const CallEvent *Call,
+                                     PointerEscapeKind Kind) const;
+  ProgramStateRef evalAssume(ProgramStateRef state, SVal Cond,
+                             bool Assumption) const;
+  void printState(raw_ostream &Out, ProgramStateRef State,
+                  const char *NL, const char *Sep) const;
 
 private:
   typedef std::pair<SymbolRef, const AllocationState*> AllocationPair;
@@ -106,19 +116,6 @@ private:
   std::unique_ptr<BugReport> generateAllocatedDataNotReleasedReport(
       const AllocationPair &AP, ExplodedNode *N, CheckerContext &C) const;
 
-  /// Check if RetSym evaluates to an error value in the current state.
-  bool definitelyReturnedError(SymbolRef RetSym,
-                               ProgramStateRef State,
-                               SValBuilder &Builder,
-                               bool noError = false) const;
-
-  /// Check if RetSym evaluates to a NoErr value in the current state.
-  bool definitelyDidnotReturnError(SymbolRef RetSym,
-                                   ProgramStateRef State,
-                                   SValBuilder &Builder) const {
-    return definitelyReturnedError(RetSym, State, Builder, true);
-  }
-
   /// Mark an AllocationPair interesting for diagnostic reporting.
   void markInteresting(BugReport *R, const AllocationPair &AP) const {
     R->markInteresting(AP.first);
@@ -128,8 +125,7 @@ private:
   /// The bug visitor which allows us to print extra diagnostics along the
   /// BugReport path. For example, showing the allocation site of the leaked
   /// region.
-  class SecKeychainBugVisitor
-    : public BugReporterVisitorImpl<SecKeychainBugVisitor> {
+  class SecKeychainBugVisitor : public BugReporterVisitor {
   protected:
     // The allocated region symbol tracked by the main analysis.
     SymbolRef Sym;
@@ -144,7 +140,6 @@ private:
     }
 
     std::shared_ptr<PathDiagnosticPiece> VisitNode(const ExplodedNode *N,
-                                                   const ExplodedNode *PrevN,
                                                    BugReporterContext &BRC,
                                                    BugReport &BR) override;
   };
@@ -210,7 +205,7 @@ static bool isBadDeallocationArgument(const MemRegion *Arg) {
 static SymbolRef getAsPointeeSymbol(const Expr *Expr,
                                     CheckerContext &C) {
   ProgramStateRef State = C.getState();
-  SVal ArgV = State->getSVal(Expr, C.getLocationContext());
+  SVal ArgV = C.getSVal(Expr);
 
   if (Optional<loc::MemRegionVal> X = ArgV.getAs<loc::MemRegionVal>()) {
     StoreManager& SM = C.getStoreManager();
@@ -219,24 +214,6 @@ static SymbolRef getAsPointeeSymbol(const Expr *Expr,
       return sym;
   }
   return nullptr;
-}
-
-// When checking for error code, we need to consider the following cases:
-// 1) noErr / [0]
-// 2) someErr / [1, inf]
-// 3) unknown
-// If noError, returns true iff (1).
-// If !noError, returns true iff (2).
-bool MacOSKeychainAPIChecker::definitelyReturnedError(SymbolRef RetSym,
-                                                      ProgramStateRef State,
-                                                      SValBuilder &Builder,
-                                                      bool noError) const {
-  DefinedOrUnknownSVal NoErrVal = Builder.makeIntVal(NoErr,
-    Builder.getSymbolManager().getType(RetSym));
-  DefinedOrUnknownSVal NoErr = Builder.evalEQ(State, NoErrVal,
-                                                     nonloc::SymbolVal(RetSym));
-  ProgramStateRef ErrState = State->assume(NoErr, noError);
-  return ErrState == State;
 }
 
 // Report deallocator mismatch. Remove the region from tracking - reporting a
@@ -289,27 +266,25 @@ void MacOSKeychainAPIChecker::checkPreStmt(const CallExpr *CE,
     const Expr *ArgExpr = CE->getArg(paramIdx);
     if (SymbolRef V = getAsPointeeSymbol(ArgExpr, C))
       if (const AllocationState *AS = State->get<AllocatedData>(V)) {
-        if (!definitelyReturnedError(AS->Region, State, C.getSValBuilder())) {
-          // Remove the value from the state. The new symbol will be added for
-          // tracking when the second allocator is processed in checkPostStmt().
-          State = State->remove<AllocatedData>(V);
-          ExplodedNode *N = C.generateNonFatalErrorNode(State);
-          if (!N)
-            return;
-          initBugType();
-          SmallString<128> sbuf;
-          llvm::raw_svector_ostream os(sbuf);
-          unsigned int DIdx = FunctionsToTrack[AS->AllocatorIdx].DeallocatorIdx;
-          os << "Allocated data should be released before another call to "
-              << "the allocator: missing a call to '"
-              << FunctionsToTrack[DIdx].Name
-              << "'.";
-          auto Report = llvm::make_unique<BugReport>(*BT, os.str(), N);
-          Report->addVisitor(llvm::make_unique<SecKeychainBugVisitor>(V));
-          Report->addRange(ArgExpr->getSourceRange());
-          Report->markInteresting(AS->Region);
-          C.emitReport(std::move(Report));
-        }
+        // Remove the value from the state. The new symbol will be added for
+        // tracking when the second allocator is processed in checkPostStmt().
+        State = State->remove<AllocatedData>(V);
+        ExplodedNode *N = C.generateNonFatalErrorNode(State);
+        if (!N)
+          return;
+        initBugType();
+        SmallString<128> sbuf;
+        llvm::raw_svector_ostream os(sbuf);
+        unsigned int DIdx = FunctionsToTrack[AS->AllocatorIdx].DeallocatorIdx;
+        os << "Allocated data should be released before another call to "
+            << "the allocator: missing a call to '"
+            << FunctionsToTrack[DIdx].Name
+            << "'.";
+        auto Report = llvm::make_unique<BugReport>(*BT, os.str(), N);
+        Report->addVisitor(llvm::make_unique<SecKeychainBugVisitor>(V));
+        Report->addRange(ArgExpr->getSourceRange());
+        Report->markInteresting(AS->Region);
+        C.emitReport(std::move(Report));
       }
     return;
   }
@@ -325,7 +300,7 @@ void MacOSKeychainAPIChecker::checkPreStmt(const CallExpr *CE,
 
   // Check the argument to the deallocator.
   const Expr *ArgExpr = CE->getArg(paramIdx);
-  SVal ArgSVal = State->getSVal(ArgExpr, C.getLocationContext());
+  SVal ArgSVal = C.getSVal(ArgExpr);
 
   // Undef is reported by another checker.
   if (ArgSVal.isUndef())
@@ -344,13 +319,12 @@ void MacOSKeychainAPIChecker::checkPreStmt(const CallExpr *CE,
 
   // Is the argument to the call being tracked?
   const AllocationState *AS = State->get<AllocatedData>(ArgSM);
-  if (!AS && FunctionsToTrack[idx].Kind != ValidAPI) {
+  if (!AS)
     return;
-  }
-  // If trying to free data which has not been allocated yet, report as a bug.
-  // TODO: We might want a more precise diagnostic for double free
+
+  // TODO: We might want to report double free here.
   // (that would involve tracking all the freed symbols in the checker state).
-  if (!AS || RegionArgIsBad) {
+  if (RegionArgIsBad) {
     // It is possible that this is a false positive - the argument might
     // have entered as an enclosing function parameter.
     if (isEnclosingFunctionParam(ArgExpr))
@@ -418,23 +392,6 @@ void MacOSKeychainAPIChecker::checkPreStmt(const CallExpr *CE,
     return;
   }
 
-  // If the buffer can be null and the return status can be an error,
-  // report a bad call to free.
-  if (State->assume(ArgSVal.castAs<DefinedSVal>(), false) &&
-      !definitelyDidnotReturnError(AS->Region, State, C.getSValBuilder())) {
-    ExplodedNode *N = C.generateNonFatalErrorNode(State);
-    if (!N)
-      return;
-    initBugType();
-    auto Report = llvm::make_unique<BugReport>(
-        *BT, "Only call free if a valid (non-NULL) buffer was returned.", N);
-    Report->addVisitor(llvm::make_unique<SecKeychainBugVisitor>(ArgSM));
-    Report->addRange(ArgExpr->getSourceRange());
-    Report->markInteresting(AS->Region);
-    C.emitReport(std::move(Report));
-    return;
-  }
-
   C.addTransition(State);
 }
 
@@ -472,8 +429,7 @@ void MacOSKeychainAPIChecker::checkPostStmt(const CallExpr *CE,
     // allocated value symbol, since our diagnostics depend on the value
     // returned by the call. Ex: Data should only be freed if noErr was
     // returned during allocation.)
-    SymbolRef RetStatusSymbol =
-      State->getSVal(CE, C.getLocationContext()).getAsSymbol();
+    SymbolRef RetStatusSymbol = C.getSVal(CE).getAsSymbol();
     C.getSymbolManager().addSymbolDependency(V, RetStatusSymbol);
 
     // Track the allocated value in the checker state.
@@ -540,27 +496,63 @@ MacOSKeychainAPIChecker::generateAllocatedDataNotReleasedReport(
   return Report;
 }
 
+/// If the return symbol is assumed to be error, remove the allocated info
+/// from consideration.
+ProgramStateRef MacOSKeychainAPIChecker::evalAssume(ProgramStateRef State,
+                                                    SVal Cond,
+                                                    bool Assumption) const {
+  AllocatedDataTy AMap = State->get<AllocatedData>();
+  if (AMap.isEmpty())
+    return State;
+
+  auto *CondBSE = dyn_cast_or_null<BinarySymExpr>(Cond.getAsSymExpr());
+  if (!CondBSE)
+    return State;
+  BinaryOperator::Opcode OpCode = CondBSE->getOpcode();
+  if (OpCode != BO_EQ && OpCode != BO_NE)
+    return State;
+
+  // Match for a restricted set of patterns for cmparison of error codes.
+  // Note, the comparisons of type '0 == st' are transformed into SymIntExpr.
+  SymbolRef ReturnSymbol = nullptr;
+  if (auto *SIE = dyn_cast<SymIntExpr>(CondBSE)) {
+    const llvm::APInt &RHS = SIE->getRHS();
+    bool ErrorIsReturned = (OpCode == BO_EQ && RHS != NoErr) ||
+                           (OpCode == BO_NE && RHS == NoErr);
+    if (!Assumption)
+      ErrorIsReturned = !ErrorIsReturned;
+    if (ErrorIsReturned)
+      ReturnSymbol = SIE->getLHS();
+  }
+
+  if (ReturnSymbol)
+    for (auto I = AMap.begin(), E = AMap.end(); I != E; ++I) {
+      if (ReturnSymbol == I->second.Region)
+        State = State->remove<AllocatedData>(I->first);
+    }
+
+  return State;
+}
+
 void MacOSKeychainAPIChecker::checkDeadSymbols(SymbolReaper &SR,
                                                CheckerContext &C) const {
   ProgramStateRef State = C.getState();
-  AllocatedDataTy ASet = State->get<AllocatedData>();
-  if (ASet.isEmpty())
+  AllocatedDataTy AMap = State->get<AllocatedData>();
+  if (AMap.isEmpty())
     return;
 
   bool Changed = false;
   AllocationPairVec Errors;
-  for (AllocatedDataTy::iterator I = ASet.begin(), E = ASet.end(); I != E; ++I) {
-    if (SR.isLive(I->first))
+  for (auto I = AMap.begin(), E = AMap.end(); I != E; ++I) {
+    if (!SR.isDead(I->first))
       continue;
 
     Changed = true;
     State = State->remove<AllocatedData>(I->first);
-    // If the allocated symbol is null or if the allocation call might have
-    // returned an error, do not report.
+    // If the allocated symbol is null do not report.
     ConstraintManager &CMgr = State->getConstraintManager();
     ConditionTruthVal AllocFailed = CMgr.isNull(State, I.getKey());
-    if (AllocFailed.isConstrainedTrue() ||
-        definitelyReturnedError(I->second.Region, State, C.getSValBuilder()))
+    if (AllocFailed.isConstrainedTrue())
       continue;
     Errors.push_back(std::make_pair(I->first, &I->second));
   }
@@ -583,14 +575,52 @@ void MacOSKeychainAPIChecker::checkDeadSymbols(SymbolReaper &SR,
   C.addTransition(State, N);
 }
 
+ProgramStateRef MacOSKeychainAPIChecker::checkPointerEscape(
+    ProgramStateRef State, const InvalidatedSymbols &Escaped,
+    const CallEvent *Call, PointerEscapeKind Kind) const {
+  // FIXME: This branch doesn't make any sense at all, but it is an overfitted
+  // replacement for a previous overfitted code that was making even less sense.
+  if (!Call || Call->getDecl())
+    return State;
+
+  for (auto I : State->get<AllocatedData>()) {
+    SymbolRef Sym = I.first;
+    if (Escaped.count(Sym))
+      State = State->remove<AllocatedData>(Sym);
+
+    // This checker is special. Most checkers in fact only track symbols of
+    // SymbolConjured type, eg. symbols returned from functions such as
+    // malloc(). This checker tracks symbols returned as out-parameters.
+    //
+    // When a function is evaluated conservatively, the out-parameter's pointee
+    // base region gets invalidated with a SymbolConjured. If the base region is
+    // larger than the region we're interested in, the value we're interested in
+    // would be SymbolDerived based on that SymbolConjured. However, such
+    // SymbolDerived will never be listed in the Escaped set when the base
+    // region is invalidated because ExprEngine doesn't know which symbols
+    // were derived from a given symbol, while there can be infinitely many
+    // valid symbols derived from any given symbol.
+    //
+    // Hence the extra boilerplate: remove the derived symbol when its parent
+    // symbol escapes.
+    //
+    if (const auto *SD = dyn_cast<SymbolDerived>(Sym)) {
+      SymbolRef ParentSym = SD->getParentSymbol();
+      if (Escaped.count(ParentSym))
+        State = State->remove<AllocatedData>(Sym);
+    }
+  }
+  return State;
+}
+
 std::shared_ptr<PathDiagnosticPiece>
 MacOSKeychainAPIChecker::SecKeychainBugVisitor::VisitNode(
-    const ExplodedNode *N, const ExplodedNode *PrevN, BugReporterContext &BRC,
-    BugReport &BR) {
+    const ExplodedNode *N, BugReporterContext &BRC, BugReport &BR) {
   const AllocationState *AS = N->getState()->get<AllocatedData>(Sym);
   if (!AS)
     return nullptr;
-  const AllocationState *ASPrev = PrevN->getState()->get<AllocatedData>(Sym);
+  const AllocationState *ASPrev =
+      N->getFirstPred()->getState()->get<AllocatedData>(Sym);
   if (ASPrev)
     return nullptr;
 
@@ -612,6 +642,26 @@ MacOSKeychainAPIChecker::SecKeychainBugVisitor::VisitNode(
                                                     "Data is allocated here.");
 }
 
+void MacOSKeychainAPIChecker::printState(raw_ostream &Out,
+                                         ProgramStateRef State,
+                                         const char *NL,
+                                         const char *Sep) const {
+
+  AllocatedDataTy AMap = State->get<AllocatedData>();
+
+  if (!AMap.isEmpty()) {
+    Out << Sep << "KeychainAPIChecker :" << NL;
+    for (auto I = AMap.begin(), E = AMap.end(); I != E; ++I) {
+      I.getKey()->dumpToStream(Out);
+    }
+  }
+}
+
+
 void ento::registerMacOSKeychainAPIChecker(CheckerManager &mgr) {
   mgr.registerChecker<MacOSKeychainAPIChecker>();
+}
+
+bool ento::shouldRegisterMacOSKeychainAPIChecker(const LangOptions &LO) {
+  return true;
 }

@@ -136,28 +136,28 @@ namespace UndefinedBehavior {
     case (int)10000000000ll: // expected-note {{here}}
     case (unsigned int)10000000000ll: // expected-error {{duplicate case value}}
     case (int)(unsigned)(long long)4.4e9: // ok
-    case (int)(float)1e300: // expected-error {{constant expression}} expected-note {{value 1.0E+300 is outside the range of representable values of type 'float'}}
+    case (int)(float)1e300: // expected-error {{constant expression}} expected-note {{value +Inf is outside the range of representable values of type 'int'}}
     case (int)((float)1e37 / 1e30): // ok
-    case (int)(__fp16)65536: // expected-error {{constant expression}} expected-note {{value 65536 is outside the range of representable values of type '__fp16'}}
+    case (int)(__fp16)65536: // expected-error {{constant expression}} expected-note {{value +Inf is outside the range of representable values of type 'int'}}
       break;
     }
   }
 
   constexpr int int_min = ~0x7fffffff;
   constexpr int minus_int_min = -int_min; // expected-error {{constant expression}} expected-note {{value 2147483648 is outside the range}}
-  constexpr int div0 = 3 / 0; // expected-error {{constant expression}} expected-note {{division by zero}} expected-warning {{undefined}}
-  constexpr int mod0 = 3 % 0; // expected-error {{constant expression}} expected-note {{division by zero}} expected-warning {{undefined}}
+  constexpr int div0 = 3 / 0; // expected-error {{constant expression}} expected-note {{division by zero}}
+  constexpr int mod0 = 3 % 0; // expected-error {{constant expression}} expected-note {{division by zero}}
   constexpr int int_min_div_minus_1 = int_min / -1; // expected-error {{constant expression}} expected-note {{value 2147483648 is outside the range}}
   constexpr int int_min_mod_minus_1 = int_min % -1; // expected-error {{constant expression}} expected-note {{value 2147483648 is outside the range}}
 
-  constexpr int shl_m1 = 0 << -1; // expected-error {{constant expression}} expected-note {{negative shift count -1}} expected-warning {{negative}}
+  constexpr int shl_m1 = 0 << -1; // expected-error {{constant expression}} expected-note {{negative shift count -1}}
   constexpr int shl_0 = 0 << 0; // ok
   constexpr int shl_31 = 0 << 31; // ok
-  constexpr int shl_32 = 0 << 32; // expected-error {{constant expression}} expected-note {{shift count 32 >= width of type 'int' (32}} expected-warning {{>= width of type}}
+  constexpr int shl_32 = 0 << 32; // expected-error {{constant expression}} expected-note {{shift count 32 >= width of type 'int' (32}}
   constexpr int shl_unsigned_negative = unsigned(-3) << 1; // ok
   constexpr int shl_unsigned_into_sign = 1u << 31; // ok
   constexpr int shl_unsigned_overflow = 1024u << 31; // ok
-  constexpr int shl_signed_negative = (-3) << 1; // expected-warning {{shifting a negative signed value is undefined}} // expected-error {{constant expression}} expected-note {{left shift of negative value -3}}
+  constexpr int shl_signed_negative = (-3) << 1; // expected-error {{constant expression}} expected-note {{left shift of negative value -3}}
   constexpr int shl_signed_ok = 1 << 30; // ok
   constexpr int shl_signed_into_sign = 1 << 31; // ok (DR1457)
   constexpr int shl_signed_into_sign_2 = 0x7fffffff << 1; // ok (DR1457)
@@ -166,10 +166,10 @@ namespace UndefinedBehavior {
   constexpr int shl_signed_overflow = 1024 << 31; // expected-error {{constant expression}} expected-note {{signed left shift discards bits}} expected-warning {{requires 43 bits to represent}}
   constexpr int shl_signed_ok2 = 1024 << 20; // ok
 
-  constexpr int shr_m1 = 0 >> -1; // expected-error {{constant expression}} expected-note {{negative shift count -1}} expected-warning {{negative}}
+  constexpr int shr_m1 = 0 >> -1; // expected-error {{constant expression}} expected-note {{negative shift count -1}}
   constexpr int shr_0 = 0 >> 0; // ok
   constexpr int shr_31 = 0 >> 31; // ok
-  constexpr int shr_32 = 0 >> 32; // expected-error {{constant expression}} expected-note {{shift count 32 >= width of type}} expected-warning {{>= width of type}}
+  constexpr int shr_32 = 0 >> 32; // expected-error {{constant expression}} expected-note {{shift count 32 >= width of type}}
 
   struct S {
     int m;
@@ -210,8 +210,8 @@ namespace UndefinedBehavior {
       constexpr int f() const { return 0; }
     } constexpr c = C();
     constexpr int k1 = c.f(); // ok
-    constexpr int k2 = ((C*)nullptr)->f(); // expected-error {{constant expression}} expected-note {{cannot call member function on null pointer}}
-    constexpr int k3 = (&c)[1].f(); // expected-error {{constant expression}} expected-note {{cannot call member function on pointer past the end of object}}
+    constexpr int k2 = ((C*)nullptr)->f(); // expected-error {{constant expression}} expected-note {{member call on dereferenced null pointer}}
+    constexpr int k3 = (&c)[1].f(); // expected-error {{constant expression}} expected-note {{member call on dereferenced one-past-the-end pointer}}
     C c2;
     constexpr int k4 = c2.f(); // ok!
 
@@ -264,14 +264,28 @@ namespace UndefinedBehavior {
     static_assert(0u - 1u == 4294967295u, ""); // ok
     static_assert(~0u * ~0u == 1u, ""); // ok
 
+    template<typename T> constexpr bool isinf(T v) { return v && v / 2 == v; }
+
     // Floating-point overflow and NaN.
     constexpr float f1 = 1e38f * 3.4028f; // ok
-    constexpr float f2 = 1e38f * 3.4029f; // expected-error {{constant expression}} expected-note {{floating point arithmetic produces an infinity}}
+    constexpr float f2 = 1e38f * 3.4029f; // ok, +inf is in range of representable values
     constexpr float f3 = 1e38f / -.2939f; // ok
-    constexpr float f4 = 1e38f / -.2938f; // expected-error {{constant expression}} expected-note {{floating point arithmetic produces an infinity}}
-    constexpr float f5 = 2e38f + 2e38f; // expected-error {{constant expression}} expected-note {{floating point arithmetic produces an infinity}}
-    constexpr float f6 = -2e38f - 2e38f; // expected-error {{constant expression}} expected-note {{floating point arithmetic produces an infinity}}
-    constexpr float f7 = 0.f / 0.f; // expected-error {{constant expression}} expected-note {{floating point arithmetic produces a NaN}}
+    constexpr float f4 = 1e38f / -.2938f; // ok, -inf is in range of representable values
+    constexpr float f5 = 2e38f + 2e38f; // ok, +inf is in range of representable values
+    constexpr float f6 = -2e38f - 2e38f; // ok, -inf is in range of representable values
+    constexpr float f7 = 0.f / 0.f; // expected-error {{constant expression}} expected-note {{division by zero}}
+    constexpr float f8 = 1.f / 0.f; // expected-error {{constant expression}} expected-note {{division by zero}}
+    constexpr float f9 = 1e308 / 1e-308; // ok, +inf
+    constexpr float f10 = f2 - f2; // expected-error {{constant expression}} expected-note {{produces a NaN}}
+    constexpr float f11 = f2 + f4; // expected-error {{constant expression}} expected-note {{produces a NaN}}
+    constexpr float f12 = f2 / f2; // expected-error {{constant expression}} expected-note {{produces a NaN}}
+    static_assert(!isinf(f1), "");
+    static_assert(isinf(f2), "");
+    static_assert(!isinf(f3), "");
+    static_assert(isinf(f4), "");
+    static_assert(isinf(f5), "");
+    static_assert(isinf(f6), "");
+    static_assert(isinf(f9), "");
   }
 }
 

@@ -1,14 +1,13 @@
 //===--- VariantValue.cpp - Polymorphic value type -*- C++ -*-===/
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 ///
 /// \file
-/// \brief Polymorphic value type.
+/// Polymorphic value type.
 ///
 //===----------------------------------------------------------------------===//
 
@@ -24,6 +23,10 @@ std::string ArgKind::asString() const {
   switch (getArgKind()) {
   case AK_Matcher:
     return (Twine("Matcher<") + MatcherKind.asStringRef() + ">").str();
+  case AK_Boolean:
+    return "boolean";
+  case AK_Double:
+    return "double";
   case AK_Unsigned:
     return "unsigned";
   case AK_String:
@@ -247,6 +250,14 @@ VariantValue::VariantValue(const VariantValue &Other) : Type(VT_Nothing) {
   *this = Other;
 }
 
+VariantValue::VariantValue(bool Boolean) : Type(VT_Nothing) {
+  setBoolean(Boolean);
+}
+
+VariantValue::VariantValue(double Double) : Type(VT_Nothing) {
+  setDouble(Double);
+}
+
 VariantValue::VariantValue(unsigned Unsigned) : Type(VT_Nothing) {
   setUnsigned(Unsigned);
 }
@@ -265,6 +276,12 @@ VariantValue &VariantValue::operator=(const VariantValue &Other) {
   if (this == &Other) return *this;
   reset();
   switch (Other.Type) {
+  case VT_Boolean:
+    setBoolean(Other.getBoolean());
+    break;
+  case VT_Double:
+    setDouble(Other.getDouble());
+    break;
   case VT_Unsigned:
     setUnsigned(Other.getUnsigned());
     break;
@@ -290,11 +307,43 @@ void VariantValue::reset() {
     delete Value.Matcher;
     break;
   // Cases that do nothing.
+  case VT_Boolean:
+  case VT_Double:
   case VT_Unsigned:
   case VT_Nothing:
     break;
   }
   Type = VT_Nothing;
+}
+
+bool VariantValue::isBoolean() const {
+  return Type == VT_Boolean;
+}
+
+bool VariantValue::getBoolean() const {
+  assert(isBoolean());
+  return Value.Boolean;
+}
+
+void VariantValue::setBoolean(bool NewValue) {
+  reset();
+  Type = VT_Boolean;
+  Value.Boolean = NewValue;
+}
+
+bool VariantValue::isDouble() const {
+  return Type == VT_Double;
+}
+
+double VariantValue::getDouble() const {
+  assert(isDouble());
+  return Value.Double;
+}
+
+void VariantValue::setDouble(double NewValue) {
+  reset();
+  Type = VT_Double;
+  Value.Double = NewValue;
 }
 
 bool VariantValue::isUnsigned() const {
@@ -344,6 +393,18 @@ void VariantValue::setMatcher(const VariantMatcher &NewValue) {
 
 bool VariantValue::isConvertibleTo(ArgKind Kind, unsigned *Specificity) const {
   switch (Kind.getArgKind()) {
+  case ArgKind::AK_Boolean:
+    if (!isBoolean())
+      return false;
+    *Specificity = 1;
+    return true;
+
+  case ArgKind::AK_Double:
+    if (!isDouble())
+      return false;
+    *Specificity = 1;
+    return true;
+
   case ArgKind::AK_Unsigned:
     if (!isUnsigned())
       return false;
@@ -383,6 +444,8 @@ std::string VariantValue::getTypeAsString() const {
   switch (Type) {
   case VT_String: return "String";
   case VT_Matcher: return getMatcher().getTypeAsString();
+  case VT_Boolean: return "Boolean";
+  case VT_Double: return "Double";
   case VT_Unsigned: return "Unsigned";
   case VT_Nothing: return "Nothing";
   }

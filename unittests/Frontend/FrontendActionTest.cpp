@@ -1,24 +1,25 @@
 //===- unittests/Frontend/FrontendActionTest.cpp - FrontendAction tests ---===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
+#include "clang/Frontend/FrontendAction.h"
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/CompilerInvocation.h"
-#include "clang/Frontend/FrontendAction.h"
 #include "clang/Frontend/FrontendActions.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Lex/PreprocessorOptions.h"
 #include "clang/Sema/Sema.h"
+#include "clang/Serialization/InMemoryModuleCache.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/ToolOutputFile.h"
 #include "gtest/gtest.h"
 
 using namespace llvm;
@@ -37,12 +38,11 @@ public:
   bool ActOnEndOfTranslationUnit;
   std::vector<std::string> decl_names;
 
-  bool BeginSourceFileAction(CompilerInstance &ci,
-                             StringRef filename) override {
+  bool BeginSourceFileAction(CompilerInstance &ci) override {
     if (EnableIncrementalProcessing)
       ci.getPreprocessor().enableIncrementalProcessing();
 
-    return ASTFrontendAction::BeginSourceFileAction(ci, filename);
+    return ASTFrontendAction::BeginSourceFileAction(ci);
   }
 
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
@@ -83,8 +83,8 @@ TEST(ASTFrontendAction, Sanity) {
   invocation->getPreprocessorOpts().addRemappedFile(
       "test.cc",
       MemoryBuffer::getMemBuffer("int main() { float x; }").release());
-  invocation->getFrontendOpts().Inputs.push_back(FrontendInputFile("test.cc",
-                                                                   IK_CXX));
+  invocation->getFrontendOpts().Inputs.push_back(
+      FrontendInputFile("test.cc", InputKind::CXX));
   invocation->getFrontendOpts().ProgramAction = frontend::ParseSyntaxOnly;
   invocation->getTargetOpts().Triple = "i386-unknown-linux-gnu";
   CompilerInstance compiler;
@@ -103,8 +103,8 @@ TEST(ASTFrontendAction, IncrementalParsing) {
   invocation->getPreprocessorOpts().addRemappedFile(
       "test.cc",
       MemoryBuffer::getMemBuffer("int main() { float x; }").release());
-  invocation->getFrontendOpts().Inputs.push_back(FrontendInputFile("test.cc",
-                                                                   IK_CXX));
+  invocation->getFrontendOpts().Inputs.push_back(
+      FrontendInputFile("test.cc", InputKind::CXX));
   invocation->getFrontendOpts().ProgramAction = frontend::ParseSyntaxOnly;
   invocation->getTargetOpts().Triple = "i386-unknown-linux-gnu";
   CompilerInstance compiler;
@@ -130,8 +130,8 @@ TEST(ASTFrontendAction, LateTemplateIncrementalParsing) {
       "  B(B const& b): A<T>(b.data) {}\n"
       "};\n"
       "B<char> c() { return B<char>(); }\n").release());
-  invocation->getFrontendOpts().Inputs.push_back(FrontendInputFile("test.cc",
-                                                                   IK_CXX));
+  invocation->getFrontendOpts().Inputs.push_back(
+      FrontendInputFile("test.cc", InputKind::CXX));
   invocation->getFrontendOpts().ProgramAction = frontend::ParseSyntaxOnly;
   invocation->getTargetOpts().Triple = "i386-unknown-linux-gnu";
   CompilerInstance compiler;
@@ -177,7 +177,7 @@ TEST(PreprocessorFrontendAction, EndSourceFile) {
       "test.cc",
       MemoryBuffer::getMemBuffer("int main() { float x; }").release());
   Invocation->getFrontendOpts().Inputs.push_back(
-      FrontendInputFile("test.cc", IK_CXX));
+      FrontendInputFile("test.cc", InputKind::CXX));
   Invocation->getFrontendOpts().ProgramAction = frontend::ParseSyntaxOnly;
   Invocation->getTargetOpts().Triple = "i386-unknown-linux-gnu";
   CompilerInstance Compiler;
@@ -238,7 +238,7 @@ TEST(ASTFrontendAction, ExternalSemaSource) {
                                             "int main() { foo(); }")
                      .release());
   Invocation->getFrontendOpts().Inputs.push_back(
-      FrontendInputFile("test.cc", IK_CXX));
+      FrontendInputFile("test.cc", InputKind::CXX));
   Invocation->getFrontendOpts().ProgramAction = frontend::ParseSyntaxOnly;
   Invocation->getTargetOpts().Triple = "i386-unknown-linux-gnu";
   CompilerInstance Compiler;
@@ -253,6 +253,42 @@ TEST(ASTFrontendAction, ExternalSemaSource) {
   EXPECT_EQ("use of undeclared identifier 'foo'; did you mean 'moo'?",
             TDC->Error.str().str());
   EXPECT_EQ("This is a note", TDC->Note.str().str());
+}
+
+TEST(GeneratePCHFrontendAction, CacheGeneratedPCH) {
+  // Create a temporary file for writing out the PCH that will be cleaned up.
+  int PCHFD;
+  llvm::SmallString<128> PCHFilename;
+  ASSERT_FALSE(
+      llvm::sys::fs::createTemporaryFile("test.h", "pch", PCHFD, PCHFilename));
+  llvm::ToolOutputFile PCHFile(PCHFilename, PCHFD);
+
+  for (bool ShouldCache : {false, true}) {
+    auto Invocation = std::make_shared<CompilerInvocation>();
+    Invocation->getLangOpts()->CacheGeneratedPCH = ShouldCache;
+    Invocation->getPreprocessorOpts().addRemappedFile(
+        "test.h",
+        MemoryBuffer::getMemBuffer("int foo(void) { return 1; }\n").release());
+    Invocation->getFrontendOpts().Inputs.push_back(
+        FrontendInputFile("test.h", InputKind::C));
+    Invocation->getFrontendOpts().OutputFile = StringRef(PCHFilename);
+    Invocation->getFrontendOpts().ProgramAction = frontend::GeneratePCH;
+    Invocation->getTargetOpts().Triple = "x86_64-apple-darwin19.0.0";
+    CompilerInstance Compiler;
+    Compiler.setInvocation(std::move(Invocation));
+    Compiler.createDiagnostics();
+
+    GeneratePCHAction TestAction;
+    ASSERT_TRUE(Compiler.ExecuteAction(TestAction));
+
+    // Check whether the PCH was cached.
+    if (ShouldCache)
+      EXPECT_EQ(InMemoryModuleCache::Final,
+                Compiler.getModuleCache().getPCMState(PCHFilename));
+    else
+      EXPECT_EQ(InMemoryModuleCache::Unknown,
+                Compiler.getModuleCache().getPCMState(PCHFilename));
+  }
 }
 
 } // anonymous namespace

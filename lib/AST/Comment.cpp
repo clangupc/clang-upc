@@ -1,9 +1,8 @@
 //===--- Comment.cpp - Comment AST node implementation --------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -116,6 +115,9 @@ bool ParagraphComment::isWhitespaceNoCache() const {
 static TypeLoc lookThroughTypedefOrTypeAliasLocs(TypeLoc &SrcTL) {
   TypeLoc TL = SrcTL.IgnoreParens();
 
+  // Look through attribute types.
+  if (AttributedTypeLoc AttributeTL = TL.getAs<AttributedTypeLoc>())
+    return AttributeTL.getModifiedLoc();
   // Look through qualified types.
   if (QualifiedTypeLoc QualifiedTL = TL.getAs<QualifiedTypeLoc>())
     return QualifiedTL.getUnqualifiedLoc();
@@ -202,7 +204,7 @@ void DeclInfo::fill() {
     return;
   }
   CurrentDecl = CommentDecl;
-  
+
   Decl::Kind K = CommentDecl->getKind();
   switch (K) {
   default:
@@ -280,8 +282,25 @@ void DeclInfo::fill() {
   case Decl::EnumConstant:
   case Decl::ObjCIvar:
   case Decl::ObjCAtDefsField:
+  case Decl::ObjCProperty: {
+    const TypeSourceInfo *TSI;
+    if (const auto *VD = dyn_cast<DeclaratorDecl>(CommentDecl))
+      TSI = VD->getTypeSourceInfo();
+    else if (const auto *PD = dyn_cast<ObjCPropertyDecl>(CommentDecl))
+      TSI = PD->getTypeSourceInfo();
+    else
+      TSI = nullptr;
+    if (TSI) {
+      TypeLoc TL = TSI->getTypeLoc().getUnqualifiedLoc();
+      FunctionTypeLoc FTL;
+      if (getFunctionTypeLoc(TL, FTL)) {
+        ParamVars = FTL.getParams();
+        ReturnType = FTL.getReturnLoc().getType();
+      }
+    }
     Kind = VariableKind;
     break;
+  }
   case Decl::Namespace:
     Kind = NamespaceKind;
     break;

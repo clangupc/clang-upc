@@ -455,3 +455,30 @@ namespace nondependent_default_arg_ordering {
     X<int *, &m> y; f(y); // expected-error {{ambiguous}}
   }
 }
+
+namespace pointer_to_char_array {
+  typedef char T[4];
+  template<T *P> struct A { void f(); };
+  template<T *P> void A<P>::f() {}
+  T foo = "foo";
+  void g() { A<&foo>().f(); }
+}
+
+namespace dependent_backreference {
+  struct Incomplete; // expected-note 2{{forward declaration}}
+  Incomplete f(int); // expected-note 2{{here}}
+  int f(short);
+
+  template<typename T, T Value, int(*)[sizeof(f(Value))]> struct X {}; // expected-error 2{{incomplete}}
+  int arr[sizeof(int)];
+  // When checking this template-id, we must not treat 'Value' as having type
+  // 'int'; its type is the dependent type 'T'.
+  template<typename T> void f() { X<T, 0, &arr> x; } // expected-note {{substituting}}
+  void g() { f<short>(); }
+  void h() { f<int>(); } // expected-note {{instantiation}}
+
+  // The second of these is OK to diagnose eagerly because 'Value' has the
+  // non-dependent type 'int'.
+  template<short S> void a() { X<short, S, &arr> x; }
+  template<short S> void b() { X<int, S, &arr> x; } // expected-note {{substituting}}
+}

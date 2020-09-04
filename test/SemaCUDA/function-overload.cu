@@ -119,7 +119,7 @@ __host__ void hostf() {
   HostReturnTy ret_cdh = cdh();
 
   GlobalFnPtr fp_g = g;
-  g(); // expected-error {{call to global function g not configured}}
+  g(); // expected-error {{call to global function 'g' not configured}}
   g<<<0, 0>>>();
 }
 
@@ -202,7 +202,7 @@ __host__ __device__ void hostdevicef() {
 #if defined (__CUDA_ARCH__)
   // expected-error@-2 {{reference to __global__ function 'g' in __host__ __device__ function}}
 #else
-  // expected-error@-4 {{call to global function g not configured}}
+  // expected-error@-4 {{call to global function 'g' not configured}}
 #endif
 
   g<<<0,0>>>();
@@ -222,7 +222,7 @@ GlobalFnPtr fp_g = g;
 // Test overloading of destructors
 // Can't mix H and unattributed destructors
 struct d_h {
-  ~d_h() {} // expected-note {{previous declaration is here}}
+  ~d_h() {} // expected-note {{previous definition is here}}
   __host__ ~d_h() {} // expected-error {{destructor cannot be redeclared}}
 };
 

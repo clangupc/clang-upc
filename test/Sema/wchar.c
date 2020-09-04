@@ -1,5 +1,5 @@
 // RUN: %clang_cc1 %s -fsyntax-only -verify
-// RUN: %clang_cc1 %s -fsyntax-only -fshort-wchar -verify -DSHORT_WCHAR
+// RUN: %clang_cc1 %s -fsyntax-only -fwchar-type=short -fno-signed-wchar -verify -DSHORT_WCHAR
 
 typedef __WCHAR_TYPE__ wchar_t;
 
@@ -9,7 +9,11 @@ typedef __WCHAR_TYPE__ wchar_t;
 #elif defined(__arm) || defined(__aarch64__)
   #define WCHAR_T_TYPE unsigned int
 #elif defined(__sun)
-  #define WCHAR_T_TYPE long
+  #if defined(__LP64__)
+    #define WCHAR_T_TYPE int
+  #else
+    #define WCHAR_T_TYPE long
+  #endif
 #else /* Solaris. */
   #define WCHAR_T_TYPE int
 #endif

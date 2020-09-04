@@ -1,15 +1,15 @@
 //===----- ABIInfo.h - ABI information access & encapsulation ---*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
 #ifndef LLVM_CLANG_LIB_CODEGEN_ABIINFO_H
 #define LLVM_CLANG_LIB_CODEGEN_ABIINFO_H
 
+#include "clang/AST/CharUnits.h"
 #include "clang/AST/Type.h"
 #include "llvm/IR/CallingConv.h"
 #include "llvm/IR/Type.h"
@@ -23,6 +23,7 @@ namespace llvm {
 
 namespace clang {
   class ASTContext;
+  class CodeGenOptions;
   class TargetInfo;
 
 namespace CodeGen {
@@ -51,12 +52,9 @@ namespace swiftcall {
     CodeGen::CodeGenTypes &CGT;
   protected:
     llvm::CallingConv::ID RuntimeCC;
-    llvm::CallingConv::ID BuiltinCC;
   public:
     ABIInfo(CodeGen::CodeGenTypes &cgt)
-      : CGT(cgt),
-        RuntimeCC(llvm::CallingConv::C),
-        BuiltinCC(llvm::CallingConv::C) {}
+        : CGT(cgt), RuntimeCC(llvm::CallingConv::C) {}
 
     virtual ~ABIInfo();
 
@@ -67,16 +65,12 @@ namespace swiftcall {
     llvm::LLVMContext &getVMContext() const;
     const llvm::DataLayout &getDataLayout() const;
     const TargetInfo &getTarget() const;
+    const CodeGenOptions &getCodeGenOpts() const;
 
     /// Return the calling convention to use for system runtime
     /// functions.
     llvm::CallingConv::ID getRuntimeCC() const {
       return RuntimeCC;
-    }
-
-    /// Return the calling convention to use for compiler builtins
-    llvm::CallingConv::ID getBuiltinCC() const {
-      return BuiltinCC;
     }
 
     virtual void computeInfo(CodeGen::CGFunctionInfo &FI) const = 0;
@@ -105,8 +99,6 @@ namespace swiftcall {
     virtual bool isHomogeneousAggregateSmallEnough(const Type *Base,
                                                    uint64_t Members) const;
 
-    virtual bool shouldSignExtUnsignedType(QualType Ty) const;
-
     bool isHomogeneousAggregate(QualType Ty, const Type *&Base,
                                 uint64_t &Members) const;
 
@@ -134,8 +126,7 @@ namespace swiftcall {
 
     bool supportsSwift() const final override { return true; }
 
-    virtual bool shouldPassIndirectlyForSwift(CharUnits totalSize,
-                                              ArrayRef<llvm::Type*> types,
+    virtual bool shouldPassIndirectlyForSwift(ArrayRef<llvm::Type*> types,
                                               bool asReturnValue) const = 0;
 
     virtual bool isLegalVectorTypeForSwift(CharUnits totalSize,
@@ -148,7 +139,6 @@ namespace swiftcall {
       return info->supportsSwift();
     }
   };
-
 }  // end namespace CodeGen
 }  // end namespace clang
 

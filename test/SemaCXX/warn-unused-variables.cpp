@@ -1,4 +1,5 @@
 // RUN: %clang_cc1 -fsyntax-only -Wunused-variable -Wunused-label -Wno-c++1y-extensions -verify %s
+// RUN: %clang_cc1 -fsyntax-only -Wunused-variable -Wunused-label -Wno-c++1y-extensions -verify -std=c++11 %s
 template<typename T> void f() {
   T t;
   t = 17;
@@ -134,7 +135,9 @@ namespace PR19305 {
   template<typename T> int m = 0;
   template<typename T> int m<T*> = 0;
 
-  template<> const int m<void> = 0; // expected-warning {{unused variable}}
+  // This has external linkage, so could be referenced by a declaration in a
+  // different translation unit.
+  template<> const int m<void> = 0; // no warning
 }
 
 namespace ctor_with_cleanups {
@@ -194,3 +197,45 @@ void test() {
 }
 
 }
+
+#if __cplusplus >= 201103L
+namespace with_constexpr {
+template <typename T>
+struct Literal {
+  T i;
+  Literal() = default;
+  constexpr Literal(T i) : i(i) {}
+};
+
+struct NoLiteral {
+  int i;
+  NoLiteral() = default;
+  constexpr NoLiteral(int i) : i(i) {}
+  ~NoLiteral() {}
+};
+
+static Literal<int> gl1;          // expected-warning {{unused variable 'gl1'}}
+static Literal<int> gl2(1);       // expected-warning {{unused variable 'gl2'}}
+static const Literal<int> gl3(0); // expected-warning {{unused variable 'gl3'}}
+
+template <typename T>
+void test(int i) {
+  Literal<int> l1;     // expected-warning {{unused variable 'l1'}}
+  Literal<int> l2(42); // expected-warning {{unused variable 'l2'}}
+  Literal<int> l3(i);  // no-warning
+  Literal<T> l4(0);    // no-warning
+  NoLiteral nl1;       // no-warning
+  NoLiteral nl2(42);   // no-warning
+}
+}
+
+namespace crash {
+struct a {
+  a(const char *);
+};
+template <typename b>
+void c() {
+  a d(b::e ? "" : "");
+}
+}
+#endif

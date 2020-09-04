@@ -1,9 +1,10 @@
-// REQUIRES: crash-recovery, shell, non-ms-sdk, non-ps4-sdk
+// REQUIRES: crash-recovery, shell
+// UNSUPPORTED: ms-sdk, ps4
 
 // FIXME: Canonicalizing paths to remove relative traversal components
 // currenty fails a unittest on windows and is disable by default.
 // FIXME: This XFAIL is cargo-culted from crash-report.c. Do we need it?
-// XFAIL: mingw32
+// XFAIL: windows-gnu
 
 // RUN: rm -rf %t
 // RUN: mkdir -p %t/i %t/m %t
@@ -25,7 +26,7 @@
 // CHECK-NEXT: note: diagnostic msg: {{.*}}.m
 // CHECK-NEXT: note: diagnostic msg: {{.*}}.cache
 
-// CHECKSRC: @import cstd.stdio;
+// CHECKSRC: #pragma clang module import cstd.stdio
 
 // CHECKSH: # Crash reproducer
 // CHECKSH-NEXT: # Driver args: "-fsyntax-only"
@@ -62,4 +63,4 @@
 // RUN:     -fmodules-cache-path=%t/m/ 2>&1 \
 // RUN:     | FileCheck %s --check-prefix=CHECKOVERLAY
 
-// CHECKOVERLAY: @import cstd.stdio; /* clang -E: implicit import for "/{{[^ ].*}}/usr/././//////include/../include/./././../include/stdio.h" */
+// CHECKOVERLAY: #pragma clang module import cstd.stdio /* clang -E: implicit import

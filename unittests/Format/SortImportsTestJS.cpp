@@ -1,9 +1,8 @@
 //===- unittest/Format/SortImportsTestJS.cpp - JS import sort unit tests --===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -281,6 +280,31 @@ TEST_F(SortImportsTestJS, SortCaseInsensitive) {
              "import {b, Bc, Ab, aa} from 'x';\n"
              "\n"
              "1;");
+}
+
+TEST_F(SortImportsTestJS, SortMultiLine) {
+  // Reproduces issue where multi-line import was not parsed correctly.
+  verifySort("import {A} from 'a';\n"
+             "import {A} from 'b';\n"
+             "\n"
+             "1;",
+             "import\n"
+             "{\n"
+             "A\n"
+             "}\n"
+             "from\n"
+             "'b';\n"
+             "import {A} from 'a';\n"
+             "\n"
+             "1;");
+}
+
+TEST_F(SortImportsTestJS, SortDefaultImports) {
+  // Reproduces issue where multi-line import was not parsed correctly.
+  verifySort("import {A} from 'a';\n"
+             "import {default as B} from 'b';\n",
+             "import {default as B} from 'b';\n"
+             "import {A} from 'a';\n");
 }
 
 } // end namespace

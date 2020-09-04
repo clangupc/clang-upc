@@ -1,9 +1,8 @@
 //===-- BuiltinsSystemZ.def - SystemZ Builtin function database -*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -252,6 +251,45 @@ TARGET_BUILTIN(__builtin_s390_vfmadb, "V2dV2dV2dV2d", "nc", "vector")
 TARGET_BUILTIN(__builtin_s390_vfmsdb, "V2dV2dV2dV2d", "nc", "vector")
 TARGET_BUILTIN(__builtin_s390_vfsqdb, "V2dV2d", "nc", "vector")
 TARGET_BUILTIN(__builtin_s390_vftcidb, "V2SLLiV2dIii*", "nc", "vector")
+
+// Vector-enhancements facility 1 intrinsics.
+TARGET_BUILTIN(__builtin_s390_vlrl, "V16ScUivC*", "", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vstrl, "vV16ScUiv*", "", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vbperm, "V2ULLiV16UcV16Uc", "nc", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vmslg, "V16UcV2ULLiV2ULLiV16UcIi", "nc", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vfmaxdb, "V2dV2dV2dIi", "nc", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vfmindb, "V2dV2dV2dIi", "nc", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vfnmadb, "V2dV2dV2dV2d", "nc", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vfnmsdb, "V2dV2dV2dV2d", "nc", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vfcesbs, "V4SiV4fV4fi*", "nc", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vfchsbs, "V4SiV4fV4fi*", "nc", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vfchesbs, "V4SiV4fV4fi*", "nc", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vfisb, "V4fV4fIiIi", "nc", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vfmaxsb, "V4fV4fV4fIi", "nc", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vfminsb, "V4fV4fV4fIi", "nc", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vflnsb, "V4fV4f", "nc", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vflpsb, "V4fV4f", "nc", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vfmasb, "V4fV4fV4fV4f", "nc", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vfmssb, "V4fV4fV4fV4f", "nc", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vfnmasb, "V4fV4fV4fV4f", "nc", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vfnmssb, "V4fV4fV4fV4f", "nc", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vfsqsb, "V4fV4f", "nc", "vector-enhancements-1")
+TARGET_BUILTIN(__builtin_s390_vftcisb, "V4SiV4fIii*", "nc", "vector-enhancements-1")
+
+// Vector-enhancements facility 2 intrinsics.
+TARGET_BUILTIN(__builtin_s390_vsld, "V16UcV16UcV16UcIi", "nc", "vector-enhancements-2")
+TARGET_BUILTIN(__builtin_s390_vsrd, "V16UcV16UcV16UcIi", "nc", "vector-enhancements-2")
+TARGET_BUILTIN(__builtin_s390_vstrsb, "V16UcV16UcV16UcV16Uci*", "nc", "vector-enhancements-2")
+TARGET_BUILTIN(__builtin_s390_vstrsh, "V16UcV8UsV8UsV16Uci*", "nc", "vector-enhancements-2")
+TARGET_BUILTIN(__builtin_s390_vstrsf, "V16UcV4UiV4UiV16Uci*", "nc", "vector-enhancements-2")
+TARGET_BUILTIN(__builtin_s390_vstrszb, "V16UcV16UcV16UcV16Uci*", "nc", "vector-enhancements-2")
+TARGET_BUILTIN(__builtin_s390_vstrszh, "V16UcV8UsV8UsV16Uci*", "nc", "vector-enhancements-2")
+TARGET_BUILTIN(__builtin_s390_vstrszf, "V16UcV4UiV4UiV16Uci*", "nc", "vector-enhancements-2")
+
+// Helpers to implement vec_revb.
+TARGET_BUILTIN(__builtin_s390_vlbrh, "V8UsV8Us", "nc", "vector")
+TARGET_BUILTIN(__builtin_s390_vlbrf, "V4UiV4Ui", "nc", "vector")
+TARGET_BUILTIN(__builtin_s390_vlbrg, "V2ULLiV2ULLi", "nc", "vector")
 
 #undef BUILTIN
 #undef TARGET_BUILTIN

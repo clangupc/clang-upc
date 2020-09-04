@@ -1,9 +1,8 @@
 //===----- CGCXXABI.cpp - Interface to C++ ABIs ---------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -29,41 +28,6 @@ void CGCXXABI::ErrorUnsupportedABI(CodeGenFunction &CGF, StringRef S) {
     << S;
 }
 
-bool CGCXXABI::canCopyArgument(const CXXRecordDecl *RD) const {
-  // If RD has a non-trivial move or copy constructor, we cannot copy the
-  // argument.
-  if (RD->hasNonTrivialCopyConstructor() || RD->hasNonTrivialMoveConstructor())
-    return false;
-
-  // If RD has a non-trivial destructor, we cannot copy the argument.
-  if (RD->hasNonTrivialDestructor())
-    return false;
-
-  // We can only copy the argument if there exists at least one trivial,
-  // non-deleted copy or move constructor.
-  // FIXME: This assumes that all lazily declared copy and move constructors are
-  // not deleted.  This assumption might not be true in some corner cases.
-  bool CopyDeleted = false;
-  bool MoveDeleted = false;
-  for (const CXXConstructorDecl *CD : RD->ctors()) {
-    if (CD->isCopyConstructor() || CD->isMoveConstructor()) {
-      assert(CD->isTrivial());
-      // We had at least one undeleted trivial copy or move ctor.  Return
-      // directly.
-      if (!CD->isDeleted())
-        return true;
-      if (CD->isCopyConstructor())
-        CopyDeleted = true;
-      else
-        MoveDeleted = true;
-    }
-  }
-
-  // If all trivial copy and move constructors are deleted, we cannot copy the
-  // argument.
-  return !(CopyDeleted && MoveDeleted);
-}
-
 llvm::Constant *CGCXXABI::GetBogusMemberPointer(QualType T) {
   return llvm::Constant::getNullValue(CGM.getTypes().ConvertType(T));
 }
@@ -80,9 +44,9 @@ CGCallee CGCXXABI::EmitLoadOfMemberFunctionPointer(
   ErrorUnsupportedABI(CGF, "calls through member pointers");
 
   ThisPtrForCall = This.getPointer();
-  const FunctionProtoType *FPT = 
+  const FunctionProtoType *FPT =
     MPT->getPointeeType()->getAs<FunctionProtoType>();
-  const CXXRecordDecl *RD = 
+  const CXXRecordDecl *RD =
     cast<CXXRecordDecl>(MPT->getClass()->getAs<RecordType>()->getDecl());
   llvm::FunctionType *FTy = CGM.getTypes().GetFunctionType(
       CGM.getTypes().arrangeCXXMethodType(RD, FPT, /*FD=*/nullptr));
@@ -159,10 +123,10 @@ void CGCXXABI::buildThisParam(CodeGenFunction &CGF, FunctionArgList &params) {
 
   // FIXME: I'm not entirely sure I like using a fake decl just for code
   // generation. Maybe we can come up with a better way?
-  ImplicitParamDecl *ThisDecl
-    = ImplicitParamDecl::Create(CGM.getContext(), nullptr, MD->getLocation(),
-                                &CGM.getContext().Idents.get("this"),
-                                MD->getThisType(CGM.getContext()));
+  auto *ThisDecl = ImplicitParamDecl::Create(
+      CGM.getContext(), nullptr, MD->getLocation(),
+      &CGM.getContext().Idents.get("this"), MD->getThisType(),
+      ImplicitParamDecl::CXXThis);
   params.push_back(ThisDecl);
   CGF.CXXABIThisDecl = ThisDecl;
 
@@ -178,12 +142,15 @@ void CGCXXABI::buildThisParam(CodeGenFunction &CGF, FunctionArgList &params) {
   }
 }
 
-void CGCXXABI::EmitThisParam(CodeGenFunction &CGF) {
+llvm::Value *CGCXXABI::loadIncomingCXXThis(CodeGenFunction &CGF) {
+  return CGF.Builder.CreateLoad(CGF.GetAddrOfLocalVar(getThisDecl(CGF)),
+                                "this");
+}
+
+void CGCXXABI::setCXXABIThisValue(CodeGenFunction &CGF, llvm::Value *ThisPtr) {
   /// Initialize the 'this' slot.
   assert(getThisDecl(CGF) && "no 'this' variable for function");
-  CGF.CXXABIThisValue
-    = CGF.Builder.CreateLoad(CGF.GetAddrOfLocalVar(getThisDecl(CGF)),
-                             "this");
+  CGF.CXXABIThisValue = ThisPtr;
 }
 
 void CGCXXABI::EmitReturnFromThunk(CodeGenFunction &CGF,
@@ -311,6 +278,20 @@ CGCXXABI::EmitCtorCompleteObjectHandler(CodeGenFunction &CGF,
 
   ErrorUnsupportedABI(CGF, "complete object detection in ctor");
   return nullptr;
+}
+
+void CGCXXABI::setCXXDestructorDLLStorage(llvm::GlobalValue *GV,
+                                          const CXXDestructorDecl *Dtor,
+                                          CXXDtorType DT) const {
+  // Assume the base C++ ABI has no special rules for destructor variants.
+  CGM.setDLLImportDLLExport(GV, Dtor);
+}
+
+llvm::GlobalValue::LinkageTypes CGCXXABI::getCXXDestructorLinkage(
+    GVALinkage Linkage, const CXXDestructorDecl *Dtor, CXXDtorType DT) const {
+  // Delegate back to CGM by default.
+  return CGM.getLLVMLinkageForDeclarator(Dtor, Linkage,
+                                         /*IsConstantVariable=*/false);
 }
 
 bool CGCXXABI::NeedsVTTParameter(GlobalDecl GD) {

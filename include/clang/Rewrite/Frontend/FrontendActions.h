@@ -1,9 +1,8 @@
 //===-- FrontendActions.h - Useful Frontend Actions -------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -11,6 +10,7 @@
 #define LLVM_CLANG_REWRITE_FRONTEND_FRONTENDACTIONS_H
 
 #include "clang/Frontend/FrontendAction.h"
+#include "llvm/Support/raw_ostream.h"
 
 namespace clang {
 class FixItRewriter;
@@ -34,8 +34,7 @@ protected:
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
                                                  StringRef InFile) override;
 
-  bool BeginSourceFileAction(CompilerInstance &CI,
-                             StringRef Filename) override;
+  bool BeginSourceFileAction(CompilerInstance &CI) override;
 
   void EndSourceFileAction() override;
 
@@ -46,7 +45,7 @@ public:
   ~FixItAction() override;
 };
 
-/// \brief Emits changes to temporary files and uses them for the original
+/// Emits changes to temporary files and uses them for the original
 /// frontend action.
 class FixItRecompile : public WrapperFrontendAction {
 public:
@@ -74,7 +73,10 @@ protected:
 };
 
 class RewriteIncludesAction : public PreprocessorFrontendAction {
+  std::shared_ptr<raw_ostream> OutputStream;
+  class RewriteImportsListener;
 protected:
+  bool BeginSourceFileAction(CompilerInstance &CI) override;
   void ExecuteAction() override;
 };
 

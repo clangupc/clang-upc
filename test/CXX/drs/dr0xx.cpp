@@ -1,7 +1,7 @@
 // RUN: %clang_cc1 -std=c++98 %s -verify -fexceptions -fcxx-exceptions -pedantic-errors -Wno-bind-to-temporary-copy
 // RUN: %clang_cc1 -std=c++11 %s -verify -fexceptions -fcxx-exceptions -pedantic-errors -triple %itanium_abi_triple
 // RUN: %clang_cc1 -std=c++14 %s -verify -fexceptions -fcxx-exceptions -pedantic-errors -triple %itanium_abi_triple
-// RUN: %clang_cc1 -std=c++1z %s -verify -fexceptions -fcxx-exceptions -pedantic-errors -triple %itanium_abi_triple
+// RUN: %clang_cc1 -std=c++17 %s -verify -fexceptions -fcxx-exceptions -pedantic-errors -triple %itanium_abi_triple
 
 namespace dr1 { // dr1: no
   namespace X { extern "C" void dr1_f(int a = 1); }
@@ -276,9 +276,9 @@ namespace dr23 { // dr23: yes
 
 namespace dr25 { // dr25: yes
   struct A {
-    void f() throw(int); // expected-error 0-1{{ISO C++1z does not allow}} expected-note 0-1{{use 'noexcept}}
+    void f() throw(int); // expected-error 0-1{{ISO C++17 does not allow}} expected-note 0-1{{use 'noexcept}}
   };
-  void (A::*f)() throw (int); // expected-error 0-1{{ISO C++1z does not allow}} expected-note 0-1{{use 'noexcept}}
+  void (A::*f)() throw (int); // expected-error 0-1{{ISO C++17 does not allow}} expected-note 0-1{{use 'noexcept}}
   void (A::*g)() throw () = f;
 #if __cplusplus <= 201402L
   // expected-error@-2 {{is not superset of source}}
@@ -286,7 +286,7 @@ namespace dr25 { // dr25: yes
   // expected-error@-4 {{different exception specifications}}
 #endif
   void (A::*g2)() throw () = 0;
-  void (A::*h)() throw (int, char) = f; // expected-error 0-1{{ISO C++1z does not allow}} expected-note 0-1{{use 'noexcept}}
+  void (A::*h)() throw (int, char) = f; // expected-error 0-1{{ISO C++17 does not allow}} expected-note 0-1{{use 'noexcept}}
   void (A::*i)() throw () = &A::f;
 #if __cplusplus <= 201402L
   // expected-error@-2 {{is not superset of source}}
@@ -294,7 +294,7 @@ namespace dr25 { // dr25: yes
   // expected-error@-4 {{different exception specifications}}
 #endif
   void (A::*i2)() throw () = 0;
-  void (A::*j)() throw (int, char) = &A::f; // expected-error 0-1{{ISO C++1z does not allow}} expected-note 0-1{{use 'noexcept}}
+  void (A::*j)() throw (int, char) = &A::f; // expected-error 0-1{{ISO C++17 does not allow}} expected-note 0-1{{use 'noexcept}}
   void x() {
     g2 = f;
 #if __cplusplus <= 201402L
@@ -413,6 +413,36 @@ namespace dr33 { // dr33: yes
   void g(X::S);
   template<typename Z> Z g(Y::T);
   void h() { f(&g); } // expected-error {{ambiguous}}
+
+  template<typename T> void t(X::S);
+  template<typename T, typename U = void> void u(X::S); // expected-error 0-1{{default template argument}}
+  void templ() { f(t<int>); f(u<int>); }
+
+  // Even though v<int> cannot select the first overload, ADL considers it
+  // and adds namespace Z to the set of associated namespaces, and then picks
+  // Z::f even though that function has nothing to do with any associated type.
+  namespace Z { struct Q; void f(void(*)()); }
+  template<int> Z::Q v();
+  template<typename> void v();
+  void unrelated_templ() { f(v<int>); }
+
+  namespace dependent {
+    struct X {};
+    template<class T> struct Y {
+      friend int operator+(X, void(*)(Y)) {}
+    };
+
+    template<typename T> void f(Y<T>);
+    int use = X() + f<int>; // expected-error {{invalid operands}}
+  }
+
+  namespace member {
+    struct Q {};
+    struct Y { friend int operator+(Q, Y (*)()); };
+    struct X { template<typename> static Y f(); };
+    int m = Q() + X().f<int>; // ok
+    int n = Q() + (&(X().f<int>)); // ok
+  }
 }
 
 // dr34: na
@@ -499,10 +529,10 @@ namespace dr42 { // dr42: yes
 
 // dr43: na
 
-namespace dr44 { // dr44: yes
+namespace dr44 { // dr44: sup 727
   struct A {
     template<int> void f();
-    template<> void f<0>(); // expected-error {{explicit specialization of 'f' in class scope}}
+    template<> void f<0>();
   };
 }
 
@@ -839,18 +869,17 @@ namespace dr68 { // dr68: yes
 }
 
 namespace dr69 { // dr69: yes
-  template<typename T> static void f() {}
+  template<typename T> static void f() {} // #dr69-f
   // FIXME: Should we warn here?
   inline void g() { f<int>(); }
-  // FIXME: This should be rejected, per [temp.explicit]p11.
-  extern template void f<char>();
+  extern template void f<char>(); // expected-error {{explicit instantiation declaration of 'f' with internal linkage}}
 #if __cplusplus < 201103L
   // expected-error@-2 {{C++11 extension}}
 #endif
   template<void(*)()> struct Q {};
   Q<&f<int> > q;
 #if __cplusplus < 201103L
-  // expected-error@-2 {{internal linkage}} expected-note@-11 {{here}}
+  // expected-error@-2 {{internal linkage}} expected-note@#dr69-f {{here}}
 #endif
 }
 
@@ -911,9 +940,8 @@ namespace dr80 { // dr80: yes
     static int B; // expected-error {{same name as its class}}
   };
   struct C {
-    int C; // expected-note {{hidden by}}
-    // FIXME: These diagnostics aren't very good.
-    C(); // expected-error {{must use 'struct' tag to refer to}} expected-error {{expected member name}}
+    int C; // expected-error {{same name as its class}}
+    C();
   };
   struct D {
     D();
@@ -941,7 +969,7 @@ namespace dr84 { // dr84: yes
   };
   A a;
   // Cannot use B(C) / operator C() pair to construct the B from the B temporary
-  // here. In C++1z, we initialize the B object directly using 'A::operator B()'.
+  // here. In C++17, we initialize the B object directly using 'A::operator B()'.
   B b = a;
 #if __cplusplus <= 201402L
   // expected-error@-2 {{no viable}}
@@ -1033,14 +1061,14 @@ namespace dr91 { // dr91: yes
 }
 
 namespace dr92 { // dr92: 4 c++17
-  void f() throw(int, float); // expected-error 0-1{{ISO C++1z does not allow}} expected-note 0-1{{use 'noexcept}}
-  void (*p)() throw(int) = &f; // expected-error 0-1{{ISO C++1z does not allow}} expected-note 0-1{{use 'noexcept}}
+  void f() throw(int, float); // expected-error 0-1{{ISO C++17 does not allow}} expected-note 0-1{{use 'noexcept}}
+  void (*p)() throw(int) = &f; // expected-error 0-1{{ISO C++17 does not allow}} expected-note 0-1{{use 'noexcept}}
 #if __cplusplus <= 201402L
   // expected-error@-2 {{target exception specification is not superset of source}}
 #else
   // expected-warning@-4 {{target exception specification is not superset of source}}
 #endif
-  void (*q)() throw(int); // expected-error 0-1{{ISO C++1z does not allow}} expected-note 0-1{{use 'noexcept}}
+  void (*q)() throw(int); // expected-error 0-1{{ISO C++17 does not allow}} expected-note 0-1{{use 'noexcept}}
   void (**pp)() throw() = &q;
 #if __cplusplus <= 201402L
   // expected-error@-2 {{exception specifications are not allowed}}
@@ -1064,7 +1092,7 @@ namespace dr92 { // dr92: 4 c++17
   // expected-error@-2 {{not implicitly convertible}}
 #endif
 
-  template<void() throw(int)> struct Y {}; // expected-error 0-1{{ISO C++1z does not allow}} expected-note 0-1{{use 'noexcept}}
+  template<void() throw(int)> struct Y {}; // expected-error 0-1{{ISO C++17 does not allow}} expected-note 0-1{{use 'noexcept}}
   Y<&h> yp; // ok
 }
 

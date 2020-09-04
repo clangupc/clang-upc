@@ -1,12 +1,12 @@
 // REQUIRES: powerpc-registered-target
-// RUN: %clang_cc1 -faltivec -target-feature +power8-vector \
+// RUN: %clang_cc1 -target-feature +altivec -target-feature +power8-vector \
 // RUN: -triple powerpc64-unknown-unknown -emit-llvm %s -o - | FileCheck %s
 
-// RUN: %clang_cc1 -faltivec -target-feature +power8-vector \
+// RUN: %clang_cc1 -target-feature +altivec -target-feature +power8-vector \
 // RUN: -triple powerpc64le-unknown-unknown -emit-llvm %s -o - \
 // RUN: | FileCheck %s -check-prefix=CHECK-LE
 
-// RUN: not %clang_cc1 -faltivec -triple powerpc-unknown-unknown \
+// RUN: not %clang_cc1 -target-feature +altivec -triple powerpc-unknown-unknown \
 // RUN: -emit-llvm %s -o - 2>&1 | FileCheck %s -check-prefix=CHECK-PPC
 #include <altivec.h>
 
@@ -205,45 +205,45 @@ void test1() {
 
   /* vec_xl */
   res_vlll = vec_xl(param_sll, &param_lll);
-  // CHECK: load <1 x i128>, <1 x i128>* %{{[0-9]+}}, align 16
-  // CHECK-LE: load <1 x i128>, <1 x i128>* %{{[0-9]+}}, align 16
+  // CHECK: load <1 x i128>, <1 x i128>* %{{[0-9]+}}, align 1
+  // CHECK-LE: load <1 x i128>, <1 x i128>* %{{[0-9]+}}, align 1
   // CHECK-PPC: error: call to 'vec_xl' is ambiguous
 
   res_vulll = vec_xl(param_sll, &param_ulll);
-  // CHECK: load <1 x i128>, <1 x i128>* %{{[0-9]+}}, align 16
-  // CHECK-LE: load <1 x i128>, <1 x i128>* %{{[0-9]+}}, align 16
+  // CHECK: load <1 x i128>, <1 x i128>* %{{[0-9]+}}, align 1
+  // CHECK-LE: load <1 x i128>, <1 x i128>* %{{[0-9]+}}, align 1
   // CHECK-PPC: error: call to 'vec_xl' is ambiguous
 
   /* vec_xst */
    vec_xst(vlll, param_sll, &param_lll);
-  // CHECK: store <1 x i128> %{{[0-9]+}}, <1 x i128>* %{{[0-9]+}}, align 16
-  // CHECK-LE: store <1 x i128> %{{[0-9]+}}, <1 x i128>* %{{[0-9]+}}, align 16
+  // CHECK: store <1 x i128> %{{[0-9]+}}, <1 x i128>* %{{[0-9]+}}, align 1
+  // CHECK-LE: store <1 x i128> %{{[0-9]+}}, <1 x i128>* %{{[0-9]+}}, align 1
   // CHECK-PPC: error: call to 'vec_xst' is ambiguous
 
    vec_xst(vulll, param_sll, &param_ulll);
-  // CHECK: store <1 x i128> %{{[0-9]+}}, <1 x i128>* %{{[0-9]+}}, align 16
-  // CHECK-LE: store <1 x i128> %{{[0-9]+}}, <1 x i128>* %{{[0-9]+}}, align 16
+  // CHECK: store <1 x i128> %{{[0-9]+}}, <1 x i128>* %{{[0-9]+}}, align 1
+  // CHECK-LE: store <1 x i128> %{{[0-9]+}}, <1 x i128>* %{{[0-9]+}}, align 1
   // CHECK-PPC: error: call to 'vec_xst' is ambiguous
 
   /* vec_xl_be */
   res_vlll = vec_xl_be(param_sll, &param_lll);
-  // CHECK: load <1 x i128>, <1 x i128>* %{{[0-9]+}}, align 16
-  // CHECK-LE: load <1 x i128>, <1 x i128>* %{{[0-9]+}}, align 16
+  // CHECK: load <1 x i128>, <1 x i128>* %{{[0-9]+}}, align 1
+  // CHECK-LE: load <1 x i128>, <1 x i128>* %{{[0-9]+}}, align 1
   // CHECK-PPC: error: call to 'vec_xl' is ambiguous
 
   res_vulll = vec_xl_be(param_sll, &param_ulll);
-  // CHECK: load <1 x i128>, <1 x i128>* %{{[0-9]+}}, align 16
-  // CHECK-LE: load <1 x i128>, <1 x i128>* %{{[0-9]+}}, align 16
+  // CHECK: load <1 x i128>, <1 x i128>* %{{[0-9]+}}, align 1
+  // CHECK-LE: load <1 x i128>, <1 x i128>* %{{[0-9]+}}, align 1
   // CHECK-PPC: error: call to 'vec_xl' is ambiguous
 
   /* vec_xst_be  */
    vec_xst_be(vlll, param_sll, &param_lll);
-  // CHECK: store <1 x i128> %{{[0-9]+}}, <1 x i128>* %{{[0-9]+}}, align 16
-  // CHECK-LE: store <1 x i128> %{{[0-9]+}}, <1 x i128>* %{{[0-9]+}}, align 16
+  // CHECK: store <1 x i128> %{{[0-9]+}}, <1 x i128>* %{{[0-9]+}}, align 1
+  // CHECK-LE: store <1 x i128> %{{[0-9]+}}, <1 x i128>* %{{[0-9]+}}, align 1
   // CHECK-PPC: error: call to 'vec_xst' is ambiguous
 
    vec_xst_be(vulll, param_sll, &param_ulll);
-  // CHECK: store <1 x i128> %{{[0-9]+}}, <1 x i128>* %{{[0-9]+}}, align 16
-  // CHECK-LE: store <1 x i128> %{{[0-9]+}}, <1 x i128>* %{{[0-9]+}}, align 16
+  // CHECK: store <1 x i128> %{{[0-9]+}}, <1 x i128>* %{{[0-9]+}}, align 1
+  // CHECK-LE: store <1 x i128> %{{[0-9]+}}, <1 x i128>* %{{[0-9]+}}, align 1
   // CHECK-PPC: error: call to 'vec_xst' is ambiguous
 }
