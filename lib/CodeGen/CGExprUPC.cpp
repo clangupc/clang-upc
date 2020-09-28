@@ -60,7 +60,7 @@ RValue CodeGenFunction::EmitUPCCall(
       getTypes().arrangeFreeFunctionCall(Args, FuncType->castAs<FunctionType>(), false);
     llvm::FunctionType * FTy =
       cast<llvm::FunctionType>(ConvertType(FuncType));
-    llvm::Constant * Fn = CGM.CreateRuntimeFunction(FTy, Name);
+    llvm::FunctionCallee Fn = CGM.CreateRuntimeFunction(FTy, Name);
 
     return EmitCall(Info, CGCallee::forDirect(Fn), ReturnValueSlot(), Args);
 }

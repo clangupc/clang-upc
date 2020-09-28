@@ -3985,7 +3985,7 @@ recurse:
       Diags.Report(DiagID);
       return;
     }
-    case UETT_OpenMPRequiredSimdAlign:
+    case UETT_OpenMPRequiredSimdAlign: {
       DiagnosticsEngine &Diags = Context.getDiags();
       unsigned DiagID = Diags.getCustomDiagID(
           DiagnosticsEngine::Error,

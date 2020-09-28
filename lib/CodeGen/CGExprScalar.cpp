@@ -1984,7 +1984,7 @@ Value *ScalarExprEmitter::VisitCastExpr(CastExpr *CE) {
              E->getType()->getCanonicalTypeUnqualified());
       return EmitLoadOfLValue(LValue::MakeBitfield(
         LV1.getBitFieldAddress(), LV1.getBitFieldInfo(),
-        DestTy, LV1.getAlignmentSource(), CE->getExprLoc()),
+        DestTy, LV1.getBaseInfo(), CGF.CGM.getTBAAAccessInfo(E->getType())),
 	CE->getExprLoc());
     }
     Address Addr = LV1.getAddress();
@@ -2473,7 +2473,7 @@ ScalarExprEmitter::EmitScalarPrePostIncDec(const UnaryOperator *E, LValue LV,
     } else if ((type->isVariableArrayType() ||
                 type->isUPCThreadArrayType()) &&
                !type.getQualifiers().hasShared()) {
-      llvm::Value *numElts = CGF.getVLASize(type).first;
+      llvm::Value *numElts = CGF.getVLASize(type).NumElts;
       if (!isInc) numElts = Builder.CreateNSWNeg(numElts, "vla.negsize");
       if (CGF.getLangOpts().isSignedOverflowDefined())
         value = Builder.CreateGEP(value, numElts, "vla.inc");
@@ -2793,16 +2793,14 @@ ScalarExprEmitter::VisitUnaryExprOrTypeTraitExpr(
 
       return size;
     } else if (TypeToSize->isUPCThreadArrayType()) {
-      QualType eltType;
-      llvm::Value *numElts;
-      std::tie(numElts, eltType) = CGF.getVLASize(TypeToSize);
 
-      llvm::Value *size = numElts;
+      auto VlaSize = CGF.getVLASize(VAT);
+      llvm::Value *size = VlaSize.NumElts;
 
       // Scale the number of non-VLA elements by the non-VLA element size.
-      CharUnits eltSize = CGF.getContext().getTypeSizeInChars(eltType);
+      CharUnits eltSize = CGF.getContext().getTypeSizeInChars(VlaSize.Type);
       if (!eltSize.isOne())
-        size = CGF.Builder.CreateNUWMul(CGF.CGM.getSize(eltSize), numElts);
+        size = CGF.Builder.CreateNUWMul(CGF.CGM.getSize(eltSize), VlaSize.NumElts);
 
       return size;
     }
@@ -3303,7 +3301,7 @@ static Value *emitPointerArithmetic(CodeGenFunction &CGF,
        elementType->isUPCThreadArrayType()) &&
       !elementType.getQualifiers().hasShared()) {
     // The element count here is the total number of non-VLA elements.
-    llvm::Value *numElements = CGF.getVLASize(elementType).first;
+    llvm::Value *numElements = CGF.getVLASize(elementType).NumElts;
 
     // Effectively, the multiply by the VLA size is part of the GEP.
     // GEP indexes are signed, and scaling an index isn't permitted to
@@ -3630,10 +3628,10 @@ Value *ScalarExprEmitter::EmitSub(const BinOpInfo &op) {
   if ((elementType->isVariableArrayType() ||
        elementType->isUPCThreadArrayType()) &&
       !elementType.getQualifiers().hasShared()) {
-    llvm::Value *numElements;
-    std::tie(numElements, elementType) = CGF.getVLASize(elementType);
 
-    divisor = numElements;
+    auto VlaSize = CGF.getVLASize(elementType);
+
+    divisor = VlaSize.NumElts; 
 
     // Scale the number of non-VLA elements by the non-VLA element size.
     CharUnits eltSize = CGF.getContext().getTypeSizeInChars(elementType);

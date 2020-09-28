@@ -242,17 +242,16 @@ llvm::Constant *CodeGenModule::getOrCreateStaticVarDecl(
 
   llvm::Type *LTy = 
     SharedInit ? SharedInit->getType() : getTypes().ConvertTypeForMem(Ty);
-  unsigned AddrSpace =
-      GetGlobalVarAddressSpace(&D, getContext().getTargetAddressSpace(Ty));
+  LangAS AddrSpace =
+      GetGlobalVarAddressSpace(&D); 
+  unsigned TargetAS = getContext().getTargetAddressSpace(AddrSpace);
 
   // OpenCL variables in local address space and CUDA shared
   // variables cannot have an initializer.
   llvm::Constant *Init = nullptr;
   if ((Ty.getAddressSpace() != LangAS::opencl_local) || 
-      (D.hasAttr<CUDASharedAttr>))
+      (D.hasAttr<CUDASharedAttr>()))
     Init = SharedInit ? SharedInit : EmitNullConstant(Ty);
-  else
-    Init = llvm::UndefValue::get(LTy);
   else
     Init = EmitNullConstant(Ty);
 
@@ -279,9 +278,9 @@ llvm::Constant *CodeGenModule::getOrCreateStaticVarDecl(
   // Make sure the result is of the correct type.
   LangAS ExpectedAS = Ty.getAddressSpace();
   llvm::Constant *Addr = GV;
-  if (AS != ExpectedAS) {
+  if (AddrSpace != ExpectedAS) {
     Addr = getTargetCodeGenInfo().performAddrSpaceCast(
-        *this, GV, AS, ExpectedAS,
+        *this, GV, AddrSpace, ExpectedAS,
         LTy->getPointerTo(getContext().getTargetAddressSpace(ExpectedAS)));
   }
 
@@ -336,11 +335,12 @@ static bool hasNontrivialDestruction(QualType T) {
 llvm::GlobalVariable *
 CodeGenFunction::AddInitializerToStaticVarDecl(const VarDecl &D,
                                                llvm::GlobalVariable *GV) {
+  ConstantEmitter emitter(*this);
   llvm::Constant *Init = 0;
 
   // upc shared variables can never be static initialized
   if(!D.getType().getQualifiers().hasShared())
-    Init = CGM.EmitConstantInit(D, this);
+    Init = emitter.tryEmitForInitializer(D); //CGM.EmitConstantInit(D, this);
 
   // If constant emission failed, then this should be a C++ or UPC static
   // initializer.

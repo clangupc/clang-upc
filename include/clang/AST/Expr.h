@@ -1974,8 +1974,11 @@ public:
   SourceLocation getLocation() const { return Loc; }
   void setLocation(SourceLocation L) { Loc = L; }
 
-  SourceLocation getLocStart() const LLVM_READONLY { return Loc; }
-  SourceLocation getLocEnd() const LLVM_READONLY { return Loc; }
+  //TCL-DDD
+  //SourceLocation getLocStart() const LLVM_READONLY { return Loc; }
+  //SourceLocation getLocEnd() const LLVM_READONLY { return Loc; }
+  SourceLocation getBeginLoc() const LLVM_READONLY { return Loc; }
+  SourceLocation getEndLoc() const LLVM_READONLY { return Loc; }
 
   static bool classof(const Stmt *T) {
     return T->getStmtClass() == UPCThreadExprClass;
@@ -2001,8 +2004,11 @@ public:
   SourceLocation getLocation() const { return Loc; }
   void setLocation(SourceLocation L) { Loc = L; }
 
-  SourceLocation getLocStart() const LLVM_READONLY { return Loc; }
-  SourceLocation getLocEnd() const LLVM_READONLY { return Loc; }
+  //TCL - DDD
+  //SourceLocation getLocStart() const LLVM_READONLY { return Loc; }
+  //SourceLocation getLocEnd() const LLVM_READONLY { return Loc; }
+  SourceLocation getBeginLoc() const LLVM_READONLY { return Loc; }
+  SourceLocation getEndLoc() const LLVM_READONLY { return Loc; }
 
   static bool classof(const Stmt *T) {
     return T->getStmtClass() == UPCMyThreadExprClass;

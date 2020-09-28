@@ -249,11 +249,6 @@ private:
     this->ThreadLocalRef = false;
     this->BaseIvarExp = nullptr;
 
-    // Initialize fields for TBAA.
-    this->TBAABaseType = Type;
-    this->TBAAOffset = 0;
-    this->TBAAInfo = TBAAInfo;
-    this->Loc = Loc;
   }
 
 public:

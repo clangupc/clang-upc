@@ -1234,31 +1234,7 @@ void ExprEngine::Visit(const Stmt *S, ExplodedNode *Pred,
     case Stmt::SEHExceptStmtClass:
     case Stmt::SEHLeaveStmtClass:
     case Stmt::SEHFinallyStmtClass:
-    case Stmt::ParenExprClass:
-      llvm_unreachable("ParenExprs already handled.");
-    case Stmt::GenericSelectionExprClass:
-      llvm_unreachable("GenericSelectionExprs already handled.");
-    // Cases that should never be evaluated simply because they shouldn't
-    // appear in the CFG.
-    case Stmt::BreakStmtClass:
-    case Stmt::CaseStmtClass:
-    case Stmt::CompoundStmtClass:
-    case Stmt::ContinueStmtClass:
-    case Stmt::CXXForRangeStmtClass:
-    case Stmt::DefaultStmtClass:
-    case Stmt::DoStmtClass:
-    case Stmt::ForStmtClass:
     case Stmt::UPCForAllStmtClass:
-    case Stmt::GotoStmtClass:
-    case Stmt::IfStmtClass:
-    case Stmt::IndirectGotoStmtClass:
-    case Stmt::LabelStmtClass:
-    case Stmt::NoStmtClass:
-    case Stmt::NullStmtClass:
-    case Stmt::SwitchStmtClass:
-    case Stmt::WhileStmtClass:
-    case Expr::MSDependentExistsStmtClass:
-    case Stmt::CapturedStmtClass:
     case Stmt::OMPParallelDirectiveClass:
     case Stmt::OMPSimdDirectiveClass:
     case Stmt::OMPForDirectiveClass:

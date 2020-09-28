@@ -2125,8 +2125,8 @@ void CompilerInvocation::setLangDefaults(LangOptions &Opts, InputKind IK,
     Opts.AsmPreprocessor = 1;
   } else if (IK.isObjectiveC()) {
     Opts.ObjC = 1;
-  } else if (IK == InputKind::UPC ||
-             IK == InputKind::PreprocessedUPC) {
+  } else if (IK.getLanguage() == InputKind::UPC ||
+             IK.getLanguage() == InputKind::PreprocessedUPC) {
     Opts.UPC = 1;
   }
 
@@ -3070,7 +3070,7 @@ static void ParseLangArgs(LangOptions &Opts, ArgList &Args, InputKind IK,
 
   // By default enable UPC pre-include
   if (Opts.UPC && !Args.hasArg(OPT_fno_upc_pre_include) &&
-      (IK != IK_PreprocessedUPC))
+      (IK.getLanguage() != InputKind::PreprocessedUPC))
     Opts.UPCPreInclude = true;
 
   if (Opts.UPC &&

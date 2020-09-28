@@ -62,7 +62,7 @@ class PragmaUPCHandler : public PragmaHandler {
 public:
   explicit PragmaUPCHandler() : PragmaHandler("upc") {}
 
-  virtual void HandlePragma(Preprocessor &PP, PragmaIntroducerKind Introducer,
+  virtual void HandlePragma(Preprocessor &PP, PragmaIntroducer Introducer,
                             Token &FirstToken);
 };
 
@@ -70,7 +70,7 @@ class PragmaPUPCHandler : public PragmaHandler {
 public:
   explicit PragmaPUPCHandler() : PragmaHandler("pupc") {}
 
-  virtual void HandlePragma(Preprocessor &PP, PragmaIntroducerKind Introducer,
+  virtual void HandlePragma(Preprocessor &PP, PragmaIntroducer Introducer,
                             Token &FirstToken);
 };
 
@@ -1802,7 +1802,7 @@ void PragmaPackHandler::HandlePragma(Preprocessor &PP,
 //   'c_code'
 //   'upc_code'
 void PragmaUPCHandler::HandlePragma(Preprocessor &PP, 
-                                    PragmaIntroducerKind Introducer,
+                                    PragmaIntroducer Introducer,
                                     Token &UPCTok) {
   SourceLocation UPCLoc = UPCTok.getLocation();
 
@@ -1849,11 +1849,12 @@ void PragmaUPCHandler::HandlePragma(Preprocessor &PP,
   Toks[0].setLocation(UPCLoc);
   Toks[0].setAnnotationValue(
                           const_cast<void*>(static_cast<const void*>(Info)));
-  PP.EnterTokenStream(Toks, /*DisableMacroExpansion=*/true);
+  PP.EnterTokenStream(Toks, /*DisableMacroExpansion=*/true,
+                      /*IsReinject=*/false);
 }
 
 void PragmaPUPCHandler::HandlePragma(Preprocessor &PP, 
-                                     PragmaIntroducerKind Introducer,
+                                     PragmaIntroducer Introducer,
                                      Token &PUPCTok) {
   SourceLocation PUPCLoc = PUPCTok.getLocation();
 
@@ -1896,7 +1897,8 @@ void PragmaPUPCHandler::HandlePragma(Preprocessor &PP,
   Toks[0].setLocation(PUPCLoc);
   Toks[0].setAnnotationValue(
                           const_cast<void*>(static_cast<const void*>(Info)));
-  PP.EnterTokenStream(Toks, /*DisableMacroExpansion=*/true);
+  PP.EnterTokenStream(Toks, /*DisableMacroExpansion=*/true, 
+                      /*IsReinject=*/false);
 }
 
 // #pragma ms_struct on

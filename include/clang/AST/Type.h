@@ -263,6 +263,18 @@ public:
   }
 
   // Deserialize qualifiers from an opaque representation.
+  static Qualifiers fromOpaqueValue(unsigned opaque) {
+    Qualifiers Qs;
+    Qs.Mask = opaque;
+    return Qs;
+  }
+
+  // Serialize these qualifiers into an opaque representation.
+  unsigned getAsOpaqueValue() const {
+    return Mask;
+  }
+
+  // Deserialize qualifiers from an opaque representation.
   template<class C, class I>
   static Qualifiers fromOpaqueSequence(const C& c, I& i) {
     Qualifiers Qs;

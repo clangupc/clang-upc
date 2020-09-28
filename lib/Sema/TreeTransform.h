@@ -4860,7 +4860,7 @@ TreeTransform<Derived>::TransformUPCThreadArrayType(TypeLocBuilder &TLB,
   Expr *Size = TL.getSizeExpr();
   if (Size) {
     EnterExpressionEvaluationContext Unevaluated(SemaRef,
-                                                 Sema::ConstantEvaluated);
+                                                 Sema::ExpressionEvaluationContext::ConstantEvaluated);
     Size = getDerived().TransformExpr(Size).template getAs<Expr>();
     Size = SemaRef.ActOnConstantExpression(Size).get();
   }

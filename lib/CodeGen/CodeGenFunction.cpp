@@ -178,7 +178,7 @@ CodeGenFunction::MakeNaturalAlignPointeeAddrLValue(llvm::Value *V, QualType T,
   TBAAAccessInfo TBAAInfo;
   CharUnits Align = getNaturalTypeAlignment(T, &BaseInfo, &TBAAInfo,
                                             /* forPointeeType= */ true);
-  return MakeAddrLValue(Address(V, Align), T, BaseInfo, TBAAInfo, Loc);
+  return MakeAddrLValue(Address(V, Align), T, BaseInfo, TBAAInfo);
 }
 
 
@@ -1801,8 +1801,7 @@ llvm::Value *CodeGenFunction::emitArrayLength(const ArrayType *origArrayType,
   return numElements;
 }
 
-std::pair<llvm::Value*, QualType>
-CodeGenFunction::getVLASize(QualType type) {
+CodeGenFunction::VlaSizePair CodeGenFunction::getVLASize(QualType type) {
   // The number of elements so far; always size_t.
   llvm::Value *numElements = nullptr;
 
@@ -1854,7 +1853,7 @@ CodeGenFunction::getVLAElements1D(const VariableArrayType *Vla) {
   return { VlaSize, Vla->getElementType() };
 }
 
-std::pair<llvm::Value*, QualType>
+CodeGenFunction::VlaSizePair
 CodeGenFunction::getVLASize(const VariableArrayType *type) {
   return getVLASize(getContext().getQualifiedType(type, Qualifiers()));
 }

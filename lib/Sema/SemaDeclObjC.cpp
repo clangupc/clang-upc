@@ -1587,7 +1587,11 @@ void Sema::actOnObjCTypeArgsOrProtocolQualifiers(
     // add the '*'.
     if (type->getAs<ObjCInterfaceType>()) {
       SourceLocation starLoc = getLocForEndOfToken(loc);
-      D.AddTypeInfo(DeclaratorChunk::getPointer(/*TypeQuals=*/0, starLoc,
+      D.AddTypeInfo(DeclaratorChunk::getPointer(/*TypeQuals=*/0, nullptr,
+                                                starLoc,
+                                                SourceLocation(),
+                                                SourceLocation(),
+                                                SourceLocation(),
                                                 SourceLocation(),
                                                 SourceLocation(),
                                                 SourceLocation(),

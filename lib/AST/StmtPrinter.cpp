@@ -124,7 +124,7 @@ namespace {
     void PrintLineDirective(Stmt *S) {
       if(Policy.IncludeLineDirectives) {
 	assert(Policy.SM != NULL);
-	SourceLocation Loc = S->getLocStart();
+	SourceLocation Loc = S->getBeginLoc();
 	if(Loc.isValid()) {
 	  PresumedLoc PLoc = Policy.SM->getPresumedLoc(Loc);
 	  OS << "#line " << PLoc.getLine() << " \""

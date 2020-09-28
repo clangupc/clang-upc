@@ -1979,7 +1979,7 @@ StmtResult Parser::ParseUPCForAllStatement(SourceLocation *TrailingElseLoc) {
   }
 
   bool C99orCXXorObjC = getLangOpts().C99 || getLangOpts().CPlusPlus ||
-    getLangOpts().ObjC1;
+    getLangOpts().ObjC;
 
   // C99 6.8.5p5 - In C99, the for statement is a block.  This is not
   // the case for C90.  Start the loop scope.
@@ -2042,7 +2042,7 @@ StmtResult Parser::ParseUPCForAllStatement(SourceLocation *TrailingElseLoc) {
 
     SourceLocation DeclStart = Tok.getLocation(), DeclEnd;
     DeclGroupPtrTy DG = ParseSimpleDeclaration(
-        Declarator::ForContext, DeclEnd, attrs, false,
+        DeclaratorContext::ForContext, DeclEnd, attrs, false,
         nullptr);
     FirstPart = Actions.ActOnDeclStmt(DG, DeclStart, Tok.getLocation());
     if (Tok.is(tok::semi)) {  // for (int x = 4;

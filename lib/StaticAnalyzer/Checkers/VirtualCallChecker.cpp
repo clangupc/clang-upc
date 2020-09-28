@@ -152,7 +152,7 @@ static bool isVirtualCall(const CallExpr *CE) {
 
   const CXXMethodDecl *MD =
       dyn_cast_or_null<CXXMethodDecl>(CE->getDirectCallee());
-  if (MD && MD->isVirtual() && !callIsNonVirtual && !MD->hasAttr<FinalAttr>() &&
+  if (MD && MD->isVirtual() && !CallIsNonVirtual && !MD->hasAttr<FinalAttr>() &&
       !MD->getParent()->hasAttr<FinalAttr>())
     return true;
   return false;

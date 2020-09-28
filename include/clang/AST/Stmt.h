@@ -2715,9 +2715,12 @@ public:
   }
   static bool classof(const UPCNotifyStmt *) { return true; }
 
-  SourceLocation getLocStart() const LLVM_READONLY { return NotifyLoc; }
-  SourceLocation getLocEnd() const LLVM_READONLY {
-    return IdExpr ? IdExpr->getLocEnd() : NotifyLoc;
+  //TCL / DDD
+  //SourceLocation getLocStart() const LLVM_READONLY { return NotifyLoc; }
+  //SourceLocation getLocEnd() const LLVM_READONLY {
+  SourceLocation getBeginLoc() const LLVM_READONLY { return NotifyLoc; }
+  SourceLocation getEndLoc() const LLVM_READONLY {
+    return IdExpr ? IdExpr->getEndLoc() : NotifyLoc;
   }
 
   // Iterators
@@ -2750,9 +2753,12 @@ public:
   }
   static bool classof(const UPCWaitStmt *) { return true; }
 
-  SourceLocation getLocStart() const LLVM_READONLY { return WaitLoc; }
-  SourceLocation getLocEnd() const LLVM_READONLY {
-    return IdExpr ? IdExpr->getLocEnd() : WaitLoc;
+  //TCL / DDD
+  //SourceLocation getLocStart() const LLVM_READONLY { return WaitLoc; }
+  //SourceLocation getLocEnd() const LLVM_READONLY {
+  SourceLocation getBeginLoc() const LLVM_READONLY { return WaitLoc; }
+  SourceLocation getEndLoc() const LLVM_READONLY {
+    return IdExpr ? IdExpr->getEndLoc() : WaitLoc;
   }
 
   // Iterators
@@ -2785,9 +2791,12 @@ public:
   }
   static bool classof(const UPCBarrierStmt *) { return true; }
 
-  SourceLocation getLocStart() const LLVM_READONLY { return BarrierLoc; }
-  SourceLocation getLocEnd() const LLVM_READONLY {
-    return IdExpr ? IdExpr->getLocEnd() : BarrierLoc;
+  //TCL-DDD
+  //SourceLocation getLocStart() const LLVM_READONLY { return BarrierLoc; }
+  //SourceLocation getLocEnd() const LLVM_READONLY {
+  SourceLocation getBeginLoc() const LLVM_READONLY { return BarrierLoc; }
+  SourceLocation getEndLoc() const LLVM_READONLY {
+    return IdExpr ? IdExpr->getEndLoc() : BarrierLoc;
   }
 
   // Iterators
@@ -2814,8 +2823,11 @@ public:
   }
   static bool classof(const UPCFenceStmt *) { return true; }
 
-  SourceLocation getLocStart() const LLVM_READONLY { return FenceLoc; }
-  SourceLocation getLocEnd() const LLVM_READONLY { return FenceLoc; }
+  //TCL - DDD
+  //SourceLocation getLocStart() const LLVM_READONLY { return FenceLoc; }
+  //SourceLocation getLocEnd() const LLVM_READONLY { return FenceLoc; }
+  SourceLocation getBeginLoc() const LLVM_READONLY { return FenceLoc; }
+  SourceLocation getEndLoc() const LLVM_READONLY { return FenceLoc; }
 
   // Iterators
   child_range children() { return child_range(child_iterator(), child_iterator()); }
@@ -2842,8 +2854,11 @@ public:
   }
   static bool classof(const UPCPragmaStmt *) { return true; }
 
-  SourceLocation getLocStart() const LLVM_READONLY { return PragmaLoc; }
-  SourceLocation getLocEnd() const LLVM_READONLY { return PragmaLoc; }
+  //TCL - DDD
+  //SourceLocation getLocStart() const LLVM_READONLY { return PragmaLoc; }
+  //SourceLocation getLocEnd() const LLVM_READONLY { return PragmaLoc; }
+  SourceLocation getBeginLoc() const LLVM_READONLY { return PragmaLoc; }
+  SourceLocation getEndLoc() const LLVM_READONLY { return PragmaLoc; }
 
   // Iterators
   child_range children() { return child_range(child_iterator(), child_iterator()); }
@@ -2902,8 +2917,11 @@ public:
   SourceLocation getRParenLoc() const { return RParenLoc; }
   void setRParenLoc(SourceLocation L) { RParenLoc = L; }
 
-  SourceLocation getLocStart() const LLVM_READONLY { return ForLoc; }
-  SourceLocation getLocEnd() const LLVM_READONLY { return SubExprs[BODY]->getLocEnd(); }
+  //TCL - DDD
+  //SourceLocation getLocStart() const LLVM_READONLY { return ForLoc; }
+  //SourceLocation getLocEnd() const LLVM_READONLY { return SubExprs[BODY]->getEndLoc(); }
+  SourceLocation getBeginLoc() const LLVM_READONLY { return ForLoc; }
+  SourceLocation getEndLoc() const LLVM_READONLY { return SubExprs[BODY]->getEndLoc(); }
   static bool classof(const Stmt *T) {
     return T->getStmtClass() == UPCForAllStmtClass;
   }

@@ -559,291 +559,8 @@ static void updateStackPiecesWithMessage(PathDiagnosticPiece &P,
   }
 }
 
-static void CompactPathDiagnostic(PathPieces &path, const SourceManager& SM);
-
-static bool GenerateMinimalPathDiagnostic(
-    PathDiagnostic &PD, PathDiagnosticBuilder &PDB, const ExplodedNode *N,
-    LocationContextMap &LCM,
-    ArrayRef<std::unique_ptr<BugReporterVisitor>> visitors) {
-
-  SourceManager& SMgr = PDB.getSourceManager();
-  const LocationContext *LC = PDB.LC;
-  const ExplodedNode *NextNode = N->pred_empty()
-                                        ? nullptr : *(N->pred_begin());
-
-  StackDiagVector CallStack;
-
-  while (NextNode) {
-    N = NextNode;
-    PDB.LC = N->getLocationContext();
-    NextNode = N->getFirstPred();
-
-    ProgramPoint P = N->getLocation();
-
-    do {
-      if (Optional<CallExitEnd> CE = P.getAs<CallExitEnd>()) {
-        auto C = PathDiagnosticCallPiece::construct(N, *CE, SMgr);
-        // Record the mapping from call piece to LocationContext.
-        LCM[&C->path] = CE->getCalleeContext();
-        auto *P = C.get();
-        PD.getActivePath().push_front(std::move(C));
-        PD.pushActivePath(&P->path);
-        CallStack.push_back(StackDiagPair(P, N));
-        break;
-      }
-
-      if (Optional<CallEnter> CE = P.getAs<CallEnter>()) {
-        // Flush all locations, and pop the active path.
-        bool VisitedEntireCall = PD.isWithinCall();
-        PD.popActivePath();
-
-        // Either we just added a bunch of stuff to the top-level path, or
-        // we have a previous CallExitEnd.  If the former, it means that the
-        // path terminated within a function call.  We must then take the
-        // current contents of the active path and place it within
-        // a new PathDiagnosticCallPiece.
-        PathDiagnosticCallPiece *C;
-        if (VisitedEntireCall) {
-          C = cast<PathDiagnosticCallPiece>(PD.getActivePath().front().get());
-        } else {
-          const Decl *Caller = CE->getLocationContext()->getDecl();
-          C = PathDiagnosticCallPiece::construct(PD.getActivePath(), Caller);
-          // Record the mapping from call piece to LocationContext.
-          LCM[&C->path] = CE->getCalleeContext();
-        }
-
-        C->setCallee(*CE, SMgr);
-        if (!CallStack.empty()) {
-          assert(CallStack.back().first == C);
-          CallStack.pop_back();
-        }
-        break;
-      }
-
-      if (Optional<BlockEdge> BE = P.getAs<BlockEdge>()) {
-        const CFGBlock *Src = BE->getSrc();
-        const CFGBlock *Dst = BE->getDst();
-        const Stmt *T = Src->getTerminator();
-
-        if (!T)
-          break;
-
-        PathDiagnosticLocation Start =
-            PathDiagnosticLocation::createBegin(T, SMgr,
-                N->getLocationContext());
-
-        switch (T->getStmtClass()) {
-        default:
-          break;
-
-        case Stmt::GotoStmtClass:
-        case Stmt::IndirectGotoStmtClass: {
-          const Stmt *S = PathDiagnosticLocation::getNextStmt(N);
-
-          if (!S)
-            break;
-
-          std::string sbuf;
-          llvm::raw_string_ostream os(sbuf);
-          const PathDiagnosticLocation &End = PDB.getEnclosingStmtLocation(S);
-
-          os << "Control jumps to line "
-              << End.asLocation().getExpansionLineNumber();
-          PD.getActivePath().push_front(
-              std::make_shared<PathDiagnosticControlFlowPiece>(Start, End,
-                                                               os.str()));
-          break;
-        }
-
-        case Stmt::SwitchStmtClass: {
-          // Figure out what case arm we took.
-          std::string sbuf;
-          llvm::raw_string_ostream os(sbuf);
-
-          if (const Stmt *S = Dst->getLabel()) {
-            PathDiagnosticLocation End(S, SMgr, LC);
-
-            switch (S->getStmtClass()) {
-            default:
-              os << "No cases match in the switch statement. "
-              "Control jumps to line "
-              << End.asLocation().getExpansionLineNumber();
-              break;
-            case Stmt::DefaultStmtClass:
-              os << "Control jumps to the 'default' case at line "
-              << End.asLocation().getExpansionLineNumber();
-              break;
-
-            case Stmt::CaseStmtClass: {
-              os << "Control jumps to 'case ";
-              const CaseStmt *Case = cast<CaseStmt>(S);
-              const Expr *LHS = Case->getLHS()->IgnoreParenCasts();
-
-              // Determine if it is an enum.
-              bool GetRawInt = true;
-
-              if (const DeclRefExpr *DR = dyn_cast<DeclRefExpr>(LHS)) {
-                // FIXME: Maybe this should be an assertion.  Are there cases
-                // were it is not an EnumConstantDecl?
-                const EnumConstantDecl *D =
-                    dyn_cast<EnumConstantDecl>(DR->getDecl());
-
-                if (D) {
-                  GetRawInt = false;
-                  os << *D;
-                }
-              }
-
-              if (GetRawInt)
-                os << LHS->EvaluateKnownConstInt(PDB.getASTContext());
-
-              os << ":'  at line "
-                  << End.asLocation().getExpansionLineNumber();
-              break;
-            }
-            }
-            PD.getActivePath().push_front(
-                std::make_shared<PathDiagnosticControlFlowPiece>(Start, End,
-                                                                 os.str()));
-          }
-          else {
-            os << "'Default' branch taken. ";
-            const PathDiagnosticLocation &End = PDB.ExecutionContinues(os, N);
-            PD.getActivePath().push_front(
-                std::make_shared<PathDiagnosticControlFlowPiece>(Start, End,
-                                                                 os.str()));
-          }
-
-          break;
-        }
-
-        case Stmt::BreakStmtClass:
-        case Stmt::ContinueStmtClass: {
-          std::string sbuf;
-          llvm::raw_string_ostream os(sbuf);
-          PathDiagnosticLocation End = PDB.ExecutionContinues(os, N);
-          PD.getActivePath().push_front(
-              std::make_shared<PathDiagnosticControlFlowPiece>(Start, End,
-                                                               os.str()));
-          break;
-        }
-
-        // Determine control-flow for ternary '?'.
-        case Stmt::BinaryConditionalOperatorClass:
-        case Stmt::ConditionalOperatorClass: {
-          std::string sbuf;
-          llvm::raw_string_ostream os(sbuf);
-          os << "'?' condition is ";
-
-          if (*(Src->succ_begin()+1) == Dst)
-            os << "false";
-          else
-            os << "true";
-
-          PathDiagnosticLocation End = PDB.ExecutionContinues(N);
-
-          if (const Stmt *S = End.asStmt())
-            End = PDB.getEnclosingStmtLocation(S);
-
-          PD.getActivePath().push_front(
-              std::make_shared<PathDiagnosticControlFlowPiece>(Start, End,
-                                                               os.str()));
-          break;
-        }
-
-        // Determine control-flow for short-circuited '&&' and '||'.
-        case Stmt::BinaryOperatorClass: {
-          if (!PDB.supportsLogicalOpControlFlow())
-            break;
-
-          const BinaryOperator *B = cast<BinaryOperator>(T);
-          std::string sbuf;
-          llvm::raw_string_ostream os(sbuf);
-          os << "Left side of '";
-
-          if (B->getOpcode() == BO_LAnd) {
-            os << "&&" << "' is ";
-
-            if (*(Src->succ_begin()+1) == Dst) {
-              os << "false";
-              PathDiagnosticLocation End(B->getLHS(), SMgr, LC);
-              PathDiagnosticLocation Start =
-                  PathDiagnosticLocation::createOperatorLoc(B, SMgr);
-              PD.getActivePath().push_front(
-                  std::make_shared<PathDiagnosticControlFlowPiece>(Start, End,
-                                                                   os.str()));
-            }
-            else {
-              os << "true";
-              PathDiagnosticLocation Start(B->getLHS(), SMgr, LC);
-              PathDiagnosticLocation End = PDB.ExecutionContinues(N);
-              PD.getActivePath().push_front(
-                  std::make_shared<PathDiagnosticControlFlowPiece>(Start, End,
-                                                                   os.str()));
-            }
-          }
-          else {
-            assert(B->getOpcode() == BO_LOr);
-            os << "||" << "' is ";
-
-            if (*(Src->succ_begin()+1) == Dst) {
-              os << "false";
-              PathDiagnosticLocation Start(B->getLHS(), SMgr, LC);
-              PathDiagnosticLocation End = PDB.ExecutionContinues(N);
-              PD.getActivePath().push_front(
-                  std::make_shared<PathDiagnosticControlFlowPiece>(Start, End,
-                                                                   os.str()));
-            }
-            else {
-              os << "true";
-              PathDiagnosticLocation End(B->getLHS(), SMgr, LC);
-              PathDiagnosticLocation Start =
-                  PathDiagnosticLocation::createOperatorLoc(B, SMgr);
-              PD.getActivePath().push_front(
-                  std::make_shared<PathDiagnosticControlFlowPiece>(Start, End,
-                                                                   os.str()));
-            }
-          }
-
-          break;
-        }
-
-        case Stmt::DoStmtClass:  {
-          if (*(Src->succ_begin()) == Dst) {
-            std::string sbuf;
-            llvm::raw_string_ostream os(sbuf);
-
-            os << "Loop condition is true. ";
-            PathDiagnosticLocation End = PDB.ExecutionContinues(os, N);
-
-            if (const Stmt *S = End.asStmt())
-              End = PDB.getEnclosingStmtLocation(S);
-
-            PD.getActivePath().push_front(
-                std::make_shared<PathDiagnosticControlFlowPiece>(Start, End,
-                                                                 os.str()));
-          }
-          else {
-            PathDiagnosticLocation End = PDB.ExecutionContinues(N);
-
-            if (const Stmt *S = End.asStmt())
-              End = PDB.getEnclosingStmtLocation(S);
-
-            PD.getActivePath().push_front(
-                std::make_shared<PathDiagnosticControlFlowPiece>(
-                    Start, End, "Loop condition is false.  Exiting loop"));
-          }
-
-          break;
-        }
-
-        case Stmt::WhileStmtClass:
-        case Stmt::ForStmtClass:
-        case Stmt::UPCForAllStmtClass: {
-          if (*(Src->succ_begin()+1) == Dst) {
-            std::string sbuf;
-            llvm::raw_string_ostream os(sbuf);
-
+static void CompactMacroExpandedPieces(PathPieces &path,
+                                       const SourceManager& SM);
 
 std::shared_ptr<PathDiagnosticControlFlowPiece> generateDiagForSwitchOP(
   const ExplodedNode *N,
@@ -1091,6 +808,33 @@ void generateMinimalDiagForBlockEdge(const ExplodedNode *N, BlockEdge BE,
 
     break;
 
+   case Stmt::UPCForAllStmtClass: {
+          if (*(Src->succ_begin()+1) == Dst) {
+            std::string sbuf;
+            llvm::raw_string_ostream os(sbuf);
+
+            os << "Loop condition is false. ";
+            PathDiagnosticLocation End = PDB.ExecutionContinues(os, N);
+            if (const Stmt *S = End.asStmt())
+              End = PDB.getEnclosingStmtLocation(S);
+
+            PD.getActivePath().push_front(
+                std::make_shared<PathDiagnosticControlFlowPiece>(Start, End,
+                                                                 os.str()));
+          }
+          else {
+            PathDiagnosticLocation End = PDB.ExecutionContinues(N);
+            if (const Stmt *S = End.asStmt())
+              End = PDB.getEnclosingStmtLocation(S);
+
+            PD.getActivePath().push_front(
+                std::make_shared<PathDiagnosticControlFlowPiece>(
+                    Start, End, "Loop condition is true.  Entering loop body"));
+          }
+
+          break;
+  }
+
   case Stmt::IfStmtClass: {
     PathDiagnosticLocation End = PDB.ExecutionContinues(N);
 
@@ -1262,203 +1006,6 @@ static bool isInLoopBody(ParentMap &PM, const Stmt *S, const Stmt *Term) {
 //===----------------------------------------------------------------------===//
 // Top-level logic for generating extensive path diagnostics.
 //===----------------------------------------------------------------------===//
-
-static bool GenerateExtensivePathDiagnostic(
-    PathDiagnostic &PD, PathDiagnosticBuilder &PDB, const ExplodedNode *N,
-    LocationContextMap &LCM,
-    ArrayRef<std::unique_ptr<BugReporterVisitor>> visitors) {
-  EdgeBuilder EB(PD, PDB);
-  const SourceManager& SM = PDB.getSourceManager();
-  StackDiagVector CallStack;
-  InterestingExprs IE;
-
-  const ExplodedNode *NextNode = N->pred_empty() ? nullptr : *(N->pred_begin());
-  while (NextNode) {
-    N = NextNode;
-    NextNode = N->getFirstPred();
-    ProgramPoint P = N->getLocation();
-
-    do {
-      if (Optional<PostStmt> PS = P.getAs<PostStmt>()) {
-        if (const Expr *Ex = PS->getStmtAs<Expr>())
-          reversePropagateIntererstingSymbols(*PDB.getBugReport(), IE,
-                                              N->getState().get(), Ex,
-                                              N->getLocationContext());
-      }
-
-      if (Optional<CallExitEnd> CE = P.getAs<CallExitEnd>()) {
-        const Stmt *S = CE->getCalleeContext()->getCallSite();
-        if (const Expr *Ex = dyn_cast_or_null<Expr>(S)) {
-            reversePropagateIntererstingSymbols(*PDB.getBugReport(), IE,
-                                                N->getState().get(), Ex,
-                                                N->getLocationContext());
-        }
-
-        auto C = PathDiagnosticCallPiece::construct(N, *CE, SM);
-        LCM[&C->path] = CE->getCalleeContext();
-
-        EB.addEdge(C->callReturn, /*AlwaysAdd=*/true, /*IsPostJump=*/true);
-        EB.flushLocations();
-
-        auto *P = C.get();
-        PD.getActivePath().push_front(std::move(C));
-        PD.pushActivePath(&P->path);
-        CallStack.push_back(StackDiagPair(P, N));
-        break;
-      }
-
-      // Pop the call hierarchy if we are done walking the contents
-      // of a function call.
-      if (Optional<CallEnter> CE = P.getAs<CallEnter>()) {
-        // Add an edge to the start of the function.
-        const Decl *D = CE->getCalleeContext()->getDecl();
-        PathDiagnosticLocation pos =
-          PathDiagnosticLocation::createBegin(D, SM);
-        EB.addEdge(pos);
-
-        // Flush all locations, and pop the active path.
-        bool VisitedEntireCall = PD.isWithinCall();
-        EB.flushLocations();
-        PD.popActivePath();
-        PDB.LC = N->getLocationContext();
-
-        // Either we just added a bunch of stuff to the top-level path, or
-        // we have a previous CallExitEnd.  If the former, it means that the
-        // path terminated within a function call.  We must then take the
-        // current contents of the active path and place it within
-        // a new PathDiagnosticCallPiece.
-        PathDiagnosticCallPiece *C;
-        if (VisitedEntireCall) {
-          C = cast<PathDiagnosticCallPiece>(PD.getActivePath().front().get());
-        } else {
-          const Decl *Caller = CE->getLocationContext()->getDecl();
-          C = PathDiagnosticCallPiece::construct(PD.getActivePath(), Caller);
-          LCM[&C->path] = CE->getCalleeContext();
-        }
-
-        C->setCallee(*CE, SM);
-        EB.addContext(C->getLocation());
-
-        if (!CallStack.empty()) {
-          assert(CallStack.back().first == C);
-          CallStack.pop_back();
-        }
-        break;
-      }
-
-      // Note that is important that we update the LocationContext
-      // after looking at CallExits.  CallExit basically adds an
-      // edge in the *caller*, so we don't want to update the LocationContext
-      // too soon.
-      PDB.LC = N->getLocationContext();
-
-      // Block edges.
-      if (Optional<BlockEdge> BE = P.getAs<BlockEdge>()) {
-        // Does this represent entering a call?  If so, look at propagating
-        // interesting symbols across call boundaries.
-        if (NextNode) {
-          const LocationContext *CallerCtx = NextNode->getLocationContext();
-          const LocationContext *CalleeCtx = PDB.LC;
-          if (CallerCtx != CalleeCtx) {
-            reversePropagateInterestingSymbols(*PDB.getBugReport(), IE,
-                                               N->getState().get(),
-                                               CalleeCtx, CallerCtx);
-          }
-        }
-
-        // Are we jumping to the head of a loop?  Add a special diagnostic.
-        if (const Stmt *Loop = BE->getSrc()->getLoopTarget()) {
-          PathDiagnosticLocation L(Loop, SM, PDB.LC);
-          const CompoundStmt *CS = nullptr;
-
-          if (const ForStmt *FS = dyn_cast<ForStmt>(Loop))
-            CS = dyn_cast<CompoundStmt>(FS->getBody());
-          else if (const UPCForAllStmt *FS = dyn_cast<UPCForAllStmt>(Loop))
-            CS = dyn_cast<CompoundStmt>(FS->getBody());
-          else if (const WhileStmt *WS = dyn_cast<WhileStmt>(Loop))
-            CS = dyn_cast<CompoundStmt>(WS->getBody());
-
-          auto p = std::make_shared<PathDiagnosticEventPiece>(
-              L, "Looping back to the head of the loop");
-          p->setPrunable(true);
-
-          EB.addEdge(p->getLocation(), true);
-          PD.getActivePath().push_front(std::move(p));
-
-          if (CS) {
-            PathDiagnosticLocation BL =
-              PathDiagnosticLocation::createEndBrace(CS, SM);
-            EB.addEdge(BL);
-          }
-        }
-
-        const CFGBlock *BSrc = BE->getSrc();
-        ParentMap &PM = PDB.getParentMap();
-
-        if (const Stmt *Term = BSrc->getTerminator()) {
-          // Are we jumping past the loop body without ever executing the
-          // loop (because the condition was false)?
-          if (isLoopJumpPastBody(Term, &*BE) &&
-              !isInLoopBody(PM,
-                            getStmtBeforeCond(PM,
-                                              BSrc->getTerminatorCondition(),
-                                              N),
-                            Term)) {
-            PathDiagnosticLocation L(Term, SM, PDB.LC);
-            auto PE = std::make_shared<PathDiagnosticEventPiece>(
-                L, "Loop body executed 0 times");
-            PE->setPrunable(true);
-
-            EB.addEdge(PE->getLocation(), true);
-            PD.getActivePath().push_front(std::move(PE));
-          }
-
-          // In any case, add the terminator as the current statement
-          // context for control edges.
-          EB.addContext(Term);
-        }
-
-        break;
-      }
-
-      if (Optional<BlockEntrance> BE = P.getAs<BlockEntrance>()) {
-        Optional<CFGElement> First = BE->getFirstElement();
-        if (Optional<CFGStmt> S = First ? First->getAs<CFGStmt>() : None) {
-          const Stmt *stmt = S->getStmt();
-          if (IsControlFlowExpr(stmt)) {
-            // Add the proper context for '&&', '||', and '?'.
-            EB.addContext(stmt);
-          }
-          else
-            EB.addExtendedContext(PDB.getEnclosingStmtLocation(stmt).asStmt());
-        }
-
-        break;
-      }
-
-
-    } while (0);
-
-    if (!NextNode)
-      continue;
-
-    // Add pieces from custom visitors.
-    BugReport *R = PDB.getBugReport();
-    for (auto &V : visitors) {
-      if (auto p = V->VisitNode(N, NextNode, PDB, *R)) {
-        const PathDiagnosticLocation &Loc = p->getLocation();
-        EB.addEdge(Loc, true);
-        updateStackPiecesWithMessage(*p, CallStack);
-        PD.getActivePath().push_front(std::move(p));
-
-        if (const Stmt *S = Loc.asStmt())
-          EB.addExtendedContext(PDB.getEnclosingStmtLocation(S).asStmt());
-      }
-    }
-  }
-
-  return PDB.getBugReport()->isValid();
-}
 
 /// \brief Adds a sanitized control-flow diagnostic edge to a path.
 static void addEdgeToPath(PathPieces &path,
@@ -1673,6 +1220,8 @@ static void generatePathDiagnosticsForNode(const ExplodedNode *N,
       const Stmt *Body = nullptr;
 
       if (const auto *FS = dyn_cast<ForStmt>(Loop))
+        Body = FS->getBody();
+      else if (const auto *FS = dyn_cast<UPCForAllStmt>(Loop))
         Body = FS->getBody();
       else if (const auto *WS = dyn_cast<WhileStmt>(Loop))
         Body = WS->getBody();

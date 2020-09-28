@@ -9467,12 +9467,11 @@ OverloadCandidateSet::BestViableFunction(Sema &S, SourceLocation Loc,
       Best = end();
       return OR_Ambiguous;
     }
+  }
   
 
   // Best is the best viable function.
-  if (Best->Function &&
-      (Best->Function->isDeleted() ||
-       S.isFunctionConsideredUnavailable(Best->Function)))
+  if (Best->Function && Best->Function->isDeleted()) 
     return OR_Deleted;
 
   if (!EquivalentCands.empty())

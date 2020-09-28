@@ -782,7 +782,7 @@ uint32_t Sema::CheckLayoutQualifier(Expr * LQExpr) {
       if (Val.isSigned() && Val.isNegative()) {
         llvm::SmallString<64> ValStr;
         Val.toString(ValStr);
-        Diag(LQExpr->getLocStart(), diag::err_upc_layout_qualifier_negative)
+        Diag(LQExpr->getBeginLoc(), diag::err_upc_layout_qualifier_negative)
           << ValStr << LQExpr->getSourceRange();
         return 1;
       } else if (Val.getActiveBits() > getLangOpts().UPCPhaseBits) {
@@ -790,7 +790,7 @@ uint32_t Sema::CheckLayoutQualifier(Expr * LQExpr) {
         Val.toStringUnsigned(ValStr);
 	llvm::SmallString<64> LQMaxStr;
 	llvm::APInt::getMaxValue(getLangOpts().UPCPhaseBits).toStringUnsigned(LQMaxStr);
-        Diag(LQExpr->getLocStart(), diag::err_upc_layout_qualifier_too_big)
+        Diag(LQExpr->getBeginLoc(), diag::err_upc_layout_qualifier_too_big)
           << ValStr << LQMaxStr << LQExpr->getSourceRange();
         return 1;
       } else {
@@ -5426,7 +5426,7 @@ static TypeSourceInfo *GetFullTypeForDeclarator(TypeProcessingState &state,
     if (IsTypedefName && T.getQualifiers().hasLayoutQualifierStar()) {
       S.Diag(D.getDeclSpec().getSharedSpecLoc(), diag::err_upc_shared_star_on_typedef);
     }
-    T = S.ResolveLayoutQualifierStar(T, D.getDeclSpec().getLocStart());
+    T = S.ResolveLayoutQualifierStar(T, D.getDeclSpec().getBeginLoc());
   }
 
   // Apply any undistributed attributes from the declarator.

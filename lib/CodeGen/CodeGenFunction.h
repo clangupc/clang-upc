@@ -2121,10 +2121,11 @@ public:
   //===--------------------------------------------------------------------===//
 
   LValue MakeAddrLValue(Address Addr, QualType T,
-                        AlignmentSource Source = AlignmentSource::Type) {
+                        AlignmentSource Source = AlignmentSource::Type,
                         SourceLocation Loc = SourceLocation()) {
     return LValue::MakeAddr(Addr, T, getContext(), LValueBaseInfo(Source),
                             CGM.getTBAAAccessInfo(T));
+  }
 
   LValue MakeAddrLValue(Address Addr, QualType T, LValueBaseInfo BaseInfo,
                         TBAAAccessInfo TBAAInfo) {
@@ -2133,8 +2134,8 @@ public:
 
   LValue MakeAddrLValue(Address Addr, QualType T,
                         SourceLocation Loc) {
-    return LValue::MakeAddr(Addr, T, getContext(), AlignmentSource::Type,
-                            CGM.getTBAAInfo(T));
+    return LValue::MakeAddr(Addr, T, getContext(), LValueBaseInfo(AlignmentSource::Type),
+                            CGM.getTBAAAccessInfo(T));
   }
 
   LValue MakeAddrLValue(llvm::Value *V, QualType T, CharUnits Alignment,

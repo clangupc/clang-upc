@@ -9065,11 +9065,8 @@ EvaluateBuiltinClassifyType(QualType T, const LangOptions &LangOpts) {
     return EvaluateBuiltinClassifyType(
         CanTy->castAs<AtomicType>()->getValueType(), LangOpts);
 
-  case Type::ConstantArray:
-  case Type::VariableArray:
-  case Type::IncompleteArray:
   case Type::UPCThreadArray:
-    return LangOpts.CPlusPlus ? array_type_class : pointer_type_class;
+    return GCCTypeClass::Pointer;
 
   case Type::BlockPointer:
   case Type::Vector:
@@ -12966,7 +12963,7 @@ static ICEDiag CheckICE(const Expr* E, const ASTContext &Ctx) {
     if ((Exp->getKind() ==  UETT_SizeOf) &&
         (Exp->getTypeOfArgument()->isVariableArrayType() ||
          Exp->getTypeOfArgument()->isUPCThreadArrayType()))
-      return ICEDiag(IK_NotICE, E->getLocStart());
+      return ICEDiag(IK_NotICE, E->getBeginLoc());
     return NoDiag();
   }
   case Expr::BinaryOperatorClass: {

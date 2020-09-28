@@ -1205,7 +1205,7 @@ struct DeclaratorChunk {
 
   ParsedAttributesView AttrList;
 
-  struct PointerTypeInfo : TypeInfoCommon {
+  struct PointerTypeInfo {
     /// The type qualifiers: const/volatile/restrict/unaligned/atomic/shared/relaxed/strict.
     unsigned TypeQuals : 10;
 

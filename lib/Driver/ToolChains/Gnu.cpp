@@ -61,6 +61,65 @@ static void normalizeCPUNamesForAssembler(const ArgList &Args,
   }
 }
 
+
+static const char *GetUPCLibOption(const ArgList &Args) {
+  llvm::SmallString<32> Buf("-lupc");
+  if (Args.getLastArgValue(options::OPT_fupc_pts_EQ, "packed") == "struct") {
+    Buf += "-s";
+  }
+  if (Args.getLastArgValue(options::OPT_fupc_pts_vaddr_order_EQ, "first") == "last") {
+    Buf += "-l";
+  }
+  if (Arg * A = Args.getLastArg(options::OPT_fupc_packed_bits_EQ)) {
+    llvm::SmallVector<llvm::StringRef, 3> Bits;
+    StringRef(A->getValue()).split(Bits, ",");
+    bool okay = true;
+    int Values[3];
+    if (Bits.size() == 3) {
+      for (int i = 0; i < 3; ++i)
+        if (Bits[i].getAsInteger(10, Values[i]) || Values[i] <= 0)
+          okay = false;
+      if (Values[0] + Values[1] + Values[2] != 64)
+        okay = false;
+    } else {
+      okay = false;
+    }
+    if (okay) {
+      if(Values[0] != 20 || Values[1] != 10 || Values[2] != 34) {
+        Buf += "-";
+        Buf += Bits[0];
+        Buf += "-";
+        Buf += Bits[1];
+        Buf += "-";
+        Buf += Bits[2];
+      }
+    }
+  }
+  return Args.MakeArgString(Buf);
+}
+
+static const char *GetUPCBeginFile(const ArgList &Args) {
+  const char *upc_crtbegin;
+  if (Args.hasArg(options::OPT_static))
+    upc_crtbegin = "upc-crtbeginT.o";
+  else if (Args.hasArg(options::OPT_shared) || Args.hasArg(options::OPT_pie))
+    upc_crtbegin = "upc-crtbeginS.o";
+  else
+    upc_crtbegin = "upc-crtbegin.o";
+  return upc_crtbegin;
+}
+
+static const char *GetUPCEndFile(const ArgList &Args) {
+  const char *upc_crtend;
+  if (Args.hasArg(options::OPT_static))
+    upc_crtend = "upc-crtendT.o";
+  else if (Args.hasArg(options::OPT_shared) || Args.hasArg(options::OPT_pie))
+    upc_crtend = "upc-crtendS.o";
+  else
+    upc_crtend = "upc-crtend.o";
+  return upc_crtend;
+}
+
 void tools::gcc::Common::ConstructJob(Compilation &C, const JobAction &JA,
                                       const InputInfo &Output,
                                       const InputInfoList &Inputs,

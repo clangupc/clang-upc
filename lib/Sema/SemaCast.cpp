@@ -2754,7 +2754,7 @@ void CastOperation::CheckCStyleCast() {
       if (CastQuals.hasShared() && !ExprQuals.hasShared() &&
           !SrcExpr.get()->isNullPointerConstant(
             Self.getASTContext(), Expr::NPC_NeverValueDependent)) {
-        Self.Diag(SrcExpr.get()->getLocStart(), diag::err_upc_cast_local_to_shared)
+        Self.Diag(SrcExpr.get()->getBeginLoc(), diag::err_upc_cast_local_to_shared)
           << SrcType << DestType << Sema::AA_Casting
           << SrcExpr.get()->getSourceRange();
         return;
@@ -2762,7 +2762,7 @@ void CastOperation::CheckCStyleCast() {
     } else if (CastPtr->getPointeeType().getQualifiers().hasShared() &&
                !SrcExpr.get()->isNullPointerConstant(
                  Self.getASTContext(), Expr::NPC_NeverValueDependent)) {
-      Self.Diag(SrcExpr.get()->getLocStart(), diag::err_typecheck_convert_incompatible)
+      Self.Diag(SrcExpr.get()->getBeginLoc(), diag::err_typecheck_convert_incompatible)
         << SrcType << DestType << Sema::AA_Casting
         << 0 << 0
         << SrcExpr.get()->getSourceRange();
@@ -2780,7 +2780,7 @@ void CastOperation::CheckCStyleCast() {
   }
 
   if (DestType.getQualifiers().hasShared()) {
-    Self.Diag(SrcExpr.get()->getLocStart(), diag::err_upc_cast_to_shared)
+    Self.Diag(SrcExpr.get()->getBeginLoc(), diag::err_upc_cast_to_shared)
       << DestType
       << SrcExpr.get()->getSourceRange();
   }

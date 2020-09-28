@@ -1182,7 +1182,7 @@ void AggExprEmitter::VisitBinAssign(const BinaryOperator *E) {
              AggValueSlot::forLValue(LHS, AggValueSlot::IsDestructed,
                                      needsGC(E->getLHS()->getType()),
                                      AggValueSlot::IsAliased,
-                                     AggValueSlot::MayOverlap,
+                                     AggValueSlot::MayOverlap),
              Dest, E->getExprLoc());
     return;
   }

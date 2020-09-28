@@ -11659,11 +11659,20 @@ void Sema::AddInitializerToDecl(Decl *RealDecl, Expr *Init, bool DirectInit) {
     } else if (getLangOpts().CPlusPlus) {
       // do nothing
 
+
     // C99 6.7.8p4: All the expressions in an initializer for an object that has
     // static storage duration shall be constant expressions or string literals.
-    // C++ does not have this restriction.
-    if (!getLangOpts().CPlusPlus && !getLangOpts().UPC &&
-        !VDecl->isInvalidDecl()) {
+    }else if(VDecl->getStorageClass() == SC_Static) {
+        CheckForConstantInitializer(Init, DclT);
+
+    // C89 is stricter than C99 for aggregate initializers.
+    // C89 6.5.7p3: All the expressions [...] in an initializer list
+    // for an object that has aggregate or union type shall be
+    // constant expressions.
+
+    } else if (!getLangOpts().C99 && !getLangOpts().UPC &&
+        VDecl->getType()->isAggregateType() &&
+        isa<InitListExpr>(Init)){
       const Expr *Culprit;
       if (!Init->isConstantInitializer(Context, false, &Culprit)) {
         Diag(Culprit->getExprLoc(),

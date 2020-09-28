@@ -868,8 +868,6 @@ private:
     unsigned InitStyle : 2;
     /// \brief Whether UPC initialization should be performed strict
     unsigned IsUPCInitStrict : 1;
-  };
-  enum { NumVarDeclBits = 8 };
 
     /// Whether this variable is an ARC pseudo-__strong variable; see
     /// isARCPseudoStrong() for details.

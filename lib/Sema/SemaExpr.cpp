@@ -7017,32 +7017,21 @@ static QualType checkConditionalPointerCompatibility(Sema &S, ExprResult &LHS,
     return QualType();
   }
 
-  // For OpenCL:
-  // 1. If LHS and RHS types match exactly and:
-  //  (a) AS match => use standard C rules, no bitcast or addrspacecast
-  //  (b) AS overlap => generate addrspacecast
-  //  (c) AS don't overlap => give an error
-  // 2. if LHS and RHS types don't match:
-  //  (a) AS match => use standard C rules, generate bitcast
-  //  (b) AS overlap => generate addrspacecast instead of bitcast
-  //  (c) AS don't overlap => give an error
-
-  // For OpenCL, non-null composite type is returned only for cases 1a and 1b.
   QualType CompositeTy = S.Context.mergeTypes(lhptee, rhptee);
 
   if (CompositeTy.isNull()) {
+    QualType incompatTy;
+    QualType Pointee = S.Context.VoidTy;
     // In this situation, we assume void* type. No especially good
     // reason, but this is what gcc does, and we do have to pick
     // to get a consistent AST.
-    QualType Pointee = S.Context.VoidTy;
     if (lhQual.hasShared()) {
       Qualifiers Quals;
       Quals.addShared();
       Pointee = S.Context.getQualifiedType(Pointee, Quals);
     }
-    QualType incompatTy;
     incompatTy = S.Context.getPointerType(
-        S.Context.getAddrSpaceQualType(S.Context.VoidTy, ResultAddrSpace));
+    S.Context.getAddrSpaceQualType(S.Context.VoidTy, ResultAddrSpace));
     LHS = S.ImpCastExprToType(LHS.get(), incompatTy, LHSCastKind);
     RHS = S.ImpCastExprToType(RHS.get(), incompatTy, RHSCastKind);
 
@@ -7058,24 +7047,24 @@ static QualType checkConditionalPointerCompatibility(Sema &S, ExprResult &LHS,
         << RHS.get()->getSourceRange();
 
       // Continue handling cases 2a and 2b.
-      incompatTy = S.Context.getPointerType(
-          S.Context.getAddrSpaceQualType(Pointee, ResultAddrSpace));
-      LHS = S.ImpCastExprToType(LHS.get(), incompatTy,
-                                (lhQual.getAddressSpace() != ResultAddrSpace)
-                                    ? CK_AddressSpaceConversion /* 2b */
-                                    : CK_BitCast /* 2a */);
-      RHS = S.ImpCastExprToType(RHS.get(), incompatTy,
-                                (rhQual.getAddressSpace() != ResultAddrSpace)
-                                    ? CK_AddressSpaceConversion /* 2b */
-                                    : CK_BitCast /* 2a */);
-    } else {
-      S.Diag(Loc, diag::ext_typecheck_cond_incompatible_pointers)
-          << LHSTy << RHSTy << LHS.get()->getSourceRange()
-          << RHS.get()->getSourceRange();
-      incompatTy = S.Context.getPointerType(Pointee);
-      LHS = S.ImpCastExprToType(LHS.get(), incompatTy, CK_BitCast);
-      RHS = S.ImpCastExprToType(RHS.get(), incompatTy, CK_BitCast);
-    }
+//      incompatTy = S.Context.getPointerType(
+//          S.Context.getAddrSpaceQualType(Pointee, ResultAddrSpace));
+//      LHS = S.ImpCastExprToType(LHS.get(), incompatTy,
+//                                (lhQual.getAddressSpace() != ResultAddrSpace)
+//                                    ? CK_AddressSpaceConversion /* 2b */
+//                                    : CK_BitCast /* 2a */);
+//      RHS = S.ImpCastExprToType(RHS.get(), incompatTy,
+//                                (rhQual.getAddressSpace() != ResultAddrSpace)
+//                                    ? CK_AddressSpaceConversion /* 2b */
+//                                    : CK_BitCast /* 2a */);
+//    } else {
+//      S.Diag(Loc, diag::ext_typecheck_cond_incompatible_pointers)
+//          << LHSTy << RHSTy << LHS.get()->getSourceRange()
+//          << RHS.get()->getSourceRange();
+//     incompatTy = S.Context.getPointerType(Pointee);
+//      LHS = S.ImpCastExprToType(LHS.get(), incompatTy, CK_BitCast);
+//      RHS = S.ImpCastExprToType(RHS.get(), incompatTy, CK_BitCast);
+//    }
     return incompatTy;
   }
 
@@ -8349,9 +8338,14 @@ Sema::CheckAssignmentConstraints(QualType LHSType, ExprResult &RHS,
         else
           Kind = CK_UPCSharedToLocal;
       else {
-        unsigned AddrSpaceL = LHSPointer->getPointeeType().getAddressSpace();
-        unsigned AddrSpaceR = RHSType->getPointeeType().getAddressSpace();
-        Kind = AddrSpaceL != AddrSpaceR ? CK_AddressSpaceConversion : CK_BitCast;
+        LangAS AddrSpaceL = LHSPointer->getPointeeType().getAddressSpace();
+        LangAS AddrSpaceR = RHSType->getPointeeType().getAddressSpace();
+        if(AddrSpaceL != AddrSpaceR){
+            Kind - CK_AddressSpaceConversion;
+        }else if (Context.hasCvrSimilarType(RHSType, LHSType)){
+            Kind = CK_NoOp;
+        }else
+            Kind = CK_BitCast;
       }
       return checkPointerTypesForAssignment(*this, LHSType, RHSType);
     }
@@ -11864,6 +11858,7 @@ QualType Sema::CheckAssignmentOperands(ExprResult &LHS, ExprResult &RHS,
         const DeclRefExpr *DRE = dyn_cast<DeclRefExpr>(InnerLHS);
         if (!DRE || DRE->getDecl()->hasAttr<BlocksAttr>())
           checkRetainCycles(LHS.get(), RHS.get());
+      }
 
       if (LHSType.getObjCLifetime() == Qualifiers::OCL_Strong ||
           LHSType.isNonWeakInMRRWithObjCWeak(Context)) {

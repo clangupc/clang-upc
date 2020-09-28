@@ -640,14 +640,16 @@ namespace serialization {
       
       MODULAR_CODEGEN_DECLS = 60,
 
-      /// \brief Record code for tracking #pragma upc
-      UPC_PRAGMA_OPTIONS = 60,
+      PACK_PRAGMA_OPTIONS = 61,
 
       /// The stack of open #ifs/#ifdefs recorded in a preamble.
       PP_CONDITIONAL_STACK = 62,
 
       /// A table of skipped ranges within the preprocessing record.
-      PPD_SKIPPED_RANGES = 63
+      PPD_SKIPPED_RANGES = 63,
+
+      /// \brief Record code for tracking #pragma upc
+      UPC_PRAGMA_OPTIONS = 64
     };
 
     /// Record types used within a source manager block.

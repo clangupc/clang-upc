@@ -961,13 +961,23 @@ void UPCForAllStmt::setConditionVariable(ASTContext &C, VarDecl *V) {
                                        VarRange.getEnd());
 }
 
-SwitchStmt::SwitchStmt(const ASTContext &C, Stmt *init, VarDecl *Var,
-                       Expr *cond)
-    : Stmt(SwitchStmtClass), FirstCase(nullptr, false) {
-  setConditionVariable(C, Var);
-  SubExprs[INIT] = init;
-  SubExprs[COND] = cond;
-  SubExprs[BODY] = nullptr;
+SwitchStmt::SwitchStmt(const ASTContext &Ctx, Stmt *Init, VarDecl *Var,
+                       Expr *Cond)
+    : Stmt(SwitchStmtClass), FirstCase(nullptr) {
+  bool HasInit = Init != nullptr;
+  bool HasVar = Var != nullptr;
+  SwitchStmtBits.HasInit = HasInit;
+  SwitchStmtBits.HasVar = HasVar;
+  SwitchStmtBits.AllEnumCasesCovered = false;
+
+  setCond(Cond);
+  setBody(nullptr);
+  if(HasInit)
+      setInit(Init);
+  if(HasVar)
+      setConditionVariable(Ctx,Var);
+
+  setSwitchLoc(SourceLocation{});
 }
 
 SwitchStmt::SwitchStmt(EmptyShell Empty, bool HasInit, bool HasVar)

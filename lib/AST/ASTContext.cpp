@@ -1988,7 +1988,6 @@ TypeInfo ASTContext::getTypeInfoImpl(const Type *T) const {
     Width = Target->getPointerWidth(AS);
     Align = Target->getPointerAlign(AS);
     break;
-  }
   case Type::Pointer: {
     if (cast<PointerType>(T)->getPointeeType().getQualifiers().hasShared()) {
       Width = (LangOpts.UPCPhaseBits + LangOpts.UPCThreadBits + LangOpts.UPCAddrBits);
@@ -2002,6 +2001,7 @@ TypeInfo ASTContext::getTypeInfoImpl(const Type *T) const {
       Align = Target->getPointerAlign(AS);
     }
     break;
+  }
   case Type::MemberPointer: {
     const auto *MPT = cast<MemberPointerType>(T);
     CXXABI::MemberPointerInfo MPI = ABI->getMemberPointerInfo(MPT);
@@ -9082,8 +9082,6 @@ QualType ASTContext::mergeTypes(QualType LHS, QualType RHS,
                                            ArrayType::ArraySizeModifier(), 0);
     if (RTAT) return getUPCThreadArrayType(ResultType, RTAT->getSize(), RTAT->getThread(),
                                            ArrayType::ArraySizeModifier(), 0);
-    const VariableArrayType* LVAT = getAsVariableArrayType(LHS);
-    const VariableArrayType* RVAT = getAsVariableArrayType(RHS);
     if (LVAT && getCanonicalType(LHSElem) == getCanonicalType(ResultType))
       return LHS;
     if (RVAT && getCanonicalType(RHSElem) == getCanonicalType(ResultType))
