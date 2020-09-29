@@ -446,8 +446,8 @@ public:
         FS_inline_specified(false), FS_forceinline_specified(false),
         FS_virtual_specified(false), FS_noreturn_specified(false),
         Friend_specified(false), ConstexprSpecifier(CSK_unspecified),
-        FS_explicit_specifier(), Attrs(attrFactory), writtenBS(),
-        UPCLayoutQualifier(0),
+        UPCLayoutQualifier(0), FS_explicit_specifier(), Attrs(attrFactory),
+        writtenBS(),
         ObjCQualifiers(nullptr) {}
 
   // storage-class-specifier

@@ -80,7 +80,7 @@ public:
   bool IsStmtExpr;
 
   explicit CompoundScopeInfo(bool IsStmtExpr, bool CurrentIsStrict) 
-      : IsStmtExpr(IsStmtExpr), UPCIsStrict(CurrentIsStrict) {}
+      : UPCIsStrict(CurrentIsStrict), IsStmtExpr(IsStmtExpr) {}
 
   void setHasEmptyLoopBodies() {
     HasEmptyLoopBodies = true;
