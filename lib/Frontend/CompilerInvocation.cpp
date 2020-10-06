@@ -2292,6 +2292,8 @@ static bool IsInputCompatibleWithStandard(InputKind IK,
     llvm_unreachable("should not parse language flags for this input");
 
   case InputKind::C:
+  case InputKind::UPC:
+  case InputKind::PreprocessedUPC:
   case InputKind::ObjC:
   case InputKind::RenderScript:
     return S.getLanguage() == InputKind::C;
@@ -2326,6 +2328,8 @@ static bool IsInputCompatibleWithStandard(InputKind IK,
 static const StringRef GetInputKindName(InputKind IK) {
   switch (IK.getLanguage()) {
   case InputKind::C:
+  case InputKind::UPC:
+  case InputKind::PreprocessedUPC:
     return "C";
   case InputKind::ObjC:
     return "Objective-C";
