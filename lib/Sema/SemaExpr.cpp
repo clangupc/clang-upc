@@ -7046,25 +7046,6 @@ static QualType checkConditionalPointerCompatibility(Sema &S, ExprResult &LHS,
         << LHSTy << RHSTy << LHS.get()->getSourceRange()
         << RHS.get()->getSourceRange();
 
-      // Continue handling cases 2a and 2b.
-//      incompatTy = S.Context.getPointerType(
-//          S.Context.getAddrSpaceQualType(Pointee, ResultAddrSpace));
-//      LHS = S.ImpCastExprToType(LHS.get(), incompatTy,
-//                                (lhQual.getAddressSpace() != ResultAddrSpace)
-//                                    ? CK_AddressSpaceConversion /* 2b */
-//                                    : CK_BitCast /* 2a */);
-//      RHS = S.ImpCastExprToType(RHS.get(), incompatTy,
-//                                (rhQual.getAddressSpace() != ResultAddrSpace)
-//                                    ? CK_AddressSpaceConversion /* 2b */
-//                                    : CK_BitCast /* 2a */);
-//    } else {
-//      S.Diag(Loc, diag::ext_typecheck_cond_incompatible_pointers)
-//          << LHSTy << RHSTy << LHS.get()->getSourceRange()
-//          << RHS.get()->getSourceRange();
-//     incompatTy = S.Context.getPointerType(Pointee);
-//      LHS = S.ImpCastExprToType(LHS.get(), incompatTy, CK_BitCast);
-//      RHS = S.ImpCastExprToType(RHS.get(), incompatTy, CK_BitCast);
-//    }
     return incompatTy;
   }
 

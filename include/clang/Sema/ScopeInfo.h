@@ -66,8 +66,6 @@ namespace sema {
 /// parsed.
 class CompoundScopeInfo {
 public:
-  //explicit CompoundScopeInfo(bool CurrentIsStrict)
-  //  : HasEmptyLoopBodies(false), UPCIsStrict(CurrentIsStrict) { }
 
   /// \brief Whether this compound stamement contains `for' or `while' loops
   /// with empty bodies.

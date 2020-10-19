@@ -1735,9 +1735,6 @@ operator()(sema::FunctionScopeInfo *Scope) const {
     delete Scope;
 }
 
-//void Sema::PushCompoundScope() {
-//  getCurFunction()->CompoundScopes.push_back(CompoundScopeInfo(IsUPCDefaultStrict()));
-//}
 void Sema::PushCompoundScope(bool IsStmtExpr) {
   getCurFunction()->CompoundScopes.push_back(CompoundScopeInfo(IsStmtExpr,IsUPCDefaultStrict()));
 }

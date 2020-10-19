@@ -67,17 +67,6 @@ static const char *GetUPCLibOption(const ArgList &Args) {
   return Args.MakeArgString(Buf);
 }
 
-static const char *GetUPCBeginFile(const ArgList &Args) {
-  const char *upc_crtbegin;
-  if (Args.hasArg(options::OPT_static))
-    upc_crtbegin = "upc-crtbeginT.o";
-  else if (Args.hasArg(options::OPT_shared) || Args.hasArg(options::OPT_pie))
-    upc_crtbegin = "upc-crtbeginS.o";
-  else
-    upc_crtbegin = "upc-crtbegin.o";
-  return upc_crtbegin;
-}
-
 static const char *GetUPCEndFile(const ArgList &Args) {
   const char *upc_crtend;
   if (Args.hasArg(options::OPT_static))

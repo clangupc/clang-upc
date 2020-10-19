@@ -2715,9 +2715,6 @@ public:
   }
   static bool classof(const UPCNotifyStmt *) { return true; }
 
-  //TCL / DDD
-  //SourceLocation getLocStart() const LLVM_READONLY { return NotifyLoc; }
-  //SourceLocation getLocEnd() const LLVM_READONLY {
   SourceLocation getBeginLoc() const LLVM_READONLY { return NotifyLoc; }
   SourceLocation getEndLoc() const LLVM_READONLY {
     return IdExpr ? IdExpr->getEndLoc() : NotifyLoc;
@@ -2753,9 +2750,6 @@ public:
   }
   static bool classof(const UPCWaitStmt *) { return true; }
 
-  //TCL / DDD
-  //SourceLocation getLocStart() const LLVM_READONLY { return WaitLoc; }
-  //SourceLocation getLocEnd() const LLVM_READONLY {
   SourceLocation getBeginLoc() const LLVM_READONLY { return WaitLoc; }
   SourceLocation getEndLoc() const LLVM_READONLY {
     return IdExpr ? IdExpr->getEndLoc() : WaitLoc;
@@ -2791,9 +2785,6 @@ public:
   }
   static bool classof(const UPCBarrierStmt *) { return true; }
 
-  //TCL-DDD
-  //SourceLocation getLocStart() const LLVM_READONLY { return BarrierLoc; }
-  //SourceLocation getLocEnd() const LLVM_READONLY {
   SourceLocation getBeginLoc() const LLVM_READONLY { return BarrierLoc; }
   SourceLocation getEndLoc() const LLVM_READONLY {
     return IdExpr ? IdExpr->getEndLoc() : BarrierLoc;
@@ -2823,9 +2814,6 @@ public:
   }
   static bool classof(const UPCFenceStmt *) { return true; }
 
-  //TCL - DDD
-  //SourceLocation getLocStart() const LLVM_READONLY { return FenceLoc; }
-  //SourceLocation getLocEnd() const LLVM_READONLY { return FenceLoc; }
   SourceLocation getBeginLoc() const LLVM_READONLY { return FenceLoc; }
   SourceLocation getEndLoc() const LLVM_READONLY { return FenceLoc; }
 
@@ -2854,9 +2842,6 @@ public:
   }
   static bool classof(const UPCPragmaStmt *) { return true; }
 
-  //TCL - DDD
-  //SourceLocation getLocStart() const LLVM_READONLY { return PragmaLoc; }
-  //SourceLocation getLocEnd() const LLVM_READONLY { return PragmaLoc; }
   SourceLocation getBeginLoc() const LLVM_READONLY { return PragmaLoc; }
   SourceLocation getEndLoc() const LLVM_READONLY { return PragmaLoc; }
 
@@ -2917,9 +2902,6 @@ public:
   SourceLocation getRParenLoc() const { return RParenLoc; }
   void setRParenLoc(SourceLocation L) { RParenLoc = L; }
 
-  //TCL - DDD
-  //SourceLocation getLocStart() const LLVM_READONLY { return ForLoc; }
-  //SourceLocation getLocEnd() const LLVM_READONLY { return SubExprs[BODY]->getEndLoc(); }
   SourceLocation getBeginLoc() const LLVM_READONLY { return ForLoc; }
   SourceLocation getEndLoc() const LLVM_READONLY { return SubExprs[BODY]->getEndLoc(); }
   static bool classof(const Stmt *T) {
