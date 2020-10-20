@@ -571,7 +571,7 @@ StmtResult Parser::HandlePragmaUPC() {
   assert(Tok.is(tok::annot_pragma_upc));
   const Sema::PragmaUPCKind *Kind =
     static_cast<Sema::PragmaUPCKind *>(Tok.getAnnotationValue());
-  SourceLocation PragmaLoc = ConsumeToken();
+  SourceLocation PragmaLoc = ConsumeAnnotationToken();
   return Actions.ActOnPragmaUPC(PragmaLoc, *Kind);
 }
 
@@ -579,7 +579,7 @@ Decl * Parser::HandlePragmaPUPC() {
   assert(Tok.is(tok::annot_pragma_pupc));
   const Sema::PragmaPUPCKind *Kind =
     static_cast<Sema::PragmaPUPCKind *>(Tok.getAnnotationValue());
-  SourceLocation PragmaLoc = ConsumeToken();
+  SourceLocation PragmaLoc = ConsumeAnnotationToken();
   return Actions.ActOnPragmaPUPC(PragmaLoc, *Kind);
 }
 

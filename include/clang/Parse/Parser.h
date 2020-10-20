@@ -448,10 +448,6 @@ public:
   /// consume methods.
   /// Returns the location of the consumed token.
   SourceLocation ConsumeToken() {
-    if(Tok.isAnnotation()){
-        PrevTokLocation = ConsumeAnnotationToken();
-        return PrevTokLocation;
-    }
     assert(!isTokenSpecial() &&
            "Should consume special tokens with Consume*Token");
     PrevTokLocation = Tok.getLocation();
