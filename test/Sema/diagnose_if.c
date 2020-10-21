@@ -153,3 +153,17 @@ void runAlwaysWarnWithArg(int a) {
 
 // Test that diagnose_if warnings generated in system headers are not ignored.
 #include "Inputs/diagnose-if-warn-system-header.h"
+
+// Bug: we would complain about `a` being undeclared if this was spelled
+// __diagnose_if__.
+void underbarName(int a) __attribute__((__diagnose_if__(a, "", "warning")));
+
+// PR38095
+void constCharStar(const char *str) __attribute__((__diagnose_if__(!str[0], "empty string not allowed", "error"))); // expected-note {{from}}
+void charStar(char *str) __attribute__((__diagnose_if__(!str[0], "empty string not allowed", "error"))); // expected-note {{from}}
+void runConstCharStar() {
+  constCharStar("foo");
+  charStar("bar");
+  constCharStar(""); // expected-error {{empty string not allowed}}
+  charStar(""); // expected-error {{empty string not allowed}}
+}

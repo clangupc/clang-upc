@@ -207,3 +207,25 @@ Y<false> y2;
 
 } // end ns1
 } // end ns PR26134
+
+namespace friends {
+  namespace ns {
+    template<typename> struct A {
+      template<typename> friend void f();
+      template<typename> friend struct X;
+    };
+    template<typename = int> void f(); // expected-warning 0-1{{extension}}
+    template<typename = int> struct X;
+    A<int> a;
+  }
+  namespace ns {
+    void g() { f(); }
+    X<int> *p;
+  }
+}
+
+namespace unevaluated {
+  int a;
+  template<int = 0> int f(int = a); // expected-warning 0-1{{extension}}
+  int k = sizeof(f());
+}

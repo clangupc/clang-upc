@@ -1,9 +1,9 @@
 // REQUIRES: powerpc-registered-target
-// RUN: %clang_cc1 -faltivec -target-feature +power9-vector \
+// RUN: %clang_cc1 -target-feature +altivec -target-feature +power9-vector \
 // RUN:   -triple powerpc64-unknown-unknown -emit-llvm %s \
 // RUN:   -o - | FileCheck %s -check-prefix=CHECK-BE
 
-// RUN: %clang_cc1 -faltivec -target-feature +power9-vector \
+// RUN: %clang_cc1 -target-feature +altivec -target-feature +power9-vector \
 // RUN:   -triple powerpc64le-unknown-unknown -emit-llvm %s \
 // RUN:   -o - | FileCheck %s
 
@@ -983,7 +983,7 @@ vector bool int test86(void) {
 }
 vector bool long long test87(void) {
 // CHECK-BE: @llvm.ppc.vsx.xvtstdcdp(<2 x double> {{.+}}, i32 127)
-// CHECK-BE_NEXT: ret <2 x i64
+// CHECK-BE-NEXT: ret <2 x i64>
 // CHECK: @llvm.ppc.vsx.xvtstdcdp(<2 x double> {{.+}}, i32 127)
 // CHECK-NEXT: ret <2 x i64>
   return vec_test_data_class(vda, __VEC_CLASS_FP_NOT_NORMAL);

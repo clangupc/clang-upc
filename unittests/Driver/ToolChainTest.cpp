@@ -1,9 +1,8 @@
 //===- unittests/Driver/ToolChainTest.cpp --- ToolChain tests -------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -15,9 +14,11 @@
 #include "clang/Basic/DiagnosticIDs.h"
 #include "clang/Basic/DiagnosticOptions.h"
 #include "clang/Basic/LLVM.h"
-#include "clang/Basic/VirtualFileSystem.h"
 #include "clang/Driver/Compilation.h"
 #include "clang/Driver/Driver.h"
+#include "llvm/Support/TargetRegistry.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/VirtualFileSystem.h"
 #include "llvm/Support/raw_ostream.h"
 #include "gtest/gtest.h"
 using namespace clang;
@@ -31,8 +32,8 @@ TEST(ToolChainTest, VFSGCCInstallation) {
   IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
   struct TestDiagnosticConsumer : public DiagnosticConsumer {};
   DiagnosticsEngine Diags(DiagID, &*DiagOpts, new TestDiagnosticConsumer);
-  IntrusiveRefCntPtr<vfs::InMemoryFileSystem> InMemoryFileSystem(
-      new vfs::InMemoryFileSystem);
+  IntrusiveRefCntPtr<llvm::vfs::InMemoryFileSystem> InMemoryFileSystem(
+      new llvm::vfs::InMemoryFileSystem);
   Driver TheDriver("/bin/clang", "arm-linux-gnueabihf", Diags,
                    InMemoryFileSystem);
 
@@ -60,13 +61,14 @@ TEST(ToolChainTest, VFSGCCInstallation) {
 
   std::unique_ptr<Compilation> C(TheDriver.BuildCompilation(
       {"-fsyntax-only", "--gcc-toolchain=", "foo.cpp"}));
+  EXPECT_TRUE(C);
 
   std::string S;
   {
     llvm::raw_string_ostream OS(S);
     C->getDefaultToolChain().printVerboseInfo(OS);
   }
-#if LLVM_ON_WIN32
+#if _WIN32
   std::replace(S.begin(), S.end(), '\\', '/');
 #endif
   EXPECT_EQ(
@@ -84,8 +86,8 @@ TEST(ToolChainTest, VFSGCCInstallationRelativeDir) {
   IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
   struct TestDiagnosticConsumer : public DiagnosticConsumer {};
   DiagnosticsEngine Diags(DiagID, &*DiagOpts, new TestDiagnosticConsumer);
-  IntrusiveRefCntPtr<vfs::InMemoryFileSystem> InMemoryFileSystem(
-      new vfs::InMemoryFileSystem);
+  IntrusiveRefCntPtr<llvm::vfs::InMemoryFileSystem> InMemoryFileSystem(
+      new llvm::vfs::InMemoryFileSystem);
   Driver TheDriver("/home/test/bin/clang", "arm-linux-gnueabi", Diags,
                    InMemoryFileSystem);
 
@@ -99,17 +101,18 @@ TEST(ToolChainTest, VFSGCCInstallationRelativeDir) {
 
   std::unique_ptr<Compilation> C(TheDriver.BuildCompilation(
       {"-fsyntax-only", "--gcc-toolchain=", "foo.cpp"}));
+  EXPECT_TRUE(C);
 
   std::string S;
   {
     llvm::raw_string_ostream OS(S);
     C->getDefaultToolChain().printVerboseInfo(OS);
   }
-#if LLVM_ON_WIN32
+#if _WIN32
   std::replace(S.begin(), S.end(), '\\', '/');
 #endif
   EXPECT_EQ("Found candidate GCC installation: "
-            "/home/test/lib/gcc/arm-linux-gnueabi/4.6.1\n"
+            "/home/test/bin/../lib/gcc/arm-linux-gnueabi/4.6.1\n"
             "Selected GCC installation: "
             "/home/test/bin/../lib/gcc/arm-linux-gnueabi/4.6.1\n"
             "Candidate multilib: .;@m32\n"
@@ -123,23 +126,137 @@ TEST(ToolChainTest, DefaultDriverMode) {
   IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
   struct TestDiagnosticConsumer : public DiagnosticConsumer {};
   DiagnosticsEngine Diags(DiagID, &*DiagOpts, new TestDiagnosticConsumer);
-  IntrusiveRefCntPtr<vfs::InMemoryFileSystem> InMemoryFileSystem(
-      new vfs::InMemoryFileSystem);
+  IntrusiveRefCntPtr<llvm::vfs::InMemoryFileSystem> InMemoryFileSystem(
+      new llvm::vfs::InMemoryFileSystem);
 
   Driver CCDriver("/home/test/bin/clang", "arm-linux-gnueabi", Diags,
                   InMemoryFileSystem);
+  CCDriver.setCheckInputsExist(false);
   Driver CXXDriver("/home/test/bin/clang++", "arm-linux-gnueabi", Diags,
                    InMemoryFileSystem);
+  CXXDriver.setCheckInputsExist(false);
   Driver CLDriver("/home/test/bin/clang-cl", "arm-linux-gnueabi", Diags,
                   InMemoryFileSystem);
+  CLDriver.setCheckInputsExist(false);
 
-  std::unique_ptr<Compilation> CC(CCDriver.BuildCompilation({"foo.cpp"}));
-  std::unique_ptr<Compilation> CXX(CXXDriver.BuildCompilation({"foo.cpp"}));
-  std::unique_ptr<Compilation> CL(CLDriver.BuildCompilation({"foo.cpp"}));
+  std::unique_ptr<Compilation> CC(CCDriver.BuildCompilation(
+      { "/home/test/bin/clang", "foo.cpp"}));
+  std::unique_ptr<Compilation> CXX(CXXDriver.BuildCompilation(
+      { "/home/test/bin/clang++", "foo.cpp"}));
+  std::unique_ptr<Compilation> CL(CLDriver.BuildCompilation(
+      { "/home/test/bin/clang-cl", "foo.cpp"}));
 
+  EXPECT_TRUE(CC);
+  EXPECT_TRUE(CXX);
+  EXPECT_TRUE(CL);
   EXPECT_TRUE(CCDriver.CCCIsCC());
   EXPECT_TRUE(CXXDriver.CCCIsCXX());
   EXPECT_TRUE(CLDriver.IsCLMode());
 }
+TEST(ToolChainTest, InvalidArgument) {
+  IntrusiveRefCntPtr<DiagnosticIDs> DiagID(new DiagnosticIDs());
+  struct TestDiagnosticConsumer : public DiagnosticConsumer {};
+  IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts = new DiagnosticOptions();
+  DiagnosticsEngine Diags(DiagID, &*DiagOpts, new TestDiagnosticConsumer);
+  Driver TheDriver("/bin/clang", "arm-linux-gnueabihf", Diags);
+  std::unique_ptr<Compilation> C(TheDriver.BuildCompilation(
+      {"-fsyntax-only", "-fan-unknown-option", "foo.cpp"}));
+  EXPECT_TRUE(C);
+  EXPECT_TRUE(C->containsError());
+}
 
-} // end anonymous namespace
+TEST(ToolChainTest, ParsedClangName) {
+  ParsedClangName Empty;
+  EXPECT_TRUE(Empty.TargetPrefix.empty());
+  EXPECT_TRUE(Empty.ModeSuffix.empty());
+  EXPECT_TRUE(Empty.DriverMode == nullptr);
+  EXPECT_FALSE(Empty.TargetIsValid);
+
+  ParsedClangName DriverOnly("clang", nullptr);
+  EXPECT_TRUE(DriverOnly.TargetPrefix.empty());
+  EXPECT_TRUE(DriverOnly.ModeSuffix == "clang");
+  EXPECT_TRUE(DriverOnly.DriverMode == nullptr);
+  EXPECT_FALSE(DriverOnly.TargetIsValid);
+
+  ParsedClangName DriverOnly2("clang++", "--driver-mode=g++");
+  EXPECT_TRUE(DriverOnly2.TargetPrefix.empty());
+  EXPECT_TRUE(DriverOnly2.ModeSuffix == "clang++");
+  EXPECT_STREQ(DriverOnly2.DriverMode, "--driver-mode=g++");
+  EXPECT_FALSE(DriverOnly2.TargetIsValid);
+
+  ParsedClangName TargetAndMode("i386", "clang-g++", "--driver-mode=g++", true);
+  EXPECT_TRUE(TargetAndMode.TargetPrefix == "i386");
+  EXPECT_TRUE(TargetAndMode.ModeSuffix == "clang-g++");
+  EXPECT_STREQ(TargetAndMode.DriverMode, "--driver-mode=g++");
+  EXPECT_TRUE(TargetAndMode.TargetIsValid);
+}
+
+TEST(ToolChainTest, GetTargetAndMode) {
+  llvm::InitializeAllTargets();
+  std::string IgnoredError;
+  if (!llvm::TargetRegistry::lookupTarget("x86_64", IgnoredError))
+    return;
+
+  ParsedClangName Res = ToolChain::getTargetAndModeFromProgramName("clang");
+  EXPECT_TRUE(Res.TargetPrefix.empty());
+  EXPECT_TRUE(Res.ModeSuffix == "clang");
+  EXPECT_TRUE(Res.DriverMode == nullptr);
+  EXPECT_FALSE(Res.TargetIsValid);
+
+  Res = ToolChain::getTargetAndModeFromProgramName("clang++");
+  EXPECT_TRUE(Res.TargetPrefix.empty());
+  EXPECT_TRUE(Res.ModeSuffix == "clang++");
+  EXPECT_STREQ(Res.DriverMode, "--driver-mode=g++");
+  EXPECT_FALSE(Res.TargetIsValid);
+
+  Res = ToolChain::getTargetAndModeFromProgramName("clang++6.0");
+  EXPECT_TRUE(Res.TargetPrefix.empty());
+  EXPECT_TRUE(Res.ModeSuffix == "clang++");
+  EXPECT_STREQ(Res.DriverMode, "--driver-mode=g++");
+  EXPECT_FALSE(Res.TargetIsValid);
+
+  Res = ToolChain::getTargetAndModeFromProgramName("clang++-release");
+  EXPECT_TRUE(Res.TargetPrefix.empty());
+  EXPECT_TRUE(Res.ModeSuffix == "clang++");
+  EXPECT_STREQ(Res.DriverMode, "--driver-mode=g++");
+  EXPECT_FALSE(Res.TargetIsValid);
+
+  Res = ToolChain::getTargetAndModeFromProgramName("x86_64-clang++");
+  EXPECT_TRUE(Res.TargetPrefix == "x86_64");
+  EXPECT_TRUE(Res.ModeSuffix == "clang++");
+  EXPECT_STREQ(Res.DriverMode, "--driver-mode=g++");
+  EXPECT_TRUE(Res.TargetIsValid);
+
+  Res = ToolChain::getTargetAndModeFromProgramName(
+      "x86_64-linux-gnu-clang-c++");
+  EXPECT_TRUE(Res.TargetPrefix == "x86_64-linux-gnu");
+  EXPECT_TRUE(Res.ModeSuffix == "clang-c++");
+  EXPECT_STREQ(Res.DriverMode, "--driver-mode=g++");
+  EXPECT_TRUE(Res.TargetIsValid);
+
+  Res = ToolChain::getTargetAndModeFromProgramName(
+      "x86_64-linux-gnu-clang-c++-tot");
+  EXPECT_TRUE(Res.TargetPrefix == "x86_64-linux-gnu");
+  EXPECT_TRUE(Res.ModeSuffix == "clang-c++");
+  EXPECT_STREQ(Res.DriverMode, "--driver-mode=g++");
+  EXPECT_TRUE(Res.TargetIsValid);
+
+  Res = ToolChain::getTargetAndModeFromProgramName("qqq");
+  EXPECT_TRUE(Res.TargetPrefix.empty());
+  EXPECT_TRUE(Res.ModeSuffix.empty());
+  EXPECT_TRUE(Res.DriverMode == nullptr);
+  EXPECT_FALSE(Res.TargetIsValid);
+
+  Res = ToolChain::getTargetAndModeFromProgramName("x86_64-qqq");
+  EXPECT_TRUE(Res.TargetPrefix.empty());
+  EXPECT_TRUE(Res.ModeSuffix.empty());
+  EXPECT_TRUE(Res.DriverMode == nullptr);
+  EXPECT_FALSE(Res.TargetIsValid);
+
+  Res = ToolChain::getTargetAndModeFromProgramName("qqq-clang-cl");
+  EXPECT_TRUE(Res.TargetPrefix == "qqq");
+  EXPECT_TRUE(Res.ModeSuffix == "clang-cl");
+  EXPECT_STREQ(Res.DriverMode, "--driver-mode=cl");
+  EXPECT_FALSE(Res.TargetIsValid);
+}
+} // end anonymous namespace.

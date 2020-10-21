@@ -30,10 +30,10 @@ If you're interested in more information about the Clang and LLVM
 infrastructure that Clang UPC is built from it is best to read
 the relevant web sites.  Here are some pointers:
 
-Information on Clang:              http://clang.llvm.org/
-Building and using Clang:          http://clang.llvm.org/get_started.html
-Clang Static Analyzer:             http://clang-analyzer.llvm.org/
-Information on the LLVM project:   http://llvm.org/
+Information on Clang:             http://clang.llvm.org/
+Building and using Clang:         http://clang.llvm.org/get_started.html
+Clang Static Analyzer:            http://clang-analyzer.llvm.org/
+Information on the LLVM project:  http://llvm.org/
 
 If you have questions or comments about Clang, a great place to discuss them is
 on the Clang development mailing list:

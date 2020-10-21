@@ -1,7 +1,7 @@
 // RUN: %clang_cc1 -std=c++98 -triple x86_64-unknown-unknown %s -verify -fexceptions -fcxx-exceptions -pedantic-errors
 // RUN: %clang_cc1 -std=c++11 -triple x86_64-unknown-unknown %s -verify -fexceptions -fcxx-exceptions -pedantic-errors
 // RUN: %clang_cc1 -std=c++14 -triple x86_64-unknown-unknown %s -verify -fexceptions -fcxx-exceptions -pedantic-errors
-// RUN: %clang_cc1 -std=c++1z -triple x86_64-unknown-unknown %s -verify -fexceptions -fcxx-exceptions -pedantic-errors
+// RUN: %clang_cc1 -std=c++17 -triple x86_64-unknown-unknown %s -verify -fexceptions -fcxx-exceptions -pedantic-errors
 
 namespace dr100 { // dr100: yes
   template<const char *> struct A {}; // expected-note 0-1{{declared here}}
@@ -67,8 +67,11 @@ namespace dr108 { // dr108: yes
 namespace dr109 { // dr109: yes
   struct A { template<typename T> void f(T); };
   template<typename T> struct B : T {
-    using T::template f; // expected-error {{using declaration cannot refer to a template}}
-    void g() { this->f<int>(123); } // expected-error {{use 'template'}}
+    using T::template f; // expected-error {{'template' keyword not permitted here}}
+    using T::template f<int>; // expected-error {{'template' keyword not permitted here}} expected-error {{using declaration cannot refer to a template specialization}}
+    // FIXME: We shouldn't suggest using the 'template' keyword in a location where it's not valid.
+    using T::f<int>; // expected-error {{use 'template' keyword}} expected-error {{using declaration cannot refer to a template specialization}}
+    void g() { this->f<int>(123); } // expected-error {{use 'template' keyword}}
   };
 }
 
@@ -238,7 +241,20 @@ namespace dr125 {
   };
 }
 
-namespace dr126 { // dr126: no
+namespace dr126 { // dr126: partial
+  // FIXME: We do not yet generate correct code for this change:
+  // eg:
+  //   catch (void*&) should catch void* but not int*
+  //   catch (void*) and catch (void*const&) should catch both
+  // Likewise:
+  //   catch (Base *&) should catch Base* but not Derived*
+  //   catch (Base *) should catch both
+  // In each case, we emit the same code for both catches.
+  //
+  // The ABI does not let us represent the language rule in the unwind tables.
+  // So, when catching by non-const (or volatile) reference to pointer, we
+  // should compare the exception type to the caught type and only accept an
+  // exact match.
 #if __cplusplus <= 201402L
   struct C {};
   struct D : C {};
@@ -262,12 +278,13 @@ namespace dr126 { // dr126: no
     virtual void gr() throw(C&);
     virtual void hr() throw(C&); // expected-note {{overridden}}
 
-    virtual void pv() throw(void*); // expected-note {{overridden}}
+    virtual void pv() throw(void*);
 
 #if __cplusplus >= 201103L
-    virtual void np() throw(C*); // expected-note {{overridden}}
-    virtual void npm() throw(int C::*); // expected-note {{overridden}}
-    virtual void nr() throw(C&); // expected-note {{overridden}}
+    virtual void np() throw(C*);
+    virtual void npm() throw(int C::*);
+    virtual void nr() throw(C*&); // expected-note {{overridden}}
+    virtual void ncr() throw(C*const&);
 #endif
 
     virtual void ref1() throw(C *const&);
@@ -275,7 +292,7 @@ namespace dr126 { // dr126: no
 
     virtual void v() throw(int);
     virtual void w() throw(const int);
-    virtual void x() throw(int*);
+    virtual void x() throw(int*); // expected-note {{overridden}}
     virtual void y() throw(const int*);
     virtual void z() throw(int); // expected-note {{overridden}}
   };
@@ -294,13 +311,14 @@ namespace dr126 { // dr126: no
     virtual void gr() throw(G&);
     virtual void hr() throw(H&); // expected-error {{more lax}}
 
-    virtual void pv() throw(C*); // expected-error {{more lax}} FIXME: This is valid.
+    virtual void pv() throw(C*);
 
 #if __cplusplus >= 201103L
     using nullptr_t = decltype(nullptr);
-    virtual void np() throw(nullptr_t*); // expected-error {{more lax}} FIXME: This is valid.
-    virtual void npm() throw(nullptr_t*); // expected-error {{more lax}} FIXME: This is valid.
-    virtual void nr() throw(nullptr_t&); // expected-error {{more lax}} This is not.
+    virtual void np() throw(nullptr_t);
+    virtual void npm() throw(nullptr_t&);
+    virtual void nr() throw(nullptr_t); // expected-error {{more lax}}
+    virtual void ncr() throw(nullptr_t);
 #endif
 
     virtual void ref1() throw(D *const &);
@@ -308,12 +326,12 @@ namespace dr126 { // dr126: no
 
     virtual void v() throw(const int);
     virtual void w() throw(int);
-    virtual void x() throw(const int*); // FIXME: 'const int*' is not allowed by A::h.
+    virtual void x() throw(const int*); // expected-error {{more lax}}
     virtual void y() throw(int*); // ok
     virtual void z() throw(long); // expected-error {{more lax}}
   };
 #else
-  void f() throw(int); // expected-error {{ISO C++1z does not allow}} expected-note {{use 'noexcept}}
+  void f() throw(int); // expected-error {{ISO C++17 does not allow}} expected-note {{use 'noexcept}}
 #endif
 }
 
@@ -383,13 +401,12 @@ namespace dr136 { // dr136: 3.4
   extern "C" void k(int, int, int, int); // expected-note {{previous declaration is here}}
   namespace NSA {
   struct A {
-    friend void dr136::k(int, int, int, int = 0); // expected-error {{friend declaration specifying a default argument must be the only declaration}} \
-                                                  // expected-note {{previous declaration is here}}
+    friend void dr136::k(int, int, int, int = 0); // expected-error {{friend declaration specifying a default argument must be the only declaration}}
   };
   }
   namespace NSB {
   struct A {
-    friend void dr136::k(int, int, int = 0, int); // expected-error {{friend declaration specifying a default argument must be the only declaration}}
+    friend void dr136::k(int, int, int = 0, int); // expected-error {{missing default argument on parameter}}
   };
   }
   struct B {
@@ -535,13 +552,15 @@ namespace dr145 { // dr145: yes
   }
 }
 
-namespace dr147 { // dr147: no
+namespace dr147 { // dr147: yes
   namespace example1 {
     template<typename> struct A {
       template<typename T> A(T);
     };
-    // FIXME: This appears to be valid, and EDG and G++ accept.
+    // Per core issue 1435, this is ill-formed because A<int>::A<int> does not
+    // name the injected-class-name. (A<int>::A does, though.)
     template<> template<> A<int>::A<int>(int) {} // expected-error {{out-of-line constructor for 'A' cannot have template arguments}}
+    template<> template<> A<float>::A(float) {}
   }
   namespace example2 {
     struct A { A(); };

@@ -1,9 +1,8 @@
 //===- unittest/Format/FormatTestUtils.h - Formatting unit tests ----------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -30,7 +29,8 @@ inline std::string messUp(llvm::StringRef Code) {
       if (JustReplacedNewline)
         MessedUp[i - 1] = '\n';
       InComment = true;
-    } else if (MessedUp[i] == '#' && (JustReplacedNewline || i == 0)) {
+    } else if (MessedUp[i] == '#' &&
+               (JustReplacedNewline || i == 0 || MessedUp[i - 1] == '\n')) {
       if (i != 0)
         MessedUp[i - 1] = '\n';
       InPreprocessorDirective = true;

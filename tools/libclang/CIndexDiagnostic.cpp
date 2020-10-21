@@ -1,15 +1,15 @@
-/*===-- CIndexDiagnostics.cpp - Diagnostics C Interface ---------*- C++ -*-===*\
-|*                                                                            *|
-|*                     The LLVM Compiler Infrastructure                       *|
-|*                                                                            *|
-|* This file is distributed under the University of Illinois Open Source      *|
-|* License. See LICENSE.TXT for details.                                      *|
-|*                                                                            *|
-|*===----------------------------------------------------------------------===*|
-|*                                                                            *|
-|* Implements the diagnostic functions of the Clang C interface.              *|
-|*                                                                            *|
-\*===----------------------------------------------------------------------===*/
+//===- CIndexDiagnostic.cpp - Diagnostics C Interface ---------------------===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// Implements the diagnostic functions of the Clang C interface.
+//
+//===----------------------------------------------------------------------===//
+
 #include "CIndexDiagnostic.h"
 #include "CIndexer.h"
 #include "CXTranslationUnit.h"
@@ -19,7 +19,6 @@
 #include "clang/Basic/DiagnosticOptions.h"
 #include "clang/Frontend/ASTUnit.h"
 #include "clang/Frontend/DiagnosticRenderer.h"
-#include "clang/Frontend/FrontendDiagnostic.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -110,40 +109,34 @@ public:
       CurrentSet = &CD.getChildDiagnostics();
   }
 
-  void emitDiagnosticMessage(SourceLocation Loc, PresumedLoc PLoc,
-                             DiagnosticsEngine::Level Level,
-                             StringRef Message,
+  void emitDiagnosticMessage(FullSourceLoc Loc, PresumedLoc PLoc,
+                             DiagnosticsEngine::Level Level, StringRef Message,
                              ArrayRef<CharSourceRange> Ranges,
-                             const SourceManager *SM,
                              DiagOrStoredDiag D) override {
     if (!D.isNull())
       return;
     
     CXSourceLocation L;
-    if (SM)
-      L = translateSourceLocation(*SM, LangOpts, Loc);
+    if (Loc.hasManager())
+      L = translateSourceLocation(Loc.getManager(), LangOpts, Loc);
     else
       L = clang_getNullLocation();
     CurrentSet->appendDiagnostic(
         llvm::make_unique<CXDiagnosticCustomNoteImpl>(Message, L));
   }
 
-  void emitDiagnosticLoc(SourceLocation Loc, PresumedLoc PLoc,
+  void emitDiagnosticLoc(FullSourceLoc Loc, PresumedLoc PLoc,
                          DiagnosticsEngine::Level Level,
-                         ArrayRef<CharSourceRange> Ranges,
-                         const SourceManager &SM) override {}
+                         ArrayRef<CharSourceRange> Ranges) override {}
 
-  void emitCodeContext(SourceLocation Loc,
-                       DiagnosticsEngine::Level Level,
-                       SmallVectorImpl<CharSourceRange>& Ranges,
-                       ArrayRef<FixItHint> Hints,
-                       const SourceManager &SM) override {}
+  void emitCodeContext(FullSourceLoc Loc, DiagnosticsEngine::Level Level,
+                       SmallVectorImpl<CharSourceRange> &Ranges,
+                       ArrayRef<FixItHint> Hints) override {}
 
-  void emitNote(SourceLocation Loc, StringRef Message,
-                const SourceManager *SM) override {
+  void emitNote(FullSourceLoc Loc, StringRef Message) override {
     CXSourceLocation L;
-    if (SM)
-      L = translateSourceLocation(*SM, LangOpts, Loc);
+    if (Loc.hasManager())
+      L = translateSourceLocation(Loc.getManager(), LangOpts, Loc);
     else
       L = clang_getNullLocation();
     CurrentSet->appendDiagnostic(

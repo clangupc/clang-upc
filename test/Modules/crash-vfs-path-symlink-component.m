@@ -1,14 +1,14 @@
 // REQUIRES: crash-recovery, shell
 
 // FIXME: This XFAIL is cargo-culted from crash-report.c. Do we need it?
-// XFAIL: mingw32
+// XFAIL: windows-gnu
 
 // Test that clang is capable of collecting the right header files in the
 // crash reproducer if there's a symbolic link component in the path.
 
 // RUN: rm -rf %t
 // RUN: mkdir -p %t/i %t/m %t %t/sysroot
-// RUN: cp -a %S/Inputs/crash-recovery/usr %t/i/
+// RUN: cp -R %S/Inputs/crash-recovery/usr %t/i/
 // RUN: ln -s include/tcl-private %t/i/usr/x
 
 // RUN: not env FORCE_CLANG_DIAGNOSTICS_CRASH= TMPDIR=%t TEMP=%t TMP=%t \
@@ -28,7 +28,7 @@
 // CHECK-NEXT: note: diagnostic msg: {{.*}}.m
 // CHECK-NEXT: note: diagnostic msg: {{.*}}.cache
 
-// CHECKSRC: @import cstd.stdio;
+// CHECKSRC: #pragma clang module import cstd.stdio
 
 // CHECKSH: # Crash reproducer
 // CHECKSH-NEXT: # Driver args: "-fsyntax-only"
@@ -65,4 +65,4 @@
 // RUN:     -fmodules-cache-path=%t/m/ 2>&1 \
 // RUN:     | FileCheck %s --check-prefix=CHECKOVERLAY
 
-// CHECKOVERLAY: @import cstd.stdio; /* clang -E: implicit import for "/{{[^ ].*}}/i/usr/x/../stdio.h" */
+// CHECKOVERLAY: #pragma clang module import cstd.stdio /* clang -E: implicit import

@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -triple x86_64-apple-darwin10 -analyze -analyzer-checker=core,osx.coreFoundation.CFRetainRelease,osx.cocoa.ClassRelease,osx.cocoa.RetainCount -analyzer-store=region -fblocks -verify %s
+// RUN: %clang_analyze_cc1 -triple x86_64-apple-darwin10 -analyzer-checker=core,osx.coreFoundation.CFRetainRelease,osx.cocoa.ClassRelease,osx.cocoa.RetainCount -analyzer-store=region -fblocks -verify %s
 
 #if __has_feature(attribute_ns_returns_retained)
 #define NS_RETURNS_RETAINED __attribute__((ns_returns_retained))
@@ -461,3 +461,89 @@ void	radar13722286::PrepareBitmap() {
 	}
 }
 
+// rdar://34210609
+void _() { _(); }; // no-warning
+
+// Do not assume that IOBSDNameMatching increments a reference counter,
+// unless return type is CFMutableDictionaryRef.
+void* IOBSDNameMatching();
+void rdar33832412() {
+  void* x = IOBSDNameMatching(); // no-warning
+}
+
+namespace member_CFRetains {
+class Foo {
+public:
+  void CFRetain(const Foo &) {}
+  void CFRetain(int) {}
+};
+
+void bar() {
+  Foo foo;
+  foo.CFRetain(foo); // no-warning
+  foo.CFRetain(0); // no-warning
+}
+}
+
+namespace cxx_method_escaping {
+
+struct S {
+  static CFArrayRef testGetNoTracking();
+  CFArrayRef testGetNoTrackingMember();
+};
+
+void test_cxx_static_method_escaping() {
+  CFArrayRef arr = S::testGetNoTracking();
+  CFRelease(arr);
+}
+
+void test_cxx_method_escaping(S *s) {
+  CFArrayRef arr = s->testGetNoTrackingMember();
+  CFRelease(arr);
+}
+
+}
+
+namespace yet_another_unexpected_signature_crash {
+
+CFTypeRef CFSomethingSomethingRetain();
+CFTypeRef CFSomethingSomethingAutorelease();
+
+void foo() {
+  CFSomethingSomethingRetain(); // no-crash
+  CFSomethingSomethingAutorelease(); // no-crash
+}
+
+}
+
+namespace reinterpret_casts {
+
+void *foo() {
+  void *p = const_cast<void *>(
+      reinterpret_cast<const void *>(CFArrayCreate(0, 0, 0, 0)));
+  void *q = reinterpret_cast<void *>(
+      reinterpret_cast<char *>(p) + 1);
+  // FIXME: Should warn about a leak here. The function should return at +0,
+  // but it returns at +1 instead.
+  return q;
+}
+
+void *fooCreate() {
+  void *p = const_cast<void *>(
+      reinterpret_cast<const void *>(CFArrayCreate(0, 0, 0, 0)));
+  void *q = reinterpret_cast<void *>(
+      reinterpret_cast<char *>(p) + 1);
+  // The function follows the Create Rule.
+  return q; // no-warning
+}
+
+void *fooBar() CF_RETURNS_RETAINED {
+  void *p = const_cast<void *>(
+      reinterpret_cast<const void *>(CFArrayCreate(0, 0, 0, 0)));
+  void *q = reinterpret_cast<void *>(
+      reinterpret_cast<char *>(p) + 1);
+  // The function follows the Create Rule.
+  return q; // no-warning
+}
+
+}

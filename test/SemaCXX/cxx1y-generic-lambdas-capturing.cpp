@@ -1,4 +1,5 @@
 // RUN: %clang_cc1 -std=c++1y -verify -fsyntax-only -fblocks -emit-llvm-only %s
+// RUN: %clang_cc1 -std=c++2a -verify -fsyntax-only -fblocks -emit-llvm-only %s
 // DONTRUNYET: %clang_cc1 -std=c++1y -verify -fsyntax-only -fblocks -fdelayed-template-parsing %s -DDELAYED_TEMPLATE_PARSING
 // DONTRUNYET: %clang_cc1 -std=c++1y -verify -fsyntax-only -fblocks -fms-extensions %s -DMS_EXTENSIONS
 // DONTRUNYET: %clang_cc1 -std=c++1y -verify -fsyntax-only -fblocks -fdelayed-template-parsing -fms-extensions %s -DMS_EXTENSIONS -DDELAYED_TEMPLATE_PARSING
@@ -176,7 +177,13 @@ void doit() {
     sample::X cx{5};
     auto L = [=](auto a) { 
       const int z = 3;
+      // FIXME: The warning below is correct but for some reason doesn't show
+      // up in C++17 mode.
       return [&,a](auto b) {
+#if __cplusplus > 201702L
+        // expected-warning@-2 {{address of stack memory associated with local variable 'z' returned}}
+        // expected-note@#call {{in instantiation of}}
+#endif
         const int y = 5;    
         return [=](auto c) { 
           int d[sizeof(a) == sizeof(c) || sizeof(c) == sizeof(b) ? 2 : 1];
@@ -189,7 +196,7 @@ void doit() {
         }; 
       };
     };
-    auto M = L(3)(3.5);
+    auto M = L(3)(3.5); // #call
     M(3.14);
   }
 }
@@ -1375,4 +1382,164 @@ struct XT {
 XT<int> xt{};
 
 
+}
+
+void PR33318(int i) {
+  [&](auto) { static_assert(&i != nullptr, ""); }(0); // expected-warning 2{{always true}} expected-note {{instantiation}}
+}
+
+// Check to make sure that we don't capture when member-calls are made to members that are not of 'this' class.
+namespace PR34266 {
+// https://bugs.llvm.org/show_bug.cgi?id=34266
+namespace ns1 {
+struct A {
+  static void bar(int) { }
+  static void bar(double) { }
+};
+
+struct B 
+{
+  template<class T>
+  auto f() {
+    auto L =  [=] { 
+      T{}.bar(3.0); 
+      T::bar(3);
+    
+    };
+    ASSERT_NO_CAPTURES(L);
+    return L;
+  };
+};
+
+void test() {
+  B{}.f<A>();
+}
+} // end ns1
+
+namespace ns2 {
+struct A {
+  static void bar(int) { }
+  static void bar(double) { }
+};
+
+struct B 
+{
+  using T = A;
+  auto f() {
+    auto L =  [=](auto a) {  
+      T{}.bar(a); 
+      T::bar(a);
+    
+    };
+    ASSERT_NO_CAPTURES(L);
+    return L;
+  };
+};
+
+void test() {
+  B{}.f()(3.0);
+  B{}.f()(3);
+}
+} // end ns2
+
+namespace ns3 {
+struct A {
+  void bar(int) { }
+  static void bar(double) { }
+};
+
+struct B 
+{
+  using T = A;
+  auto f() {
+    auto L =  [=](auto a) { 
+      T{}.bar(a); 
+      T::bar(a); // This call ignores the instance member function because the implicit object argument fails to convert.
+    
+    };
+    ASSERT_NO_CAPTURES(L);
+    return L;
+  };
+};
+
+void test() {
+  B{}.f()(3.0);
+  B{}.f()(3); 
+}
+
+} // end ns3
+
+
+namespace ns4 {
+struct A {
+  void bar(int) { }
+  static void bar(double) { }
+};
+
+struct B : A
+{
+  using T = A;
+  auto f() {
+    auto L =  [=](auto a) { 
+      T{}.bar(a); 
+      T::bar(a); 
+    
+    };
+    // just check to see if the size if >= 2 bytes (which should be the case if we capture anything)
+    ASSERT_CLOSURE_SIZE(L, 2);
+    return L;
+  };
+};
+
+void test() {
+  B{}.f()(3.0);
+  B{}.f()(3); 
+}
+
+} // end ns4
+
+namespace ns5 {
+struct A {
+  void bar(int) { }
+  static void bar(double) { }
+};
+
+struct B 
+{
+  template<class T>
+  auto f() {
+    auto L =  [&](auto a) { 
+      T{}.bar(a); 
+      T::bar(a); 
+    
+    };
+    
+    ASSERT_NO_CAPTURES(L);
+    return L;
+  };
+};
+
+void test() {
+  B{}.f<A>()(3.0);
+  B{}.f<A>()(3); 
+}
+
+} // end ns5
+
+} // end PR34266
+
+namespace capture_pack {
+#if __cplusplus >= 201702L
+  constexpr
+#endif
+  auto v =
+    [](auto ...a) {
+      [&](auto ...b) {
+        ((a = b), ...); // expected-warning 0-1{{extension}}
+      }(100, 20, 3);
+      return (a + ...); // expected-warning 0-1{{extension}}
+    }(400, 50, 6);
+#if __cplusplus >= 201702L
+  static_assert(v == 123);
+#endif
 }

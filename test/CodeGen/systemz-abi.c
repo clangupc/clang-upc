@@ -6,6 +6,12 @@
 // RUN:   -emit-llvm -o - %s | FileCheck %s
 // RUN: %clang_cc1 -triple s390x-linux-gnu -target-cpu arch11 \
 // RUN:   -emit-llvm -o - %s | FileCheck %s
+// RUN: %clang_cc1 -triple s390x-linux-gnu -target-cpu z14 \
+// RUN:   -emit-llvm -o - %s | FileCheck %s
+// RUN: %clang_cc1 -triple s390x-linux-gnu -target-cpu arch12 \
+// RUN:   -emit-llvm -o - %s | FileCheck %s
+// RUN: %clang_cc1 -triple s390x-linux-gnu -target-cpu arch13 \
+// RUN:   -emit-llvm -o - %s | FileCheck %s
 
 // Scalar types
 

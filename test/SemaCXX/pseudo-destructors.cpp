@@ -34,7 +34,7 @@ void f(A* a, Foo *f, int *i, double *d, int ii) {
   g().~Bar(); // expected-error{{non-scalar}}
   
   f->::~Bar();
-  f->N::~Wibble(); // FIXME: technically, Wibble isn't a class-name
+  f->N::~Wibble(); // expected-error{{'N' does not refer to a type}} expected-error{{'Wibble' does not refer to a type}}
   
   f->::~Bar(17, 42); // expected-error{{cannot have any arguments}}
 
@@ -79,7 +79,7 @@ namespace PR11339 {
   template<class T>
   void destroy(T* p) {
     p->~T(); // ok
-    p->~oops(); // expected-error{{expected the class name after '~' to name a destructor}}
+    p->~oops(); // expected-error{{identifier 'oops' in object destruction expression does not name a type}}
   }
 
   template void destroy(int*); // expected-note{{in instantiation of function template specialization}}
@@ -88,4 +88,27 @@ namespace PR11339 {
 template<typename T> using Id = T;
 void AliasTemplate(int *p) {
   p->~Id<int>();
+}
+
+namespace dotPointerAccess {
+struct Base {
+  virtual ~Base() {}
+};
+
+struct Derived : Base {
+  ~Derived() {}
+};
+
+void test() {
+  Derived d;
+  static_cast<Base *>(&d).~Base(); // expected-error {{member reference type 'dotPointerAccess::Base *' is a pointer; did you mean to use '->'}}
+  d->~Derived(); // expected-error {{member reference type 'dotPointerAccess::Derived' is not a pointer; did you mean to use '.'}}
+}
+
+typedef Derived *Foo;
+
+void test2(Foo d) {
+  d.~Foo(); // This is ok
+  d.~Derived(); // expected-error {{member reference type 'dotPointerAccess::Foo' (aka 'dotPointerAccess::Derived *') is a pointer; did you mean to use '->'}}
+}
 }

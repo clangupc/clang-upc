@@ -21,7 +21,7 @@
 // CHECK-NEXT: note: diagnostic msg: {{.*}}.m
 // CHECK-NEXT: note: diagnostic msg: {{.*}}.cache
 
-// CHECKSRC: @import cstd.stdio;
+// CHECKSRC: #pragma clang module import cstd.stdio
 
 // CHECKSH: # Crash reproducer
 // CHECKSH-NEXT: # Driver args: "-fsyntax-only"
@@ -36,7 +36,6 @@
 // CHECKYAML: 'case-sensitive':
 // CHECKYAML-NEXT: 'use-external-names': 'false',
 // CHECKYAML-NEXT: 'overlay-relative': 'true',
-// CHECKYAML-NEXT: 'ignore-non-existent-contents': 'false'
 // CHECKYAML: 'type': 'directory'
 // CHECKYAML: 'name': "/[[PATH:.*]]/Inputs/crash-recovery/usr/include",
 // CHECKYAML-NEXT: 'contents': [

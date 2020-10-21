@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -triple x86_64-apple-darwin10 -fobjc-runtime=macosx-fragile-10.5 -emit-llvm -fobjc-exceptions -O2 -o - %s | FileCheck %s
+// RUN: %clang_cc1 -triple x86_64-apple-darwin10 -fobjc-runtime=macosx-fragile-10.5 -emit-llvm -fobjc-exceptions -mllvm -simplifycfg-sink-common=false -O2 -o - %s | FileCheck %s
 //
 // <rdar://problem/7471679> [irgen] [eh] Exception code built with clang (x86_64) crashes
 
@@ -83,7 +83,7 @@ void f3() {
 
   // CHECK:      [[X:%.*]] = alloca i32
   // CHECK:      [[XPTR:%.*]] = bitcast i32* [[X]] to i8*
-  // CHECK:      call void @llvm.lifetime.start(i64 4, i8* nonnull [[XPTR]])
+  // CHECK:      call void @llvm.lifetime.start.p0i8(i64 4, i8* nonnull [[XPTR]])
   // CHECK:      store i32 0, i32* [[X]]
   int x = 0;
 
@@ -124,7 +124,7 @@ void f3() {
   }
 
   // CHECK:      call void @f3_helper(i32 4, i32* nonnull [[X]])
-  // CHECK-NEXT: call void @llvm.lifetime.end(i64 4, i8* nonnull [[XPTR]])
+  // CHECK-NEXT: call void @llvm.lifetime.end.p0i8(i64 4, i8* nonnull [[XPTR]])
   // CHECK-NEXT: ret void
   f3_helper(4, &x);
 }

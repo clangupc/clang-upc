@@ -29,12 +29,11 @@ NSRect NSMakeRect(CGFloat x, CGFloat y, CGFloat w, CGFloat h);
   CGFloat pattern[2];
   // CHECK: define {{.*}}_createBezierPathWithWidth
   // CHECK: load {{.*}} %path, align {{.*}}, !dbg ![[RET:[0-9]+]]
-  // CHECK: call void @objc_storeStrong{{.*}} !dbg ![[ARC:[0-9]+]]
-  // CHECK: call {{.*}} @objc_autoreleaseReturnValue{{.*}} !dbg ![[ARC1:[0-9]+]]
+  // CHECK: call void @llvm.objc.storeStrong{{.*}} !dbg ![[ARC:[0-9]+]]
+  // CHECK: call {{.*}} @llvm.objc.autoreleaseReturnValue{{.*}} !dbg ![[ARC]]
   // CHECK: ret {{.*}} !dbg ![[ARC]]
   // CHECK: ![[RET]] = !DILocation(line: [[@LINE+1]], scope: !{{.*}})
   return path;
-  // CHECK: ![[ARC]] = !DILocation(line: [[@LINE+2]], scope: !{{.*}})
-  // CHECK: ![[ARC1]] = !DILocation(line: [[@LINE+1]], scope: !{{.*}})
+  // CHECK: ![[ARC]] = !DILocation(line: [[@LINE+1]], scope: !{{.*}})
 }
 @end

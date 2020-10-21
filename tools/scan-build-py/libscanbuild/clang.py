@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
-#                     The LLVM Compiler Infrastructure
-#
-# This file is distributed under the University of Illinois Open Source
-# License. See LICENSE.TXT for details.
+# Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+# See https://llvm.org/LICENSE.txt for license information.
+# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 """ This module is responsible for the Clang executable.
 
 Since Clang command line interface is so rich, but this project is using only
 a subset of that, it makes sense to create a function specific wrapper. """
 
-import re
 import subprocess
-import logging
+import re
+from libscanbuild import run_command
 from libscanbuild.shell import decode
 
-__all__ = ['get_version', 'get_arguments', 'get_checkers']
+__all__ = ['get_version', 'get_arguments', 'get_checkers', 'is_ctu_capable',
+           'get_triple_arch']
 
 # regex for activated checker
 ACTIVE_CHECKER_PATTERN = re.compile(r'^-analyzer-checker=(.*)$')
@@ -25,8 +25,9 @@ def get_version(clang):
     :param clang:   the compiler we are using
     :return:        the version string printed to stderr """
 
-    output = subprocess.check_output([clang, '-v'], stderr=subprocess.STDOUT)
-    return output.decode('utf-8').splitlines()[0]
+    output = run_command([clang, '-v'])
+    # the relevant version info is in the first line
+    return output[0]
 
 
 def get_arguments(command, cwd):
@@ -38,12 +39,11 @@ def get_arguments(command, cwd):
 
     cmd = command[:]
     cmd.insert(1, '-###')
-    logging.debug('exec command in %s: %s', cwd, ' '.join(cmd))
 
-    output = subprocess.check_output(cmd, cwd=cwd, stderr=subprocess.STDOUT)
+    output = run_command(cmd, cwd=cwd)
     # The relevant information is in the last line of the output.
     # Don't check if finding last line fails, would throw exception anyway.
-    last_line = output.decode('utf-8').splitlines()[-1]
+    last_line = output[-1]
     if re.search(r'clang(.*): error:', last_line):
         raise Exception(last_line)
     return decode(last_line)
@@ -141,9 +141,7 @@ def get_checkers(clang, plugins):
     load = [elem for plugin in plugins for elem in ['-load', plugin]]
     cmd = [clang, '-cc1'] + load + ['-analyzer-checker-help']
 
-    logging.debug('exec command: %s', ' '.join(cmd))
-    output = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-    lines = output.decode('utf-8').splitlines()
+    lines = run_command(cmd)
 
     is_active_checker = is_active(get_active_checkers(clang, plugins))
 
@@ -155,3 +153,26 @@ def get_checkers(clang, plugins):
         raise Exception('Could not query Clang for available checkers.')
 
     return checkers
+
+
+def is_ctu_capable(extdef_map_cmd):
+    """ Detects if the current (or given) clang and external definition mapping
+    executables are CTU compatible. """
+
+    try:
+        run_command([extdef_map_cmd, '-version'])
+    except (OSError, subprocess.CalledProcessError):
+        return False
+    return True
+
+
+def get_triple_arch(command, cwd):
+    """Returns the architecture part of the target triple for the given
+    compilation command. """
+
+    cmd = get_arguments(command, cwd)
+    try:
+        separator = cmd.index("-triple")
+        return cmd[separator + 1]
+    except (IndexError, ValueError):
+        return ""

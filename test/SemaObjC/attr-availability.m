@@ -5,7 +5,7 @@
 - (void)proto_method __attribute__((availability(macosx,introduced=10.1,deprecated=10.2))); // expected-note 2 {{'proto_method' has been explicitly marked deprecated here}}
 
 #if defined(WARN_PARTIAL)
-  // expected-note@+2 2 {{'partial_proto_method' has been explicitly marked partial here}}
+// expected-note@+2 2 {{'partial_proto_method' has been marked as being introduced in macOS 10.8 here, but the deployment target is macOS 10.5.0}}
 #endif
 - (void)partial_proto_method __attribute__((availability(macosx,introduced=10.8)));
 @end
@@ -13,7 +13,7 @@
 @interface A <P>
 - (void)method __attribute__((availability(macosx,introduced=10.1,deprecated=10.2))); // expected-note {{'method' has been explicitly marked deprecated here}}
 #if defined(WARN_PARTIAL)
-  // expected-note@+2 {{'partialMethod' has been explicitly marked partial here}}
+// expected-note@+2 2 {{'partialMethod' has been marked as being introduced in macOS 10.8 here, but the deployment target is macOS 10.5.0}}
 #endif
 - (void)partialMethod __attribute__((availability(macosx,introduced=10.8)));
 
@@ -66,7 +66,10 @@ void f(A *a, B *b) {
 @end
 
 void f_after_redecl(A *a, B *b) {
-  [a partialMethod]; // no warning
+#ifdef WARN_PARTIAL
+  // expected-warning@+2{{'partialMethod' is only available on macOS 10.8 or newer}} expected-note@+2 {{@available}}
+#endif
+  [a partialMethod];
   [b partialMethod]; // no warning
   [a partial_proto_method]; // no warning
   [b partial_proto_method]; // no warning
@@ -133,6 +136,10 @@ id NSNibOwner, topNibObjects;
 @end
 
 @interface PartialI <PartialProt>
+#ifdef WARN_PARTIAL
+// expected-note@+3{{'partialMethod' has been marked as being introduced in macOS 10.8 here, but the deployment target is macOS 10.5.0}}
+// expected-note@+3{{'partialMethod' has been marked as being introduced in macOS 10.8 here, but the deployment target is macOS 10.5.0}}
+#endif
 - (void)partialMethod __attribute__((availability(macosx,introduced=10.8)));
 + (void)partialMethod __attribute__((availability(macosx,introduced=10.8)));
 @end
@@ -140,12 +147,12 @@ id NSNibOwner, topNibObjects;
 @interface PartialI ()
 - (void)ipartialMethod1 __attribute__((availability(macosx,introduced=10.8)));
 #if defined(WARN_PARTIAL)
-  // expected-note@+2 {{'ipartialMethod2' has been explicitly marked partial here}}
+// expected-note@+2 {{'ipartialMethod2' has been marked as being introduced in macOS 10.8 here, but the deployment target is macOS 10.5.0}}
 #endif
 - (void)ipartialMethod2 __attribute__((availability(macosx,introduced=10.8)));
 + (void)ipartialMethod1 __attribute__((availability(macosx,introduced=10.8)));
 #if defined(WARN_PARTIAL)
-  // expected-note@+2 {{'ipartialMethod2' has been explicitly marked partial here}}
+// expected-note@+2 {{'ipartialMethod2' has been marked as being introduced in macOS 10.8 here, but the deployment target is macOS 10.5.0}}
 #endif
 + (void)ipartialMethod2 __attribute__((availability(macosx,introduced=10.8)));
 @end
@@ -160,14 +167,20 @@ id NSNibOwner, topNibObjects;
 @end
 
 void partialfun(PartialI* a) {
-  [a partialMethod]; // no warning
+#ifdef WARN_PARTIAL
+  // expected-warning@+2 {{'partialMethod' is only available on macOS 10.8 or newer}} expected-note@+2{{@available}}
+#endif
+  [a partialMethod];
   [a ipartialMethod1]; // no warning
 #if defined(WARN_PARTIAL)
   // expected-warning@+2 {{'ipartialMethod2' is only available on macOS 10.8 or newer}} expected-note@+2 {{enclose 'ipartialMethod2' in an @available check to silence this warning}}
 #endif
   [a ipartialMethod2];
   [a ppartialMethod]; // no warning
-  [PartialI partialMethod]; // no warning
+#ifdef WARN_PARTIAL
+  // expected-warning@+2 {{'partialMethod' is only available on macOS 10.8 or newer}} expected-note@+2 {{@available}}
+#endif
+  [PartialI partialMethod];
   [PartialI ipartialMethod1]; // no warning
 #if defined(WARN_PARTIAL)
   // expected-warning@+2 {{'ipartialMethod2' is only available on macOS 10.8 or newer}} expected-note@+2 {{enclose 'ipartialMethod2' in an @available check to silence this warning}}
@@ -177,20 +190,23 @@ void partialfun(PartialI* a) {
 }
 
 #if defined(WARN_PARTIAL)
-  // expected-note@+2 {{'PartialI2' has been explicitly marked partial here}}
+// expected-note@+2 2 {{'PartialI2' has been marked as being introduced in macOS 10.8 here, but the deployment target is macOS 10.5.0}}
 #endif
 __attribute__((availability(macosx, introduced = 10.8))) @interface PartialI2
 @end
 
 #if defined(WARN_PARTIAL)
-  // expected-warning@+2 {{'PartialI2' is partial: introduced in macOS 10.8}} expected-note@+2 {{explicitly redeclare 'PartialI2' to silence this warning}}
+// expected-warning@+2 {{'PartialI2' is only available on macOS 10.8 or newer}} expected-note@+2 {{annotate 'partialinter1' with an availability attribute to silence}}
 #endif
 void partialinter1(PartialI2* p) {
 }
 
 @class PartialI2;
 
-void partialinter2(PartialI2* p) { // no warning
+#ifdef WARN_PARTIAL
+// expected-warning@+2 {{'PartialI2' is only available on macOS 10.8 or newer}} expected-note@+2 {{annotate 'partialinter2' with an availability attribute to silence}}
+#endif
+void partialinter2(PartialI2* p) {
 }
 
 
@@ -298,8 +314,8 @@ __attribute__((objc_root_class))
 #if defined(WARN_PARTIAL)
 
 int fn_10_5() __attribute__((availability(macosx, introduced=10.5)));
-int fn_10_7() __attribute__((availability(macosx, introduced=10.7))); // expected-note{{marked partial here}}
-int fn_10_8() __attribute__((availability(macosx, introduced=10.8))) { // expected-note{{marked partial here}}
+int fn_10_7() __attribute__((availability(macosx, introduced=10.7))); // expected-note{{'fn_10_7' has been marked as being introduced in macOS 10.7 here, but the deployment target is macOS 10.5.0}}
+int fn_10_8() __attribute__((availability(macosx, introduced=10.8))) { // expected-note{{'fn_10_8' has been marked as being introduced in macOS 10.8 here, but the deployment target is macOS 10.5.0}}
   return fn_10_7();
 }
 

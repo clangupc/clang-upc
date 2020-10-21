@@ -1,9 +1,8 @@
 //===-- MPIChecker.cpp - Checker Entry Point Class --------------*- C++ -*-===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is distributed under the University of Illinois Open Source
-// License. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 ///
@@ -16,7 +15,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "MPIChecker.h"
-#include "../ClangSACheckers.h"
+#include "clang/StaticAnalyzer/Checkers/BuiltinCheckerRegistration.h"
 
 namespace clang {
 namespace ento {
@@ -100,9 +99,6 @@ void MPIChecker::checkUnmatchedWaits(const CallEvent &PreCallEvent,
 
 void MPIChecker::checkMissingWaits(SymbolReaper &SymReaper,
                                    CheckerContext &Ctx) const {
-  if (!SymReaper.hasDeadSymbols())
-    return;
-
   ProgramStateRef State = Ctx.getState();
   const auto &Requests = State->get<RequestMap>();
   if (Requests.isEmpty())
@@ -153,9 +149,9 @@ void MPIChecker::allRegionsUsedByWait(
   MemRegionManager *const RegionManager = MR->getMemRegionManager();
 
   if (FuncClassifier->isMPI_Waitall(CE.getCalleeIdentifier())) {
-    const MemRegion *SuperRegion{nullptr};
+    const SubRegion *SuperRegion{nullptr};
     if (const ElementRegion *const ER = MR->getAs<ElementRegion>()) {
-      SuperRegion = ER->getSuperRegion();
+      SuperRegion = cast<SubRegion>(ER->getSuperRegion());
     }
 
     // A single request is passed to MPI_Waitall.
@@ -190,4 +186,8 @@ void MPIChecker::allRegionsUsedByWait(
 // Registers the checker for static analysis.
 void clang::ento::registerMPIChecker(CheckerManager &MGR) {
   MGR.registerChecker<clang::ento::mpi::MPIChecker>();
+}
+
+bool clang::ento::shouldRegisterMPIChecker(const LangOptions &LO) {
+  return true;
 }

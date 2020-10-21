@@ -1,4 +1,4 @@
-// RUN: %clang_cc1 -analyze -analyzer-checker=core,alpha.unix.SimpleStream -verify %s
+// RUN: %clang_analyze_cc1 -analyzer-checker=core,alpha.unix.SimpleStream -verify %s
 
 #include "Inputs/system-header-simulator-for-simple-stream.h"
 
@@ -65,7 +65,7 @@ void SymbolEscapedThroughFunctionCall() {
 }
 
 FILE *GlobalF;
-void SymbolEscapedThroughAssignmentToGloabl() {
+void SymbolEscapedThroughAssignmentToGlobal() {
   FILE *F = fopen("myfile.txt", "w");
   GlobalF = F;
   return; // no warning
@@ -89,3 +89,8 @@ void testPassToSystemHeaderFunctionIndirectly() {
   fs.p = fopen("myfile.txt", "w");
   fakeSystemHeaderCall(&fs); // invalidates fs, making fs.p unreachable
 }  // no-warning
+
+void testOverwrite() {
+  FILE *fp = fopen("myfile.txt", "w");
+  fp = 0;
+} // expected-warning {{Opened file is never closed; potential resource leak}}

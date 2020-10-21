@@ -1,5 +1,5 @@
-// RUN: %clang_cc1 -analyze -analyzer-checker=core,osx.cocoa.RetainCount,osx.cocoa.Dealloc,debug.ExprInspection -analyzer-store=region -verify -Wno-objc-root-class %s
-// RUN: %clang_cc1 -analyze -analyzer-checker=core,osx.cocoa.RetainCount,osx.cocoa.Dealloc,debug.ExprInspection -analyzer-store=region -verify -Wno-objc-root-class -fobjc-arc %s
+// RUN: %clang_analyze_cc1 -analyzer-checker=core,osx.cocoa.RetainCount,osx.cocoa.Dealloc,debug.ExprInspection -analyzer-store=region -verify -Wno-objc-root-class -analyzer-config eagerly-assume=false %s
+// RUN: %clang_analyze_cc1 -analyzer-checker=core,osx.cocoa.RetainCount,osx.cocoa.Dealloc,debug.ExprInspection -analyzer-store=region -verify -Wno-objc-root-class -fobjc-arc -analyzer-config eagerly-assume=false %s
 
 void clang_analyzer_eval(int);
 
@@ -987,5 +987,56 @@ void testOpaqueConsistency(OpaqueIntWrapper *w) {
 }
 
 @end
+
+@interface Wrapper
+@property(nonatomic, readonly) int value;
+@end
+
+@implementation Wrapper
+@synthesize value;
+@end
+
+void testNoCrashWhenAccessPropertyAndThereAreNoDirectBindingsAtAll() {
+   union {
+    Wrapper *wrapper;
+   } u = { 0 };
+   [u.wrapper value];
+}
+
 #endif // non-ARC
 
+@interface ExplicitAccessorInCategory : NSObject
+@property(readonly) int normal;
+- (int)normal;
+@property(readonly) int no_custom_accessor;
+@end
+
+@interface ExplicitAccessorInCategory ()
+@property(readonly) int in_category;
+
+@property(readonly) int still_no_custom_accessor;
+// This is an ordinary method, not a getter.
+- (int)still_no_custom_accessor;
+@end
+
+@interface ExplicitAccessorInCategory ()
+- (int)in_category;
+
+// This is an ordinary method, not a getter.
+- (int)no_custom_accessor;
+@end
+
+@implementation ExplicitAccessorInCategory
+- (void)foo {
+	// Make sure we don't farm bodies for explicit accessors: in particular,
+	// we're not sure that the accessor always returns the same value.
+	clang_analyzer_eval(self.normal == self.normal); // expected-warning{{UNKNOWN}}
+	// Also this used to crash.
+	clang_analyzer_eval(self.in_category == self.in_category); // expected-warning{{UNKNOWN}}
+
+	// When there is no explicit accessor defined (even if it looks like there is),
+	// farm the getter body and see if it does actually always yield the same value.
+	clang_analyzer_eval(self.no_custom_accessor == self.no_custom_accessor); // expected-warning{{TRUE}}
+	clang_analyzer_eval(self.still_no_custom_accessor == self.still_no_custom_accessor); // expected-warning{{TRUE}}
+}
+@end

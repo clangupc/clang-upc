@@ -160,6 +160,41 @@ double test15() {
   return ret;
 }
 
+void iOutputConstraint(int x){
+  __asm ("nop" : "=ir" (x) : :); // no-error
+  __asm ("nop" : "=ri" (x) : :); // no-error
+  __asm ("nop" : "=ig" (x) : :); // no-error
+  __asm ("nop" : "=im" (x) : :); // no-error
+  __asm ("nop" : "=imr" (x) : :); // no-error
+  __asm ("nop" : "=i" (x) : :); // expected-error{{invalid output constraint '=i' in asm}}
+  __asm ("nop" : "+i" (x) : :); // expected-error{{invalid output constraint '+i' in asm}}
+  __asm ("nop" : "=ii" (x) : :); // expected-error{{invalid output constraint '=ii' in asm}}
+  __asm ("nop" : "=nr" (x) : :); // no-error
+  __asm ("nop" : "=rn" (x) : :); // no-error
+  __asm ("nop" : "=ng" (x) : :); // no-error
+  __asm ("nop" : "=nm" (x) : :); // no-error
+  __asm ("nop" : "=nmr" (x) : :); // no-error
+  __asm ("nop" : "=n" (x) : :); // expected-error{{invalid output constraint '=n' in asm}}
+  __asm ("nop" : "+n" (x) : :); // expected-error{{invalid output constraint '+n' in asm}}
+  __asm ("nop" : "=nn" (x) : :); // expected-error{{invalid output constraint '=nn' in asm}}
+  __asm ("nop" : "=Fr" (x) : :); // no-error
+  __asm ("nop" : "=rF" (x) : :); // no-error
+  __asm ("nop" : "=Fg" (x) : :); // no-error
+  __asm ("nop" : "=Fm" (x) : :); // no-error
+  __asm ("nop" : "=Fmr" (x) : :); // no-error
+  __asm ("nop" : "=F" (x) : :); // expected-error{{invalid output constraint '=F' in asm}}
+  __asm ("nop" : "+F" (x) : :); // expected-error{{invalid output constraint '+F' in asm}}
+  __asm ("nop" : "=FF" (x) : :); // expected-error{{invalid output constraint '=FF' in asm}}
+  __asm ("nop" : "=Er" (x) : :); // no-error
+  __asm ("nop" : "=rE" (x) : :); // no-error
+  __asm ("nop" : "=Eg" (x) : :); // no-error
+  __asm ("nop" : "=Em" (x) : :); // no-error
+  __asm ("nop" : "=Emr" (x) : :); // no-error
+  __asm ("nop" : "=E" (x) : :); // expected-error{{invalid output constraint '=E' in asm}}
+  __asm ("nop" : "+E" (x) : :); // expected-error{{invalid output constraint '+E' in asm}}
+  __asm ("nop" : "=EE" (x) : :); // expected-error{{invalid output constraint '=EE' in asm}}
+}
+
 // PR19837
 struct foo {
   int a;
@@ -214,7 +249,7 @@ void fn6() {
     int a;
   __asm__(""
             : "=rm"(a), "=rm"(a)
-            : "11m"(a)) // expected-error {{invalid input constraint '11m' in asm}}
+            : "11m"(a)); // expected-error {{invalid input constraint '11m' in asm}}
 }
 
 // PR14269
@@ -260,3 +295,24 @@ int test17(int t0)
   return r0 + r1;
 }
 
+void test18()
+{
+  // expected-error@+2 {{duplicate use of asm operand name "lab"}}
+  // expected-note@+1 {{asm operand name "lab" first referenced here}}
+  asm goto ("" : : : : lab, lab, lab2, lab);
+  // expected-error@+2 {{duplicate use of asm operand name "lab"}}
+  // expected-note@+1 {{asm operand name "lab" first referenced here}}
+  asm goto ("xorw %[lab], %[lab]; je %l[lab]" : : [lab] "i" (0) : : lab);
+lab:;
+lab2:;
+  int x,x1;
+  // expected-error@+2 {{duplicate use of asm operand name "lab"}}
+  // expected-note@+1 {{asm operand name "lab" first referenced here}}
+  asm ("" : [lab] "=r" (x),[lab] "+r" (x) : [lab1] "r" (x));
+  // expected-error@+2 {{duplicate use of asm operand name "lab"}}
+  // expected-note@+1 {{asm operand name "lab" first referenced here}}
+  asm ("" : [lab] "=r" (x1) : [lab] "r" (x));
+  // expected-error@+1 {{invalid operand number in inline asm string}}
+  asm ("jne %l0":::);
+  asm goto ("jne %l0"::::lab);
+}
