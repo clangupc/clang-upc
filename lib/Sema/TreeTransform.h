@@ -991,10 +991,12 @@ public:
   QualType RebuildElaboratedType(SourceLocation KeywordLoc,
                                  ElaboratedTypeKeyword Keyword,
                                  NestedNameSpecifierLoc QualifierLoc,
-                                 QualType Named) {
+                                 QualType Named,
+                                 TagDecl *OwnedTagDecl) {
     return SemaRef.Context.getElaboratedType(Keyword,
                                          QualifierLoc.getNestedNameSpecifier(),
-                                             Named);
+                                             Named,
+                                             OwnedTagDecl);
   }
 
   /// Build a new typename type that refers to a template-id.
@@ -6269,9 +6271,11 @@ TreeTransform<Derived>::TransformElaboratedType(TypeLocBuilder &TLB,
   if (getDerived().AlwaysRebuild() ||
       QualifierLoc != TL.getQualifierLoc() ||
       NamedT != T->getNamedType()) {
+    TagDecl *NewOwnedTagDecl = T->getOwnedTagDecl() ? dyn_cast<TagDecl>(TransformDecl(SourceLocation(), T->getOwnedTagDecl())) : nullptr;
     Result = getDerived().RebuildElaboratedType(TL.getElaboratedKeywordLoc(),
                                                 T->getKeyword(),
-                                                QualifierLoc, NamedT);
+                                                QualifierLoc, NamedT,
+                                                NewOwnedTagDecl);
     if (Result.isNull())
       return QualType();
   }

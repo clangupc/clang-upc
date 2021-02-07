@@ -880,7 +880,8 @@ namespace {
     QualType RebuildElaboratedType(SourceLocation KeywordLoc,
                                    ElaboratedTypeKeyword Keyword,
                                    NestedNameSpecifierLoc QualifierLoc,
-                                   QualType T);
+                                   QualType T,
+                                   TagDecl *OwnedTagDecl);
 
     TemplateName
     TransformTemplateName(CXXScopeSpec &SS, TemplateName Name,
@@ -1091,7 +1092,8 @@ QualType
 TemplateInstantiator::RebuildElaboratedType(SourceLocation KeywordLoc,
                                             ElaboratedTypeKeyword Keyword,
                                             NestedNameSpecifierLoc QualifierLoc,
-                                            QualType T) {
+                                            QualType T,
+                                            TagDecl *OwnedTagDecl){
   if (const TagType *TT = T->getAs<TagType>()) {
     TagDecl* TD = TT->getDecl();
 
@@ -1117,7 +1119,8 @@ TemplateInstantiator::RebuildElaboratedType(SourceLocation KeywordLoc,
   return TreeTransform<TemplateInstantiator>::RebuildElaboratedType(KeywordLoc,
                                                                     Keyword,
                                                                   QualifierLoc,
-                                                                    T);
+                                                                    T,
+                                                                    OwnedTagDecl);
 }
 
 TemplateName TemplateInstantiator::TransformTemplateName(
