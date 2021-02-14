@@ -72,13 +72,10 @@ StmtResult Sema::ActOnNullStmt(SourceLocation SemiLoc,
 StmtResult Sema::ActOnPragmaUPC(SourceLocation PragmaLoc, PragmaUPCKind Kind) {
   if (Kind == PUPCK_Strict || Kind == PUPCK_Relaxed) {
     bool IsStrict = (Kind == PUPCK_Strict);
-#if 0
-    // This generates issues in downstream compilation
-    if (getCurFunction()->CompoundScopes.empty())
+    if (!getCurFunction() || getCurFunction()->CompoundScopes.empty())
       UPCIsStrict = IsStrict;
     else
       getCurCompoundScope().UPCIsStrict = IsStrict;
-#endif
     return new (Context) UPCPragmaStmt(PragmaLoc, IsStrict);
   }
   // These are ignored for now.
