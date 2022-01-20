@@ -704,7 +704,7 @@ void Darwin::AddDeploymentTarget(DerivedArgList &Args) const {
            "Unknown target platform!");
     if (!Driver::GetReleaseVersion(OSXVersion->getValue(), Major, Minor, Micro,
                                    HadExtra) ||
-        HadExtra || Major != 10 || Minor >= 100 || Micro >= 100)
+        HadExtra || Major < 10 || Major >= 100 || Minor >= 100 || Micro >= 100)
       getDriver().Diag(diag::err_drv_invalid_version_number)
           << OSXVersion->getAsString(Args);
   } else if (Platform == IPhoneOS) {
