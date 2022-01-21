@@ -12,7 +12,7 @@ foreach (dir ${known_subdirs})
   endif()
 endforeach()
 
-set(ENABLE_CLANG_UPC_RUNTIME TRUE CACHE BOOL "enable UPC runtime library")
+set(ENABLE_CLANG_UPC_RUNTIME FALSE CACHE BOOL "enable UPC runtime library")
 if (ENABLE_CLANG_UPC_RUNTIME)
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libupc)
 endif()
