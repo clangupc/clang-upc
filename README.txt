@@ -1,27 +1,22 @@
 //===----------------------------------------------------------------------===//
-// Clang UPC Front-End
+// Clang UPC Front-End (part of Clang UPC2C)
 // 
 // Clang UPC extends the Clang/LLVM C Language Family Front-end
 // by providing the ability to compile programs written in
 // Unified Parallel C (UPC).
+// However, this version is embedded in Clang UPC2C and not
+// intended for stand-alone use.
 //
 //===----------------------------------------------------------------------===//
 
-Welcome to Clang UPC.  This is a compiler front-end for the C family
-of languages (C, UPC, C++, Objective-C, and Objective-C++) which
-is built as part of the LLVM compiler infrastructure project.
+Welcome to Clang UPC2C.
 
-Unlike many other compiler frontends, Clang UPC is useful for a number of things
-beyond just compiling code: we intend for Clang UPC to be host to a number of
-different source-level tools.  One example of this is the Clang Static Analyzer.
+For details on how to build, install, and use Clang UPC2C, visit
+  https://clangupc.github.io/clang-upc2c/
 
-For details on how to build, install, and use Clang UPC,
-consult the wiki at:
-  https://github.com/Intrepid/clang-upc/wiki.
-
-If you find a bug in Clang UPC, please file it in the
+If you find a bug in Clang UPC2C, please file it in the
 Clang UPC issue tracker:
-  https://github.com/Intrepid/clang-upc/issues
+  https://github.com/clangupc/upc2c/issues
 
 Clang/LLVM Infrastructure
 -------------------------
