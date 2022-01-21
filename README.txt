@@ -15,13 +15,12 @@ Unlike many other compiler frontends, Clang UPC is useful for a number of things
 beyond just compiling code: we intend for Clang UPC to be host to a number of
 different source-level tools.  One example of this is the Clang Static Analyzer.
 
-For details on how to build, install, and use Clang UPC,
-consult the wiki at:
-  https://github.com/Intrepid/clang-upc/wiki.
+For details on how to build, install, and use Clang UPC, visit
+  https://clangupc.github.io/clang-upc/
 
 If you find a bug in Clang UPC, please file it in the
 Clang UPC issue tracker:
-  https://github.com/Intrepid/clang-upc/issues
+  https://github.com/clangupc/clang-upc/issues
 
 Clang/LLVM Infrastructure
 -------------------------
